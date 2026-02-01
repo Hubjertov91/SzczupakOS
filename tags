@@ -1,0 +1,798 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+ALIGN_DOWN	kernel/mm/pmm.c	12;"	d	file:
+ALIGN_DOWN	kernel/mm/vmm.c	14;"	d	file:
+ALIGN_UP	kernel/loader/elf.c	19;"	d	file:
+ALIGN_UP	kernel/mm/pmm.c	11;"	d	file:
+ALIGN_UP	kernel/mm/vmm.c	15;"	d	file:
+ARCH	kernel/arch/x86_64/boot.S	/^ARCH     equ 0$/;"	d
+AS	Makefile	/^AS = nasm$/;"	m
+ASFLAGS	Makefile	/^ASFLAGS = -f elf64$/;"	m
+ATA_CMD_IDENTIFY	kernel/drivers/ata.c	22;"	d	file:
+ATA_CMD_READ_PIO	kernel/drivers/ata.c	20;"	d	file:
+ATA_CMD_WRITE_PIO	kernel/drivers/ata.c	21;"	d	file:
+ATA_PRIMARY_CONTROL	kernel/drivers/ata.c	6;"	d	file:
+ATA_PRIMARY_IO	kernel/drivers/ata.c	5;"	d	file:
+ATA_REG_COMMAND	kernel/drivers/ata.c	18;"	d	file:
+ATA_REG_DATA	kernel/drivers/ata.c	10;"	d	file:
+ATA_REG_DRIVE	kernel/drivers/ata.c	16;"	d	file:
+ATA_REG_ERROR	kernel/drivers/ata.c	11;"	d	file:
+ATA_REG_LBA_HI	kernel/drivers/ata.c	15;"	d	file:
+ATA_REG_LBA_LO	kernel/drivers/ata.c	13;"	d	file:
+ATA_REG_LBA_MID	kernel/drivers/ata.c	14;"	d	file:
+ATA_REG_SECCOUNT	kernel/drivers/ata.c	12;"	d	file:
+ATA_REG_STATUS	kernel/drivers/ata.c	17;"	d	file:
+ATA_SECONDARY_CONTROL	kernel/drivers/ata.c	8;"	d	file:
+ATA_SECONDARY_IO	kernel/drivers/ata.c	7;"	d	file:
+ATA_STATUS_BSY	kernel/drivers/ata.c	24;"	d	file:
+ATA_STATUS_DRQ	kernel/drivers/ata.c	25;"	d	file:
+ATA_STATUS_ERR	kernel/drivers/ata.c	26;"	d	file:
+BITMAP_SIZE	kernel/mm/pmm.c	15;"	d	file:
+BOOT_H	include/kernel/boot.h	2;"	d
+BUILD_DIR	Makefile	/^BUILD_DIR = build$/;"	m
+CC	Makefile	/^CC = gcc$/;"	m
+CFLAGS	Makefile	/^CFLAGS = -m64 -ffreestanding -O0 -Wall -Wextra -nostdlib -nostdinc -fno-pie -mcmodel=large -I.\/include -I. -I.\/kernel$/;"	m
+CHECKSUM	kernel/arch/x86_64/boot.S	/^CHECKSUM equ -(MAGIC + ARCH + HEADER_LEN)$/;"	d
+COM1	kernel/drivers/serial.c	5;"	d	file:
+DISK_IMG	Makefile	/^DISK_IMG = disk.img$/;"	m
+EI_NIDENT	include/kernel/elf.h	7;"	d
+ELFCLASS64	include/kernel/elf.h	40;"	d
+ELFDATA2LSB	include/kernel/elf.h	41;"	d
+ELFMAG0	include/kernel/elf.h	36;"	d
+ELFMAG1	include/kernel/elf.h	37;"	d
+ELFMAG2	include/kernel/elf.h	38;"	d
+ELFMAG3	include/kernel/elf.h	39;"	d
+ET_EXEC	include/kernel/elf.h	43;"	d
+EV_CURRENT	include/kernel/elf.h	42;"	d
+Elf64_Ehdr	include/kernel/elf.h	/^} Elf64_Ehdr;$/;"	t	typeref:struct:__anon8
+Elf64_Phdr	include/kernel/elf.h	/^} Elf64_Phdr;$/;"	t	typeref:struct:__anon9
+FAT16_MAX_FILENAME	kernel/fs/fat16.c	8;"	d	file:
+FAT16_SECTOR_SIZE	kernel/fs/fat16.c	7;"	d	file:
+FILE	user/include/stdio.h	/^typedef struct { int dummy; } FILE;$/;"	t	typeref:struct:__anon7
+GDT_ENTRIES	kernel/task/gdt.c	19;"	d	file:
+HEADER_LEN	kernel/arch/x86_64/boot.S	/^HEADER_LEN equ header_end - header_start$/;"	d
+HEAP_INITIAL_SIZE	kernel/mm/heap.c	7;"	d	file:
+HEAP_MAGIC	kernel/mm/heap.c	6;"	d	file:
+ICW1_ICW4	include/drivers/pic.h	12;"	d
+ICW1_INIT	include/drivers/pic.h	11;"	d
+ICW4_8086	include/drivers/pic.h	13;"	d
+INT16_MAX	user/include/stdint.h	46;"	d
+INT16_MIN	user/include/stdint.h	41;"	d
+INT32_MAX	user/include/stdint.h	47;"	d
+INT32_MIN	user/include/stdint.h	42;"	d
+INT64_MAX	user/include/stdint.h	48;"	d
+INT64_MIN	user/include/stdint.h	43;"	d
+INT8_MAX	user/include/stdint.h	45;"	d
+INT8_MIN	user/include/stdint.h	40;"	d
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 0, 32$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 1, 33$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 10, 42$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 11, 43$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 12, 44$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 13, 45$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 14, 46$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 15, 47$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 2, 34$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 3, 35$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 4, 36$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 5, 37$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 6, 38$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 7, 39$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 8, 40$/;"	l
+IRQ	kernel/arch/x86_64/interrupt_asm.S	/^IRQ 9, 41$/;"	l
+ISO_DIR	Makefile	/^ISO_DIR = $(BUILD_DIR)\/iso$/;"	m
+ISR_ERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_ERRCODE   10$/;"	l
+ISR_ERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_ERRCODE   11$/;"	l
+ISR_ERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_ERRCODE   12$/;"	l
+ISR_ERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_ERRCODE   13$/;"	l
+ISR_ERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_ERRCODE   14$/;"	l
+ISR_ERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_ERRCODE   8$/;"	l
+ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 0$/;"	l
+ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 1$/;"	l
+ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 2$/;"	l
+ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 3$/;"	l
+ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 4$/;"	l
+ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 5$/;"	l
+ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 6$/;"	l
+ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 7$/;"	l
+ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 9$/;"	l
+KERNEL_OBJS	Makefile	/^KERNEL_OBJS = $(OBJ_DIR)\/kernel\/arch\/x86_64\/boot.o \\$/;"	m
+KERNEL_STACK_SIZE	kernel/task/scheduler.c	9;"	d	file:
+KERNEL_STACK_SIZE	kernel/task/task.c	11;"	d	file:
+KEYBOARD_DATA_PORT	kernel/drivers/keyboard.c	7;"	d	file:
+KEYBOARD_STATUS_PORT	kernel/drivers/keyboard.c	8;"	d	file:
+KEY_BUFFER_SIZE	kernel/drivers/keyboard.c	10;"	d	file:
+LD	Makefile	/^LD = ld$/;"	m
+LDFLAGS	Makefile	/^LDFLAGS = -n -T kernel.ld$/;"	m
+LINE_BUF_SIZE	kernel/terminal.c	6;"	d	file:
+MAGIC	kernel/arch/x86_64/boot.S	/^MAGIC    equ 0xe85250d6$/;"	d
+MATH_H	user/include/math.h	2;"	d
+MAX_ARGS	user/shell.c	8;"	d	file:
+MAX_CMD_LEN	user/shell.c	7;"	d	file:
+MAX_FILENAME	include/kernel/vfs.h	6;"	d
+MAX_MEMORY_PAGES	kernel/mm/pmm.c	14;"	d	file:
+MAX_PATH	include/kernel/vfs.h	7;"	d
+MULTIBOOT_MEMORY_AVAILABLE	include/kernel/multiboot2.h	28;"	d
+MULTIBOOT_MEMORY_RESERVED	include/kernel/multiboot2.h	29;"	d
+MULTIBOOT_TAG_TYPE_END	include/kernel/multiboot2.h	25;"	d
+MULTIBOOT_TAG_TYPE_MMAP	include/kernel/multiboot2.h	26;"	d
+NULL	include/kernel/stdint.h	17;"	d
+NULL	user/include/stddef.h	4;"	d
+OBJ_DIR	Makefile	/^OBJ_DIR = $(BUILD_DIR)\/obj$/;"	m
+PAGE_ACCESSED	include/kernel/vmm.h	13;"	d
+PAGE_CACHE_DISABLE	include/kernel/vmm.h	12;"	d
+PAGE_DIRTY	include/kernel/vmm.h	14;"	d
+PAGE_GLOBAL	include/kernel/vmm.h	16;"	d
+PAGE_HUGE	include/kernel/vmm.h	15;"	d
+PAGE_PRESENT	include/kernel/vmm.h	8;"	d
+PAGE_SIZE	include/kernel/pmm.h	6;"	d
+PAGE_SIZE	include/kernel/vmm.h	6;"	d
+PAGE_USER	include/kernel/vmm.h	10;"	d
+PAGE_WRITE	include/kernel/vmm.h	9;"	d
+PAGE_WRITETHROUGH	include/kernel/vmm.h	11;"	d
+PDP_INDEX	kernel/mm/vmm.c	10;"	d	file:
+PD_INDEX	kernel/mm/vmm.c	11;"	d	file:
+PF_FETCH	include/kernel/pagefault.h	10;"	d
+PF_PRESENT	include/kernel/pagefault.h	6;"	d
+PF_R	include/kernel/elf.h	49;"	d
+PF_RESERVED	include/kernel/pagefault.h	9;"	d
+PF_USER	include/kernel/pagefault.h	8;"	d
+PF_W	include/kernel/elf.h	48;"	d
+PF_WRITE	include/kernel/pagefault.h	7;"	d
+PF_X	include/kernel/elf.h	47;"	d
+PIC1_COMMAND	include/drivers/pic.h	6;"	d
+PIC1_DATA	include/drivers/pic.h	7;"	d
+PIC2_COMMAND	include/drivers/pic.h	8;"	d
+PIC2_DATA	include/drivers/pic.h	9;"	d
+PIT_CHANNEL0	kernel/drivers/pit.c	8;"	d	file:
+PIT_COMMAND	kernel/drivers/pit.c	9;"	d	file:
+PIT_FREQUENCY	kernel/drivers/pit.c	10;"	d	file:
+PML4_INDEX	kernel/mm/vmm.c	9;"	d	file:
+PT_INDEX	kernel/mm/vmm.c	12;"	d	file:
+PT_LOAD	include/kernel/elf.h	45;"	d
+STDARG_H	user/include/stdarg.h	2;"	d
+STDDEF_H	user/include/stddef.h	2;"	d
+STDIO_H	user/include/stdio.h	2;"	d
+STDLIB_H	user/include/stdlib.h	2;"	d
+STRING_H	user/include/string.h	2;"	d
+SYSCALL_CLEAR	include/kernel/syscall.h	12;"	d
+SYSCALL_EXIT	include/kernel/syscall.h	6;"	d
+SYSCALL_GETPID	include/kernel/syscall.h	9;"	d
+SYSCALL_GETTIME	include/kernel/syscall.h	10;"	d
+SYSCALL_H	user/include/syscall.h	2;"	d
+SYSCALL_READ	include/kernel/syscall.h	8;"	d
+SYSCALL_SLEEP	include/kernel/syscall.h	11;"	d
+SYSCALL_WRITE	include/kernel/syscall.h	7;"	d
+SYS_CLEAR	user/include/syscall.h	12;"	d
+SYS_EXIT	user/include/syscall.h	6;"	d
+SYS_GETPID	user/include/syscall.h	9;"	d
+SYS_GETTIME	user/include/syscall.h	10;"	d
+SYS_READ	user/include/syscall.h	8;"	d
+SYS_SLEEP	user/include/syscall.h	11;"	d
+SYS_WRITE	user/include/syscall.h	7;"	d
+TASK_BLOCKED	include/kernel/task.h	/^    TASK_BLOCKED,$/;"	e	enum:__anon12
+TASK_READY	include/kernel/task.h	/^    TASK_READY,$/;"	e	enum:__anon12
+TASK_RUNNING	include/kernel/task.h	/^    TASK_RUNNING,$/;"	e	enum:__anon12
+TASK_TERMINATED	include/kernel/task.h	/^    TASK_TERMINATED$/;"	e	enum:__anon12
+UINT16_MAX	user/include/stdint.h	51;"	d
+UINT32_MAX	user/include/stdint.h	52;"	d
+UINT64_MAX	user/include/stdint.h	53;"	d
+UINT8_MAX	user/include/stdint.h	50;"	d
+USER_CFLAGS	Makefile	/^USER_CFLAGS = -m64 -ffreestanding -nostdlib -nostdinc -fno-pie -O0 -I.\/user\/include$/;"	m
+USER_LDFLAGS	Makefile	/^USER_LDFLAGS = -nostdlib -T user\/user.ld$/;"	m
+USER_LIBS	Makefile	/^USER_LIBS = $(OBJ_DIR)\/user\/syscall.o \\$/;"	m
+USER_STACK_SIZE	kernel/task/task.c	12;"	d	file:
+VFS_DIRECTORY	include/kernel/vfs.h	/^    VFS_DIRECTORY$/;"	e	enum:__anon10
+VFS_FILE	include/kernel/vfs.h	/^    VFS_FILE,$/;"	e	enum:__anon10
+VGA_COLOR_BLACK	include/kernel/vga.h	/^    VGA_COLOR_BLACK = 0,$/;"	e	enum:__anon11
+VGA_COLOR_BLUE	include/kernel/vga.h	/^    VGA_COLOR_BLUE = 1,$/;"	e	enum:__anon11
+VGA_COLOR_BROWN	include/kernel/vga.h	/^    VGA_COLOR_BROWN = 6,$/;"	e	enum:__anon11
+VGA_COLOR_CYAN	include/kernel/vga.h	/^    VGA_COLOR_CYAN = 3,$/;"	e	enum:__anon11
+VGA_COLOR_DARK_GREY	include/kernel/vga.h	/^    VGA_COLOR_DARK_GREY = 8,$/;"	e	enum:__anon11
+VGA_COLOR_GREEN	include/kernel/vga.h	/^    VGA_COLOR_GREEN = 2,$/;"	e	enum:__anon11
+VGA_COLOR_LIGHT_BLUE	include/kernel/vga.h	/^    VGA_COLOR_LIGHT_BLUE = 9,$/;"	e	enum:__anon11
+VGA_COLOR_LIGHT_CYAN	include/kernel/vga.h	/^    VGA_COLOR_LIGHT_CYAN = 11,$/;"	e	enum:__anon11
+VGA_COLOR_LIGHT_GREEN	include/kernel/vga.h	/^    VGA_COLOR_LIGHT_GREEN = 10,$/;"	e	enum:__anon11
+VGA_COLOR_LIGHT_GREY	include/kernel/vga.h	/^    VGA_COLOR_LIGHT_GREY = 7,$/;"	e	enum:__anon11
+VGA_COLOR_LIGHT_MAGENTA	include/kernel/vga.h	/^    VGA_COLOR_LIGHT_MAGENTA = 13,$/;"	e	enum:__anon11
+VGA_COLOR_LIGHT_RED	include/kernel/vga.h	/^    VGA_COLOR_LIGHT_RED = 12,$/;"	e	enum:__anon11
+VGA_COLOR_MAGENTA	include/kernel/vga.h	/^    VGA_COLOR_MAGENTA = 5,$/;"	e	enum:__anon11
+VGA_COLOR_RED	include/kernel/vga.h	/^    VGA_COLOR_RED = 4,$/;"	e	enum:__anon11
+VGA_COLOR_WHITE	include/kernel/vga.h	/^    VGA_COLOR_WHITE = 15,$/;"	e	enum:__anon11
+VGA_COLOR_YELLOW	include/kernel/vga.h	/^    VGA_COLOR_YELLOW = 14,$/;"	e	enum:__anon11
+VGA_HEIGHT	include/kernel/vga.h	7;"	d
+VGA_WIDTH	include/kernel/vga.h	6;"	d
+_KERNEL_ATA_H	include/drivers/ata.h	2;"	d
+_KERNEL_ELF_H	include/kernel/elf.h	2;"	d
+_KERNEL_FAT16_H	include/kernel/fat16.h	2;"	d
+_KERNEL_GDT_H	include/kernel/gdt.h	2;"	d
+_KERNEL_IDT_H	include/kernel/idt.h	2;"	d
+_KERNEL_IO_H	include/kernel/io.h	3;"	d
+_KERNEL_KEYBOARD_H	include/drivers/keyboard.h	2;"	d
+_KERNEL_MSR_H	include/kernel/msr.h	2;"	d
+_KERNEL_MULTIBOOT2_H	include/kernel/multiboot2.h	2;"	d
+_KERNEL_PAGEFAULT_H	include/kernel/pagefault.h	2;"	d
+_KERNEL_PIC_H	include/drivers/pic.h	2;"	d
+_KERNEL_PIT_H	include/drivers/pit.h	2;"	d
+_KERNEL_PMM_H	include/kernel/pmm.h	2;"	d
+_KERNEL_SCHEDULER_H	include/kernel/scheduler.h	2;"	d
+_KERNEL_SERIAL_H	include/kernel/serial.h	2;"	d
+_KERNEL_SHELL_H	include/kernel/shell.h	2;"	d
+_KERNEL_SYSCALL_H	include/kernel/syscall.h	2;"	d
+_KERNEL_TASK_H	include/kernel/task.h	2;"	d
+_KERNEL_TERMINAL_H	include/kernel/terminal.h	2;"	d
+_KERNEL_TMPFS_H	include/kernel/tmpfs.h	2;"	d
+_KERNEL_TSS_H	include/kernel/tss.h	2;"	d
+_KERNEL_TYPES_H	include/kernel/stdint.h	2;"	d
+_KERNEL_UACCESS_H	include/kernel/uaccess.h	2;"	d
+_KERNEL_VFS_H	include/kernel/vfs.h	2;"	d
+_KERNEL_VGA_H	include/kernel/vga.h	2;"	d
+_KERNEL_VMM_H	include/kernel/vmm.h	2;"	d
+_STDINT_H_	user/include/stdint.h	2;"	d
+_pad	include/kernel/task.h	/^    uint64_t _pad[18];                  \/\/ 160-296$/;"	m	struct:__anon13
+_start	kernel/arch/x86_64/boot.S	/^_start:$/;"	l
+_start	user/crt0.S	/^_start:$/;"	l
+_stdin	user/stdio.c	/^FILE _stdin = {0};$/;"	v
+_stdout	user/stdio.c	/^FILE _stdout = {0};$/;"	v
+abs	user/stdlib.c	/^long abs(long val) {$/;"	f
+access	kernel/task/gdt.c	/^    uint8_t access;$/;"	m	struct:__anon4	file:
+access_date	kernel/fs/fat16.c	/^    uint16_t access_date;$/;"	m	struct:__anon2	file:
+addr	include/kernel/multiboot2.h	/^    uint64_t addr;$/;"	m	struct:multiboot_mmap_entry
+allocated_size	kernel/fs/tmpfs.c	/^    size_t allocated_size;$/;"	m	struct:tmpfs_data	file:
+ata_base	kernel/drivers/ata.c	/^static uint16_t ata_base = ATA_PRIMARY_IO;$/;"	v	file:
+ata_control	kernel/drivers/ata.c	/^static uint16_t ata_control = ATA_PRIMARY_CONTROL;$/;"	v	file:
+ata_init	kernel/drivers/ata.c	/^void ata_init(void) {$/;"	f
+ata_read_sector	kernel/drivers/ata.c	/^bool ata_read_sector(uint32_t lba, uint8_t* buffer) {$/;"	f
+ata_wait_bsy	kernel/drivers/ata.c	/^static void ata_wait_bsy(void) {$/;"	f	file:
+ata_wait_drq	kernel/drivers/ata.c	/^static void ata_wait_drq(void) {$/;"	f	file:
+ata_write_sector	kernel/drivers/ata.c	/^bool ata_write_sector(uint32_t lba, const uint8_t* buffer) {$/;"	f
+atoi	user/stdlib.c	/^long atoi(const char* s) {$/;"	f
+atoul	user/stdlib.c	/^unsigned long atoul(const char* s) {$/;"	f
+attr	kernel/fs/fat16.c	/^    uint8_t attr;$/;"	m	struct:__anon2	file:
+base	include/kernel/idt.h	/^    uint64_t base;$/;"	m	struct:idt_ptr
+base	kernel/task/gdt.c	/^    uint64_t base;$/;"	m	struct:__anon5	file:
+base_high	kernel/task/gdt.c	/^    uint8_t base_high;$/;"	m	struct:__anon4	file:
+base_low	kernel/task/gdt.c	/^    uint16_t base_low;$/;"	m	struct:__anon4	file:
+base_mid	kernel/task/gdt.c	/^    uint8_t base_mid;$/;"	m	struct:__anon4	file:
+bitmap_clear	kernel/mm/pmm.c	/^static inline void bitmap_clear(uint64_t bit) {$/;"	f	file:
+bitmap_set	kernel/mm/pmm.c	/^static inline void bitmap_set(uint64_t bit) {$/;"	f	file:
+bitmap_test	kernel/mm/pmm.c	/^static inline bool bitmap_test(uint64_t bit) {$/;"	f	file:
+bits	kernel/arch/x86_64/boot.S	/^bits 32$/;"	l
+bits	kernel/arch/x86_64/boot.S	/^bits 64$/;"	l
+bits	kernel/arch/x86_64/interrupt_asm.S	/^bits 64$/;"	l
+bits	kernel/task/gdt_asm.S	/^bits 64$/;"	l
+bits	kernel/task/switch.S	/^bits 64$/;"	l
+bits	kernel/task/syscall_asm.S	/^bits 64$/;"	l
+bits	user/crt0.S	/^bits 64$/;"	l
+bool	include/kernel/stdint.h	/^typedef uint8_t bool;$/;"	t
+bytes_per_sector	kernel/fs/fat16.c	/^    uint16_t bytes_per_sector;$/;"	m	struct:__anon1	file:
+caps_lock	kernel/drivers/keyboard.c	/^static bool caps_lock = false;$/;"	v	file:
+check_cpuid	kernel/arch/x86_64/boot.S	/^check_cpuid:$/;"	l
+check_long_mode	kernel/arch/x86_64/boot.S	/^check_long_mode:$/;"	l
+cluster_high	kernel/fs/fat16.c	/^    uint16_t cluster_high;$/;"	m	struct:__anon2	file:
+cluster_low	kernel/fs/fat16.c	/^    uint16_t cluster_low;$/;"	m	struct:__anon2	file:
+cmd_clear	user/shell.c	/^static void cmd_clear(void) {$/;"	f	file:
+cmd_echo	user/shell.c	/^static void cmd_echo(int argc, char** argv) {$/;"	f	file:
+cmd_exit	user/shell.c	/^static void cmd_exit(void) {$/;"	f	file:
+cmd_help	user/shell.c	/^static void cmd_help(void) {$/;"	f	file:
+cmd_pid	user/shell.c	/^static void cmd_pid(void) {$/;"	f	file:
+cmd_uptime	user/shell.c	/^static void cmd_uptime(void) {$/;"	f	file:
+coalesce_free_blocks	kernel/mm/heap.c	/^static void coalesce_free_blocks(void) {$/;"	f	file:
+context	include/kernel/task.h	/^    cpu_context_t context;$/;"	m	struct:task
+copy_from_user	kernel/mm/uaccess.c	/^bool copy_from_user(void* kernel_dst, const void* user_src, size_t size) {$/;"	f
+copy_to_user	kernel/mm/uaccess.c	/^bool copy_to_user(void* user_dst, const void* kernel_src, size_t size) {$/;"	f
+cpu_context_t	include/kernel/task.h	/^} cpu_context_t;$/;"	t	typeref:struct:__anon13
+cr3	include/kernel/task.h	/^    uint64_t cr3;                       \/\/ 304$/;"	m	struct:__anon13
+cr3_phys	include/kernel/task.h	/^    uint64_t cr3_phys;$/;"	m	struct:task
+create_date	kernel/fs/fat16.c	/^    uint16_t create_date;$/;"	m	struct:__anon2	file:
+create_dir	include/kernel/vfs.h	/^    struct vfs_node* (*create_dir)(struct vfs_node* parent, const char* name);$/;"	m	struct:vfs_operations	typeref:struct:vfs_operations::create_dir
+create_file	include/kernel/vfs.h	/^    struct vfs_node* (*create_file)(struct vfs_node* parent, const char* name);$/;"	m	struct:vfs_operations	typeref:struct:vfs_operations::create_file
+create_time	kernel/fs/fat16.c	/^    uint16_t create_time;$/;"	m	struct:__anon2	file:
+create_time_tenth	kernel/fs/fat16.c	/^    uint8_t create_time_tenth;$/;"	m	struct:__anon2	file:
+cs	include/kernel/task.h	/^    uint64_t cs, ss;                    \/\/ 144-152$/;"	m	struct:__anon13
+current_task	kernel/task/task.c	/^static task_t* current_task = NULL;$/;"	v	file:
+data	kernel/fs/tmpfs.c	/^    void* data;$/;"	m	struct:tmpfs_data	file:
+data_start	kernel/fs/fat16.c	/^    uint32_t data_start;$/;"	m	struct:__anon3	file:
+dummy	user/include/stdio.h	/^typedef struct { int dummy; } FILE;$/;"	m	struct:__anon7
+e_ehsize	include/kernel/elf.h	/^    uint16_t e_ehsize;$/;"	m	struct:__anon8
+e_entry	include/kernel/elf.h	/^    uint64_t e_entry;$/;"	m	struct:__anon8
+e_flags	include/kernel/elf.h	/^    uint32_t e_flags;$/;"	m	struct:__anon8
+e_ident	include/kernel/elf.h	/^    unsigned char e_ident[EI_NIDENT];$/;"	m	struct:__anon8
+e_machine	include/kernel/elf.h	/^    uint16_t e_machine;$/;"	m	struct:__anon8
+e_phentsize	include/kernel/elf.h	/^    uint16_t e_phentsize;$/;"	m	struct:__anon8
+e_phnum	include/kernel/elf.h	/^    uint16_t e_phnum;$/;"	m	struct:__anon8
+e_phoff	include/kernel/elf.h	/^    uint64_t e_phoff;$/;"	m	struct:__anon8
+e_shentsize	include/kernel/elf.h	/^    uint16_t e_shentsize;$/;"	m	struct:__anon8
+e_shnum	include/kernel/elf.h	/^    uint16_t e_shnum;$/;"	m	struct:__anon8
+e_shoff	include/kernel/elf.h	/^    uint64_t e_shoff;$/;"	m	struct:__anon8
+e_type	include/kernel/elf.h	/^    uint16_t e_type;$/;"	m	struct:__anon8
+e_version	include/kernel/elf.h	/^    uint32_t e_version;$/;"	m	struct:__anon8
+elf_load	kernel/loader/elf.c	/^uint64_t elf_load(task_t* task, uint8_t* buffer, size_t size) {$/;"	f
+elf_validate	kernel/loader/elf.c	/^bool elf_validate(Elf64_Ehdr* header) {$/;"	f
+enable_paging	kernel/arch/x86_64/boot.S	/^enable_paging:$/;"	l
+enter_usermode	kernel/task/switch.S	/^enter_usermode:$/;"	l
+entry_size	include/kernel/multiboot2.h	/^    uint32_t entry_size;$/;"	m	struct:multiboot_tag_mmap
+entry_version	include/kernel/multiboot2.h	/^    uint32_t entry_version;$/;"	m	struct:multiboot_tag_mmap
+exception_handler	kernel/interrupt.c	/^void exception_handler(uint64_t vector, uint64_t error_code, uint64_t rip) {$/;"	f
+extern	kernel/arch/x86_64/interrupt_asm.S	/^extern exception_handler$/;"	l
+extern	kernel/arch/x86_64/interrupt_asm.S	/^extern keyboard_handler$/;"	l
+extern	kernel/arch/x86_64/interrupt_asm.S	/^extern pit_handler$/;"	l
+extern	kernel/task/syscall_asm.S	/^extern syscall_handler$/;"	l
+extern	user/crt0.S	/^extern main$/;"	l
+f	Makefile	/^	dd if=\/dev\/zero of=$(DISK_IMG) bs=1M count=32 2>\/dev\/null$/;"	m
+factorial	user/math.c	/^long factorial(long n) {$/;"	f
+false	include/kernel/stdint.h	19;"	d
+fat16_allocate_cluster	kernel/fs/fat16.c	/^static uint16_t fat16_allocate_cluster(void) {$/;"	f	file:
+fat16_boot_sector_t	kernel/fs/fat16.c	/^} __attribute__((packed)) fat16_boot_sector_t;$/;"	t	typeref:struct:__anon1	file:
+fat16_create	kernel/fs/fat16.c	/^vfs_filesystem_t* fat16_create(void) {$/;"	f
+fat16_create_dir	kernel/fs/fat16.c	/^static vfs_node_t* fat16_create_dir(vfs_node_t* parent, const char* name) {$/;"	f	file:
+fat16_create_file	kernel/fs/fat16.c	/^static vfs_node_t* fat16_create_file(vfs_node_t* parent, const char* name) {$/;"	f	file:
+fat16_data_t	kernel/fs/fat16.c	/^} fat16_data_t;$/;"	t	typeref:struct:__anon3	file:
+fat16_delete	kernel/fs/fat16.c	/^static bool fat16_delete(vfs_node_t* node) { serial_write("[FAT16] delete not implemented\\n"); return false; }$/;"	f	file:
+fat16_dir_entry_t	kernel/fs/fat16.c	/^} __attribute__((packed)) fat16_dir_entry_t;$/;"	t	typeref:struct:__anon2	file:
+fat16_mount	kernel/fs/fat16.c	/^bool fat16_mount(uint32_t start_lba) {$/;"	f
+fat16_name_to_83	kernel/fs/fat16.c	/^static void fat16_name_to_83(const char* filename, char* name83) {$/;"	f	file:
+fat16_ops	kernel/fs/fat16.c	/^static vfs_operations_t fat16_ops = { .create_file = fat16_create_file, .create_dir = fat16_create_dir, .delete = fat16_delete, .read = fat16_read, .write = fat16_write };$/;"	v	file:
+fat16_read	kernel/fs/fat16.c	/^static bool fat16_read(vfs_node_t* node, void* buffer, size_t offset, size_t size) {$/;"	f	file:
+fat16_read_fat_entry	kernel/fs/fat16.c	/^static uint16_t fat16_read_fat_entry(uint16_t cluster) {$/;"	f	file:
+fat16_write	kernel/fs/fat16.c	/^static bool fat16_write(vfs_node_t* node, const void* data, size_t offset, size_t size) {$/;"	f	file:
+fat16_write_fat_entry	kernel/fs/fat16.c	/^static bool fat16_write_fat_entry(uint16_t cluster, uint16_t value) {$/;"	f	file:
+fat_start	kernel/fs/fat16.c	/^    uint32_t fat_start;$/;"	m	struct:__anon3	file:
+fgets	user/stdio.c	/^char* fgets(char* buf, int n, FILE* f) {$/;"	f
+file_size	kernel/fs/fat16.c	/^    uint32_t file_size;$/;"	m	struct:__anon2	file:
+find_free_block	kernel/mm/heap.c	/^static heap_block_t* find_free_block(size_t size) {$/;"	f	file:
+first_child	include/kernel/vfs.h	/^    struct vfs_node* first_child;$/;"	m	struct:vfs_node	typeref:struct:vfs_node::vfs_node
+fs	include/kernel/vfs.h	/^    struct vfs_filesystem* fs;$/;"	m	struct:vfs_node	typeref:struct:vfs_node::vfs_filesystem
+fs_data	include/kernel/vfs.h	/^    void* fs_data;$/;"	m	struct:vfs_node
+fs_data	kernel/fs/fat16.c	/^static fat16_data_t* fs_data = NULL;$/;"	v	file:
+gcd	user/math.c	/^long gcd(long a, long b) {$/;"	f
+gdt	kernel/task/gdt.c	/^static gdt_entry_t gdt[GDT_ENTRIES];$/;"	v	file:
+gdt64	kernel/arch/x86_64/boot.S	/^gdt64:$/;"	l
+gdt_entry_t	kernel/task/gdt.c	/^} __attribute__((packed)) gdt_entry_t;$/;"	t	typeref:struct:__anon4	file:
+gdt_flush	kernel/task/gdt_asm.S	/^gdt_flush:$/;"	l
+gdt_init	kernel/task/gdt.c	/^void gdt_init(void) {$/;"	f
+gdt_ptr	kernel/task/gdt.c	/^static gdt_ptr_t gdt_ptr;$/;"	v	file:
+gdt_ptr_t	kernel/task/gdt.c	/^} __attribute__((packed)) gdt_ptr_t;$/;"	t	typeref:struct:__anon5	file:
+gdt_set_gate	kernel/task/gdt.c	/^static void gdt_set_gate(int num, uint64_t base, uint64_t limit, uint8_t access, uint8_t gran) {$/;"	f	file:
+gdt_set_kernel_stack	kernel/task/gdt.c	/^void gdt_set_kernel_stack(uint64_t stack) {$/;"	f
+get_or_create_table	kernel/mm/vmm.c	/^static uint64_t* get_or_create_table(uint64_t* parent, size_t index, uint32_t flags) {$/;"	f	file:
+get_user_dir	kernel/mm/uaccess.c	/^static page_directory_t* get_user_dir(void) {$/;"	f	file:
+global	kernel/arch/x86_64/boot.S	/^global _start$/;"	l
+global	kernel/arch/x86_64/boot.S	/^global kernel_end$/;"	l
+global	kernel/arch/x86_64/boot.S	/^global p2_table$/;"	l
+global	kernel/arch/x86_64/boot.S	/^global p3_table$/;"	l
+global	kernel/arch/x86_64/boot.S	/^global p4_table$/;"	l
+global	kernel/arch/x86_64/interrupt_asm.S	/^global irq%1$/;"	l
+global	kernel/arch/x86_64/interrupt_asm.S	/^global isr%1$/;"	l
+global	kernel/task/gdt_asm.S	/^global gdt_flush$/;"	l
+global	kernel/task/gdt_asm.S	/^global tss_flush$/;"	l
+global	kernel/task/switch.S	/^global enter_usermode$/;"	l
+global	kernel/task/switch.S	/^global switch_task$/;"	l
+global	kernel/task/syscall_asm.S	/^global syscall_handler_asm$/;"	l
+global	user/crt0.S	/^global _start$/;"	l
+granularity	kernel/task/gdt.c	/^    uint8_t granularity;$/;"	m	struct:__anon4	file:
+header_end	kernel/arch/x86_64/boot.S	/^header_end:$/;"	l
+header_start	kernel/arch/x86_64/boot.S	/^header_start:$/;"	l
+heap_block	kernel/mm/heap.c	/^typedef struct heap_block {$/;"	s	file:
+heap_block_t	kernel/mm/heap.c	/^} heap_block_t;$/;"	t	typeref:struct:heap_block	file:
+heap_init	kernel/mm/heap.c	/^void heap_init(void) {$/;"	f
+heap_print_stats	kernel/mm/heap.c	/^void heap_print_stats(void) {$/;"	f
+heap_start	kernel/mm/heap.c	/^static heap_block_t* heap_start = NULL;$/;"	v	file:
+hidden_sectors	kernel/fs/fat16.c	/^    uint32_t hidden_sectors;$/;"	m	struct:__anon1	file:
+idt	kernel/interrupt.c	/^static struct idt_entry idt[256];$/;"	v	typeref:struct:idt_entry	file:
+idt_entry	include/kernel/idt.h	/^struct idt_entry {$/;"	s
+idt_init	kernel/interrupt.c	/^void idt_init(void) {$/;"	f
+idt_ptr	include/kernel/idt.h	/^struct idt_ptr {$/;"	s
+idt_set_gate	kernel/interrupt.c	/^void idt_set_gate(uint8_t num, uint64_t handler, uint8_t flags) {$/;"	f
+idtp	kernel/interrupt.c	/^static struct idt_ptr idtp;$/;"	v	typeref:struct:idt_ptr	file:
+inb	include/kernel/io.h	/^static inline uint8_t inb(uint16_t port) {$/;"	f
+int16_t	include/kernel/stdint.h	/^typedef signed short int16_t;$/;"	t
+int16_t	user/include/stdint.h	/^typedef signed short       int16_t;$/;"	t
+int32_t	include/kernel/stdint.h	/^typedef signed int int32_t;$/;"	t
+int32_t	user/include/stdint.h	/^typedef signed int         int32_t;$/;"	t
+int64_t	include/kernel/stdint.h	/^typedef signed long int64_t;$/;"	t
+int64_t	user/include/stdint.h	/^typedef signed long long   int64_t;$/;"	t
+int8_t	include/kernel/stdint.h	/^typedef signed char int8_t;$/;"	t
+int8_t	user/include/stdint.h	/^typedef signed char        int8_t;$/;"	t
+int_fast16_t	user/include/stdint.h	/^typedef int32_t  int_fast16_t;$/;"	t
+int_fast32_t	user/include/stdint.h	/^typedef int32_t  int_fast32_t;$/;"	t
+int_fast64_t	user/include/stdint.h	/^typedef int64_t  int_fast64_t;$/;"	t
+int_fast8_t	user/include/stdint.h	/^typedef int32_t  int_fast8_t;$/;"	t
+int_least16_t	user/include/stdint.h	/^typedef int16_t  int_least16_t;$/;"	t
+int_least32_t	user/include/stdint.h	/^typedef int32_t  int_least32_t;$/;"	t
+int_least64_t	user/include/stdint.h	/^typedef int64_t  int_least64_t;$/;"	t
+int_least8_t	user/include/stdint.h	/^typedef int8_t   int_least8_t;$/;"	t
+intmax_t	user/include/stdint.h	/^typedef int64_t   intmax_t;$/;"	t
+intptr_t	user/include/stdint.h	/^typedef long long           intptr_t;$/;"	t
+inw	include/kernel/io.h	/^static inline uint16_t inw(uint16_t port) {$/;"	f
+io_wait	include/kernel/io.h	/^static inline void io_wait(void) {$/;"	f
+iomap_base	include/kernel/tss.h	/^    uint16_t iomap_base;$/;"	m	struct:__anon14
+irq_common	kernel/arch/x86_64/interrupt_asm.S	/^irq_common:$/;"	l
+is_free	kernel/mm/heap.c	/^    bool is_free;$/;"	m	struct:heap_block	file:
+is_kernel	include/kernel/task.h	/^    bool is_kernel;$/;"	m	struct:task
+is_prime	user/math.c	/^int is_prime(long n) {$/;"	f
+is_transmit_empty	kernel/drivers/serial.c	/^static int is_transmit_empty(void) {$/;"	f	file:
+isr_common	kernel/arch/x86_64/interrupt_asm.S	/^isr_common:$/;"	l
+ist	include/kernel/idt.h	/^    uint8_t ist;$/;"	m	struct:idt_entry
+ist1	include/kernel/tss.h	/^    uint64_t ist1;$/;"	m	struct:__anon14
+ist2	include/kernel/tss.h	/^    uint64_t ist2;$/;"	m	struct:__anon14
+ist3	include/kernel/tss.h	/^    uint64_t ist3;$/;"	m	struct:__anon14
+ist4	include/kernel/tss.h	/^    uint64_t ist4;$/;"	m	struct:__anon14
+ist5	include/kernel/tss.h	/^    uint64_t ist5;$/;"	m	struct:__anon14
+ist6	include/kernel/tss.h	/^    uint64_t ist6;$/;"	m	struct:__anon14
+ist7	include/kernel/tss.h	/^    uint64_t ist7;$/;"	m	struct:__anon14
+itoa	user/stdlib.c	/^int itoa(long val, char* buf) {$/;"	f
+jmp	kernel/fs/fat16.c	/^    uint8_t jmp[3];$/;"	m	struct:__anon1	file:
+kcalloc	kernel/mm/heap.c	/^void* kcalloc(size_t num, size_t size) {$/;"	f
+kernel_directory	kernel/mm/vmm.c	/^static page_directory_t* kernel_directory = NULL;$/;"	v	file:
+kernel_end	kernel/arch/x86_64/boot.S	/^kernel_end:/;"	l
+kernel_main	kernel/kernel.c	/^void kernel_main(uint64_t multiboot_addr) {$/;"	f
+kernel_stack	include/kernel/task.h	/^    void* kernel_stack;$/;"	m	struct:task
+key_buffer	kernel/drivers/keyboard.c	/^static char key_buffer[KEY_BUFFER_SIZE];$/;"	v	file:
+key_buffer_head	kernel/drivers/keyboard.c	/^static size_t key_buffer_head = 0;$/;"	v	file:
+key_buffer_push	kernel/drivers/keyboard.c	/^static void key_buffer_push(char c) {$/;"	f	file:
+key_buffer_tail	kernel/drivers/keyboard.c	/^static size_t key_buffer_tail = 0;$/;"	v	file:
+keyboard_getchar	kernel/drivers/keyboard.c	/^char keyboard_getchar(void) {$/;"	f
+keyboard_handler	kernel/drivers/keyboard.c	/^void keyboard_handler(void) {$/;"	f
+keyboard_has_input	kernel/drivers/keyboard.c	/^bool keyboard_has_input(void) {$/;"	f
+keyboard_init	kernel/drivers/keyboard.c	/^void keyboard_init(void) {$/;"	f
+kfree	kernel/mm/heap.c	/^void kfree(void* ptr) {$/;"	f
+kmalloc	kernel/mm/heap.c	/^void* kmalloc(size_t size) {$/;"	f
+krealloc	kernel/mm/heap.c	/^void* krealloc(void* ptr, size_t size) {$/;"	f
+lcm	user/math.c	/^long lcm(long a, long b) {$/;"	f
+len	include/kernel/multiboot2.h	/^    uint64_t len;$/;"	m	struct:multiboot_mmap_entry
+limit	include/kernel/idt.h	/^    uint16_t limit;$/;"	m	struct:idt_ptr
+limit	kernel/task/gdt.c	/^    uint16_t limit;$/;"	m	struct:__anon5	file:
+limit_low	kernel/task/gdt.c	/^    uint16_t limit_low;$/;"	m	struct:__anon4	file:
+line_buf	kernel/terminal.c	/^static char line_buf[LINE_BUF_SIZE];$/;"	v	file:
+line_len	kernel/terminal.c	/^static size_t line_len = 0;$/;"	v	file:
+line_pos	kernel/terminal.c	/^static size_t line_pos = 0;$/;"	v	file:
+long_mode_start	kernel/arch/x86_64/boot.S	/^long_mode_start:$/;"	l
+magic	kernel/mm/heap.c	/^    uint32_t magic;$/;"	m	struct:heap_block	file:
+main	user/shell.c	/^int main(void) {$/;"	f
+max	user/stdlib.c	/^long max(long a, long b) {$/;"	f
+media_type	kernel/fs/fat16.c	/^    uint8_t media_type;$/;"	m	struct:__anon1	file:
+memcmp	user/string.c	/^int memcmp(const void* a, const void* b, long n) {$/;"	f
+memcpy	kernel/loader/elf.c	/^static void memcpy(void* dest, void* src, size_t n) {$/;"	f	file:
+memcpy	user/string.c	/^void* memcpy(void* dst, const void* src, long n) {$/;"	f
+memset	kernel/loader/elf.c	/^static void memset(void* dest, int c, size_t n) {$/;"	f	file:
+memset	user/string.c	/^void* memset(void* dst, int val, long n) {$/;"	f
+min	user/stdlib.c	/^long min(long a, long b) {$/;"	f
+modify_date	kernel/fs/fat16.c	/^    uint16_t modify_date;$/;"	m	struct:__anon2	file:
+modify_time	kernel/fs/fat16.c	/^    uint16_t modify_time;$/;"	m	struct:__anon2	file:
+multiboot_mmap_entry	include/kernel/multiboot2.h	/^struct multiboot_mmap_entry {$/;"	s
+multiboot_parse	kernel/multiboot/multiboot2.c	/^void multiboot_parse(uint64_t multiboot_addr) {$/;"	f
+multiboot_tag	include/kernel/multiboot2.h	/^struct multiboot_tag {$/;"	s
+multiboot_tag_mmap	include/kernel/multiboot2.h	/^struct multiboot_tag_mmap {$/;"	s
+name	include/kernel/task.h	/^    char name[64];$/;"	m	struct:task
+name	include/kernel/vfs.h	/^    char name[MAX_FILENAME];$/;"	m	struct:vfs_node
+name	include/kernel/vfs.h	/^    const char* name;$/;"	m	struct:vfs_filesystem
+name	kernel/fs/fat16.c	/^    uint8_t name[11];$/;"	m	struct:__anon2	file:
+next	include/kernel/task.h	/^    struct task* next;$/;"	m	struct:task	typeref:struct:task::task
+next	kernel/mm/heap.c	/^    struct heap_block* next;$/;"	m	struct:heap_block	typeref:struct:heap_block::heap_block	file:
+next_pid	kernel/task/task.c	/^static uint32_t next_pid = 1;$/;"	v	file:
+next_sibling	include/kernel/vfs.h	/^    struct vfs_node* next_sibling;$/;"	m	struct:vfs_node	typeref:struct:vfs_node::vfs_node
+next_virt_addr	kernel/mm/vmm.c	/^static uint64_t next_virt_addr = 0x100000000;$/;"	v	file:
+num_fats	kernel/fs/fat16.c	/^    uint8_t num_fats;$/;"	m	struct:__anon1	file:
+num_fats	kernel/fs/fat16.c	/^    uint8_t num_fats;$/;"	m	struct:__anon3	file:
+num_heads	kernel/fs/fat16.c	/^    uint16_t num_heads;$/;"	m	struct:__anon1	file:
+oem	kernel/fs/fat16.c	/^    char oem[8];$/;"	m	struct:__anon1	file:
+offset_high	include/kernel/idt.h	/^    uint32_t offset_high;$/;"	m	struct:idt_entry
+offset_low	include/kernel/idt.h	/^    uint16_t offset_low;$/;"	m	struct:idt_entry
+offset_mid	include/kernel/idt.h	/^    uint16_t offset_mid;$/;"	m	struct:idt_entry
+ops	include/kernel/vfs.h	/^    vfs_operations_t* ops;$/;"	m	struct:vfs_filesystem
+outb	include/kernel/io.h	/^static inline void outb(uint16_t port, uint8_t value) {$/;"	f
+outw	include/kernel/io.h	/^static inline void outw(uint16_t port, uint16_t value) {$/;"	f
+p2_table	kernel/arch/x86_64/boot.S	/^p2_table:$/;"	l
+p3_table	kernel/arch/x86_64/boot.S	/^p3_table:$/;"	l
+p4_table	kernel/arch/x86_64/boot.S	/^p4_table:$/;"	l
+p_align	include/kernel/elf.h	/^    uint64_t p_align;$/;"	m	struct:__anon9
+p_filesz	include/kernel/elf.h	/^    uint64_t p_filesz;$/;"	m	struct:__anon9
+p_flags	include/kernel/elf.h	/^    uint32_t p_flags;$/;"	m	struct:__anon9
+p_memsz	include/kernel/elf.h	/^    uint64_t p_memsz;$/;"	m	struct:__anon9
+p_offset	include/kernel/elf.h	/^    uint64_t p_offset;$/;"	m	struct:__anon9
+p_paddr	include/kernel/elf.h	/^    uint64_t p_paddr;$/;"	m	struct:__anon9
+p_type	include/kernel/elf.h	/^    uint32_t p_type;$/;"	m	struct:__anon9
+p_vaddr	include/kernel/elf.h	/^    uint64_t p_vaddr;$/;"	m	struct:__anon9
+page_dir	include/kernel/task.h	/^    page_directory_t* page_dir;$/;"	m	struct:task
+page_directory	include/kernel/vmm.h	/^typedef struct page_directory {$/;"	s
+page_directory_t	include/kernel/vmm.h	/^} page_directory_t;$/;"	t	typeref:struct:page_directory
+pagefault_count	kernel/mm/pagefault.c	/^static uint64_t pagefault_count = 0;$/;"	v	file:
+pagefault_handler	kernel/mm/pagefault.c	/^void pagefault_handler(uint64_t error_code, uint64_t faulting_addr) {$/;"	f
+pagefault_init	kernel/mm/pagefault.c	/^void pagefault_init(void) {$/;"	f
+parent	include/kernel/vfs.h	/^    struct vfs_node* parent;$/;"	m	struct:vfs_node	typeref:struct:vfs_node::vfs_node
+parse_command	user/shell.c	/^static int parse_command(char* input, char** argv) {$/;"	f	file:
+pic_clear_mask	kernel/drivers/pic.c	/^void pic_clear_mask(uint8_t irq) {$/;"	f
+pic_init	kernel/drivers/pic.c	/^void pic_init(void) {$/;"	f
+pic_send_eoi	kernel/drivers/pic.c	/^void pic_send_eoi(uint8_t irq) {$/;"	f
+pic_set_mask	kernel/drivers/pic.c	/^void pic_set_mask(uint8_t irq) {$/;"	f
+pid	include/kernel/task.h	/^    uint32_t pid;$/;"	m	struct:task
+pit_frequency	kernel/drivers/pit.c	/^static uint32_t pit_frequency = 0;$/;"	v	file:
+pit_get_ticks	kernel/drivers/pit.c	/^uint64_t pit_get_ticks(void) {$/;"	f
+pit_get_uptime_seconds	kernel/drivers/pit.c	/^uint64_t pit_get_uptime_seconds(void) {$/;"	f
+pit_handler	kernel/drivers/pit.c	/^void pit_handler(void) {$/;"	f
+pit_init	kernel/drivers/pit.c	/^void pit_init(uint32_t frequency) {$/;"	f
+pml4	include/kernel/vmm.h	/^    uint64_t* pml4;$/;"	m	struct:page_directory
+pml4_phys	include/kernel/vmm.h	/^    uint64_t pml4_phys;$/;"	m	struct:page_directory
+pmm_alloc_page	kernel/mm/pmm.c	/^uint64_t pmm_alloc_page(void) {$/;"	f
+pmm_bitmap	kernel/mm/pmm.c	/^static uint32_t pmm_bitmap[BITMAP_SIZE];$/;"	v	file:
+pmm_end	kernel/mm/pmm.c	/^static uint64_t pmm_end = 0;$/;"	v	file:
+pmm_free_page	kernel/mm/pmm.c	/^void pmm_free_page(uint64_t addr) {$/;"	f
+pmm_get_free_memory	kernel/mm/pmm.c	/^uint64_t pmm_get_free_memory(void) {$/;"	f
+pmm_get_total_memory	kernel/mm/pmm.c	/^uint64_t pmm_get_total_memory(void) {$/;"	f
+pmm_get_used_memory	kernel/mm/pmm.c	/^uint64_t pmm_get_used_memory(void) {$/;"	f
+pmm_init	kernel/mm/pmm.c	/^void pmm_init(uint64_t mem_start, uint64_t mem_end) {$/;"	f
+pmm_mark_used	kernel/mm/pmm.c	/^static void pmm_mark_used(uint64_t start, uint64_t end) {$/;"	f	file:
+pmm_start	kernel/mm/pmm.c	/^static uint64_t pmm_start = 0;$/;"	v	file:
+pmm_total_pages	kernel/mm/pmm.c	/^static uint64_t pmm_total_pages = 0;$/;"	v	file:
+pmm_used_pages	kernel/mm/pmm.c	/^static uint64_t pmm_used_pages = 0;$/;"	v	file:
+power	user/math.c	/^long power(long base, long exp) {$/;"	f
+print_prompt	user/shell.c	/^static void print_prompt(void) {$/;"	f	file:
+printf	user/stdio.c	/^int printf(const char* fmt, ...) {$/;"	f
+private_data	include/kernel/vfs.h	/^    void* private_data;$/;"	m	struct:vfs_filesystem
+putchar	user/stdio.c	/^int putchar(char c) {$/;"	f
+r10	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;         \/\/ 64-88$/;"	m	struct:__anon13
+r10	kernel/task/syscall.c	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon6	file:
+r11	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;         \/\/ 64-88$/;"	m	struct:__anon13
+r11	kernel/task/syscall.c	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon6	file:
+r12	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;       \/\/ 96-120$/;"	m	struct:__anon13
+r12	kernel/task/syscall.c	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon6	file:
+r13	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;       \/\/ 96-120$/;"	m	struct:__anon13
+r13	kernel/task/syscall.c	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon6	file:
+r14	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;       \/\/ 96-120$/;"	m	struct:__anon13
+r14	kernel/task/syscall.c	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon6	file:
+r15	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;       \/\/ 96-120$/;"	m	struct:__anon13
+r15	kernel/task/syscall.c	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon6	file:
+r8	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;         \/\/ 64-88$/;"	m	struct:__anon13
+r8	kernel/task/syscall.c	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon6	file:
+r9	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;         \/\/ 64-88$/;"	m	struct:__anon13
+r9	kernel/task/syscall.c	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon6	file:
+rand	user/stdlib.c	/^unsigned long rand(void) {$/;"	f
+rand_state	user/stdlib.c	/^static unsigned long rand_state = 12345;$/;"	v	file:
+rax	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;       \/\/ 0-24$/;"	m	struct:__anon13
+rax	kernel/task/syscall.c	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon6	file:
+rbp	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;       \/\/ 32-56$/;"	m	struct:__anon13
+rbp	kernel/task/syscall.c	/^    uint64_t rsi, rdi, rbp;$/;"	m	struct:__anon6	file:
+rbx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;       \/\/ 0-24$/;"	m	struct:__anon13
+rbx	kernel/task/syscall.c	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon6	file:
+rcx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;       \/\/ 0-24$/;"	m	struct:__anon13
+rcx	kernel/task/syscall.c	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon6	file:
+rdi	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;       \/\/ 32-56$/;"	m	struct:__anon13
+rdi	kernel/task/syscall.c	/^    uint64_t rsi, rdi, rbp;$/;"	m	struct:__anon6	file:
+rdmsr	include/kernel/msr.h	/^static inline uint64_t rdmsr(uint32_t msr) {$/;"	f
+rdx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;       \/\/ 0-24$/;"	m	struct:__anon13
+rdx	kernel/task/syscall.c	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon6	file:
+read	include/kernel/vfs.h	/^    bool (*read)(struct vfs_node* node, void* buffer, size_t offset, size_t size);$/;"	m	struct:vfs_operations
+ready_queue	kernel/task/scheduler.c	/^static task_t* ready_queue = NULL;$/;"	v	file:
+ready_queue_tail	kernel/task/scheduler.c	/^static task_t* ready_queue_tail = NULL;$/;"	v	file:
+reserved	include/kernel/idt.h	/^    uint32_t reserved;$/;"	m	struct:idt_entry
+reserved	include/kernel/multiboot2.h	/^    uint32_t reserved;$/;"	m	struct:multiboot_mmap_entry
+reserved	kernel/fs/fat16.c	/^    uint8_t reserved;$/;"	m	struct:__anon2	file:
+reserved0	include/kernel/tss.h	/^    uint32_t reserved0;$/;"	m	struct:__anon14
+reserved1	include/kernel/tss.h	/^    uint64_t reserved1;$/;"	m	struct:__anon14
+reserved2	include/kernel/tss.h	/^    uint64_t reserved2;$/;"	m	struct:__anon14
+reserved3	include/kernel/tss.h	/^    uint16_t reserved3;$/;"	m	struct:__anon14
+reserved_sectors	kernel/fs/fat16.c	/^    uint16_t reserved_sectors;$/;"	m	struct:__anon1	file:
+rflags	include/kernel/task.h	/^    uint64_t rflags;                    \/\/ 136$/;"	m	struct:__anon13
+rip	include/kernel/task.h	/^    uint64_t rip;                       \/\/ 128$/;"	m	struct:__anon13
+root	include/kernel/vfs.h	/^    vfs_node_t* root;$/;"	m	struct:vfs_filesystem
+root_entries	kernel/fs/fat16.c	/^    uint16_t root_entries;$/;"	m	struct:__anon1	file:
+root_entries	kernel/fs/fat16.c	/^    uint16_t root_entries;$/;"	m	struct:__anon3	file:
+root_start	kernel/fs/fat16.c	/^    uint32_t root_start;$/;"	m	struct:__anon3	file:
+rsi	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;       \/\/ 32-56$/;"	m	struct:__anon13
+rsi	kernel/task/syscall.c	/^    uint64_t rsi, rdi, rbp;$/;"	m	struct:__anon6	file:
+rsp	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;       \/\/ 32-56$/;"	m	struct:__anon13
+rsp0	include/kernel/tss.h	/^    uint64_t rsp0;$/;"	m	struct:__anon14
+rsp1	include/kernel/tss.h	/^    uint64_t rsp1;$/;"	m	struct:__anon14
+rsp2	include/kernel/tss.h	/^    uint64_t rsp2;$/;"	m	struct:__anon14
+sbrk	kernel/mm/heap.c	/^static void* sbrk(size_t size) {$/;"	f	file:
+scancode_to_ascii	kernel/drivers/keyboard.c	/^static const char scancode_to_ascii[] = {$/;"	v	file:
+scancode_to_ascii_shift	kernel/drivers/keyboard.c	/^static const char scancode_to_ascii_shift[] = {$/;"	v	file:
+schedule	kernel/task/scheduler.c	/^void schedule(void) {$/;"	f
+scheduler_add_task	kernel/task/scheduler.c	/^void scheduler_add_task(task_t* task) {$/;"	f
+scheduler_disable	kernel/task/scheduler.c	/^void scheduler_disable(void) {$/;"	f
+scheduler_enable	kernel/task/scheduler.c	/^void scheduler_enable(void) {$/;"	f
+scheduler_enabled	kernel/task/scheduler.c	/^static bool scheduler_enabled = false;$/;"	v	file:
+scheduler_init	kernel/task/scheduler.c	/^void scheduler_init(void) {$/;"	f
+scheduler_remove_task	kernel/task/scheduler.c	/^void scheduler_remove_task(task_t* task) {$/;"	f
+section	kernel/arch/x86_64/boot.S	/^section .bss$/;"	l
+section	kernel/arch/x86_64/boot.S	/^section .bss_end$/;"	l
+section	kernel/arch/x86_64/boot.S	/^section .multiboot$/;"	l
+section	kernel/arch/x86_64/boot.S	/^section .rodata$/;"	l
+section	kernel/arch/x86_64/boot.S	/^section .text$/;"	l
+section	kernel/arch/x86_64/interrupt_asm.S	/^section .text$/;"	l
+section	kernel/task/gdt_asm.S	/^section .text$/;"	l
+section	kernel/task/switch.S	/^section .text$/;"	l
+section	kernel/task/syscall_asm.S	/^section .text$/;"	l
+section	user/crt0.S	/^section .text$/;"	l
+sectors_per_cluster	kernel/fs/fat16.c	/^    uint8_t sectors_per_cluster;$/;"	m	struct:__anon1	file:
+sectors_per_cluster	kernel/fs/fat16.c	/^    uint8_t sectors_per_cluster;$/;"	m	struct:__anon3	file:
+sectors_per_fat	kernel/fs/fat16.c	/^    uint16_t sectors_per_fat;$/;"	m	struct:__anon1	file:
+sectors_per_fat	kernel/fs/fat16.c	/^    uint16_t sectors_per_fat;$/;"	m	struct:__anon3	file:
+sectors_per_track	kernel/fs/fat16.c	/^    uint16_t sectors_per_track;$/;"	m	struct:__anon1	file:
+selector	include/kernel/idt.h	/^    uint16_t selector;$/;"	m	struct:idt_entry
+serial_init	kernel/drivers/serial.c	/^void serial_init(void) {$/;"	f
+serial_write	kernel/drivers/serial.c	/^void serial_write(const char* str) {$/;"	f
+serial_write_char	kernel/drivers/serial.c	/^void serial_write_char(char c) {$/;"	f
+serial_write_dec	kernel/drivers/serial.c	/^void serial_write_dec(uint32_t val) {$/;"	f
+serial_write_hex	kernel/drivers/serial.c	/^void serial_write_hex(uint64_t val) {$/;"	f
+setup_page_tables	kernel/arch/x86_64/boot.S	/^setup_page_tables:$/;"	l
+shift_pressed	kernel/drivers/keyboard.c	/^static bool shift_pressed = false;$/;"	v	file:
+size	include/kernel/multiboot2.h	/^    uint32_t size;$/;"	m	struct:multiboot_tag
+size	include/kernel/multiboot2.h	/^    uint32_t size;$/;"	m	struct:multiboot_tag_mmap
+size	include/kernel/vfs.h	/^    size_t size;$/;"	m	struct:vfs_node
+size	kernel/mm/heap.c	/^    size_t size;$/;"	m	struct:heap_block	file:
+size_t	include/kernel/stdint.h	/^typedef unsigned long size_t;$/;"	t
+split_block	kernel/mm/heap.c	/^static void split_block(heap_block_t* block, size_t size) {$/;"	f	file:
+split_huge_page	kernel/mm/vmm.c	/^static bool split_huge_page(uint64_t* pd, size_t pd_idx) {$/;"	f	file:
+srand	user/stdlib.c	/^void srand(unsigned long seed) {$/;"	f
+ss	include/kernel/task.h	/^    uint64_t cs, ss;                    \/\/ 144-152$/;"	m	struct:__anon13
+ssize_t	include/kernel/stdint.h	/^typedef long ssize_t;$/;"	t
+stack_bottom	kernel/arch/x86_64/boot.S	/^stack_bottom:$/;"	l
+stack_size	include/kernel/task.h	/^    uint64_t stack_size;$/;"	m	struct:task
+stack_top	kernel/arch/x86_64/boot.S	/^stack_top:$/;"	l
+start_lba	kernel/fs/fat16.c	/^    uint32_t start_lba;$/;"	m	struct:__anon3	file:
+state	include/kernel/task.h	/^    task_state_t state;$/;"	m	struct:task
+stdin	user/stdio.c	/^FILE* stdin = &_stdin;$/;"	v
+stdout	user/stdio.c	/^FILE* stdout = &_stdout;$/;"	v
+strcat	user/string.c	/^char* strcat(char* dst, const char* src) {$/;"	f
+strchr	user/string.c	/^const char* strchr(const char* s, char c) {$/;"	f
+strcmp	kernel/fs/tmpfs.c	/^static int strcmp(const char* s1, const char* s2) {$/;"	f	file:
+strcmp	kernel/fs/vfs.c	/^static int strcmp(const char* s1, const char* s2) {$/;"	f	file:
+strcmp	user/string.c	/^int strcmp(const char* a, const char* b) {$/;"	f
+strcpy	kernel/fs/tmpfs.c	/^static void strcpy(char* dst, const char* src) {$/;"	f	file:
+strcpy	kernel/task/task.c	/^static void strcpy(char* dst, const char* src) {$/;"	f	file:
+strcpy	user/string.c	/^char* strcpy(char* dst, const char* src) {$/;"	f
+strlen	user/string.c	/^long strlen(const char* s) {$/;"	f
+strncmp	user/string.c	/^int strncmp(const char* a, const char* b, long n) {$/;"	f
+strncpy	user/string.c	/^char* strncpy(char* dst, const char* src, long n) {$/;"	f
+strnlen_user	kernel/mm/uaccess.c	/^ssize_t strnlen_user(const char* user_str, size_t max_len) {$/;"	f
+strtok	user/string.c	/^char* strtok(char* str, const char* delims) {$/;"	f
+strtok_ptr	user/string.c	/^static char* strtok_ptr = 0;$/;"	v	file:
+switch_task	kernel/task/switch.S	/^switch_task:$/;"	l
+sys_clear	user/syscall.c	/^void sys_clear(void) {$/;"	f
+sys_exit	user/syscall.c	/^void sys_exit(int code) {$/;"	f
+sys_getpid	kernel/task/syscall.c	/^static uint64_t sys_getpid(void) {$/;"	f	file:
+sys_getpid	user/syscall.c	/^long sys_getpid(void) {$/;"	f
+sys_gettime	kernel/task/syscall.c	/^static uint64_t sys_gettime(void) {$/;"	f	file:
+sys_gettime	user/syscall.c	/^long sys_gettime(void) {$/;"	f
+sys_read	kernel/task/syscall.c	/^static uint64_t sys_read(uint64_t buf_addr, uint64_t size) {$/;"	f	file:
+sys_read	user/syscall.c	/^long sys_read(char* buf, long len) {$/;"	f
+sys_sleep	kernel/task/syscall.c	/^static uint64_t sys_sleep(uint64_t ms) {$/;"	f	file:
+sys_sleep	user/syscall.c	/^void sys_sleep(long ms) {$/;"	f
+sys_write	kernel/task/syscall.c	/^static uint64_t sys_write(uint64_t str_addr, uint64_t size) {$/;"	f	file:
+sys_write	user/syscall.c	/^long sys_write(const char* buf, long len) {$/;"	f
+syscall0	user/syscall.c	/^long syscall0(long n) {$/;"	f
+syscall1	user/syscall.c	/^long syscall1(long n, long a1) {$/;"	f
+syscall2	user/syscall.c	/^long syscall2(long n, long a1, long a2) {$/;"	f
+syscall3	user/syscall.c	/^long syscall3(long n, long a1, long a2, long a3) {$/;"	f
+syscall_handler	kernel/task/syscall.c	/^void syscall_handler(syscall_regs_t* regs) {$/;"	f
+syscall_handler_asm	kernel/task/syscall_asm.S	/^syscall_handler_asm:$/;"	l
+syscall_init	kernel/task/syscall.c	/^void syscall_init(void) {$/;"	f
+syscall_regs_t	kernel/task/syscall.c	/^} syscall_regs_t;$/;"	t	typeref:struct:__anon6	file:
+system_ticks	kernel/drivers/pit.c	/^static volatile uint64_t system_ticks = 0;$/;"	v	file:
+task	include/kernel/task.h	/^typedef struct task {$/;"	s
+task_create	kernel/task/task.c	/^task_t* task_create(const char* name, void (*entry_point)(void)) {$/;"	f
+task_create_user	kernel/task/task.c	/^task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {$/;"	f
+task_exit	kernel/task/task.c	/^void task_exit(void) {$/;"	f
+task_get_current	kernel/task/task.c	/^task_t* task_get_current(void) {$/;"	f
+task_get_pid	kernel/task/task.c	/^uint32_t task_get_pid(void) {$/;"	f
+task_init	kernel/task/task.c	/^void task_init(void) {$/;"	f
+task_list_head	kernel/task/task.c	/^static task_t* task_list_head = NULL;$/;"	v	file:
+task_set_current	kernel/task/task.c	/^void task_set_current(task_t* task) {$/;"	f
+task_state_t	include/kernel/task.h	/^} task_state_t;$/;"	t	typeref:enum:__anon12
+task_t	include/kernel/elf.h	/^typedef struct task task_t;$/;"	t	typeref:struct:task
+task_t	include/kernel/task.h	/^} task_t;$/;"	t	typeref:struct:task
+task_yield	kernel/task/task.c	/^void task_yield(void) {$/;"	f
+terminal_clear	kernel/terminal.c	/^void terminal_clear(void) {$/;"	f
+terminal_do_readline	kernel/terminal.c	/^static void terminal_do_readline(void) {$/;"	f	file:
+terminal_init	kernel/terminal.c	/^void terminal_init(void) {$/;"	f
+terminal_read	kernel/terminal.c	/^size_t terminal_read(char* buf, size_t size) {$/;"	f
+terminal_write	kernel/terminal.c	/^void terminal_write(const char* str, size_t len) {$/;"	f
+time_slice	include/kernel/task.h	/^    uint64_t time_slice;$/;"	m	struct:task
+tmpfs_create	kernel/fs/tmpfs.c	/^vfs_filesystem_t* tmpfs_create(void) {$/;"	f
+tmpfs_create_dir	kernel/fs/tmpfs.c	/^static vfs_node_t* tmpfs_create_dir(vfs_node_t* parent, const char* name) {$/;"	f	file:
+tmpfs_create_file	kernel/fs/tmpfs.c	/^static vfs_node_t* tmpfs_create_file(vfs_node_t* parent, const char* name) {$/;"	f	file:
+tmpfs_data	kernel/fs/tmpfs.c	/^typedef struct tmpfs_data {$/;"	s	file:
+tmpfs_data_t	kernel/fs/tmpfs.c	/^} tmpfs_data_t;$/;"	t	typeref:struct:tmpfs_data	file:
+tmpfs_delete	kernel/fs/tmpfs.c	/^static bool tmpfs_delete(vfs_node_t* node) {$/;"	f	file:
+tmpfs_ops	kernel/fs/tmpfs.c	/^static vfs_operations_t tmpfs_ops = {$/;"	v	file:
+tmpfs_read	kernel/fs/tmpfs.c	/^static bool tmpfs_read(vfs_node_t* node, void* buffer, size_t offset, size_t size) {$/;"	f	file:
+tmpfs_write	kernel/fs/tmpfs.c	/^static bool tmpfs_write(vfs_node_t* node, const void* write_data, size_t offset, size_t size) {$/;"	f	file:
+total_sectors_16	kernel/fs/fat16.c	/^    uint16_t total_sectors_16;$/;"	m	struct:__anon1	file:
+total_sectors_32	kernel/fs/fat16.c	/^    uint32_t total_sectors_32;$/;"	m	struct:__anon1	file:
+true	include/kernel/stdint.h	18;"	d
+tss	kernel/task/tss.c	/^static tss_t tss;$/;"	v	file:
+tss_flush	kernel/task/gdt_asm.S	/^tss_flush:$/;"	l
+tss_get_address	kernel/task/tss.c	/^tss_t* tss_get_address(void) {$/;"	f
+tss_init	kernel/task/tss.c	/^void tss_init(void) {$/;"	f
+tss_set_kernel_stack	kernel/task/tss.c	/^void tss_set_kernel_stack(uint64_t stack) {$/;"	f
+tss_t	include/kernel/tss.h	/^} __attribute__((packed)) tss_t;$/;"	t	typeref:struct:__anon14
+type	include/kernel/multiboot2.h	/^    uint32_t type;$/;"	m	struct:multiboot_mmap_entry
+type	include/kernel/multiboot2.h	/^    uint32_t type;$/;"	m	struct:multiboot_tag
+type	include/kernel/multiboot2.h	/^    uint32_t type;$/;"	m	struct:multiboot_tag_mmap
+type	include/kernel/vfs.h	/^    vfs_node_type_t type;$/;"	m	struct:vfs_node
+type_attr	include/kernel/idt.h	/^    uint8_t type_attr;$/;"	m	struct:idt_entry
+uint16_t	include/kernel/stdint.h	/^typedef unsigned short uint16_t;$/;"	t
+uint16_t	user/include/stdint.h	/^typedef unsigned short     uint16_t;$/;"	t
+uint32_t	include/kernel/stdint.h	/^typedef unsigned int uint32_t;$/;"	t
+uint32_t	user/include/stdint.h	/^typedef unsigned int       uint32_t;$/;"	t
+uint64_t	include/kernel/stdint.h	/^typedef unsigned long uint64_t;$/;"	t
+uint64_t	user/include/stdint.h	/^typedef unsigned long long uint64_t;$/;"	t
+uint8_t	include/kernel/stdint.h	/^typedef unsigned char uint8_t;$/;"	t
+uint8_t	user/include/stdint.h	/^typedef unsigned char      uint8_t;$/;"	t
+uint_fast16_t	user/include/stdint.h	/^typedef uint32_t uint_fast16_t;$/;"	t
+uint_fast32_t	user/include/stdint.h	/^typedef uint32_t uint_fast32_t;$/;"	t
+uint_fast64_t	user/include/stdint.h	/^typedef uint64_t uint_fast64_t;$/;"	t
+uint_fast8_t	user/include/stdint.h	/^typedef uint32_t uint_fast8_t;$/;"	t
+uint_least16_t	user/include/stdint.h	/^typedef uint16_t uint_least16_t;$/;"	t
+uint_least32_t	user/include/stdint.h	/^typedef uint32_t uint_least32_t;$/;"	t
+uint_least64_t	user/include/stdint.h	/^typedef uint64_t uint_least64_t;$/;"	t
+uint_least8_t	user/include/stdint.h	/^typedef uint8_t  uint_least8_t;$/;"	t
+uintmax_t	user/include/stdint.h	/^typedef uint64_t  uintmax_t;$/;"	t
+uintptr_t	user/include/stdint.h	/^typedef unsigned long long  uintptr_t;$/;"	t
+uitoa	user/stdlib.c	/^int uitoa(unsigned long val, char* buf) {$/;"	f
+user_stack	include/kernel/task.h	/^    void* user_stack;$/;"	m	struct:task
+va_arg	user/include/stdarg.h	8;"	d
+va_copy	user/include/stdarg.h	9;"	d
+va_end	user/include/stdarg.h	7;"	d
+va_list	user/include/stdarg.h	/^typedef __builtin_va_list va_list;$/;"	t
+va_start	user/include/stdarg.h	6;"	d
+vfs_close	kernel/fs/vfs.c	/^void vfs_close(vfs_node_t* node) {$/;"	f
+vfs_create_directory	kernel/fs/vfs.c	/^vfs_node_t* vfs_create_directory(vfs_node_t* parent, const char* name) {$/;"	f
+vfs_create_file	kernel/fs/vfs.c	/^vfs_node_t* vfs_create_file(vfs_node_t* parent, const char* name) {$/;"	f
+vfs_delete	kernel/fs/vfs.c	/^bool vfs_delete(vfs_node_t* node) {$/;"	f
+vfs_filesystem	include/kernel/vfs.h	/^typedef struct vfs_filesystem {$/;"	s
+vfs_filesystem_t	include/kernel/vfs.h	/^} vfs_filesystem_t;$/;"	t	typeref:struct:vfs_filesystem
+vfs_find_child	kernel/fs/vfs.c	/^vfs_node_t* vfs_find_child(vfs_node_t* parent, const char* name) {$/;"	f
+vfs_get_root	kernel/fs/vfs.c	/^vfs_node_t* vfs_get_root(void) {$/;"	f
+vfs_init	kernel/fs/vfs.c	/^void vfs_init(void) {$/;"	f
+vfs_list_directory	kernel/fs/vfs.c	/^void vfs_list_directory(vfs_node_t* dir) {$/;"	f
+vfs_mount	kernel/fs/vfs.c	/^bool vfs_mount(vfs_filesystem_t* fs, const char* mountpoint) {$/;"	f
+vfs_mount_at	kernel/fs/vfs.c	/^bool vfs_mount_at(vfs_filesystem_t* fs, const char* path) {$/;"	f
+vfs_node	include/kernel/vfs.h	/^typedef struct vfs_node {$/;"	s
+vfs_node_t	include/kernel/vfs.h	/^} vfs_node_t;$/;"	t	typeref:struct:vfs_node
+vfs_node_type_t	include/kernel/vfs.h	/^} vfs_node_type_t;$/;"	t	typeref:enum:__anon10
+vfs_open	kernel/fs/vfs.c	/^vfs_node_t* vfs_open(const char* path, int flags) {$/;"	f
+vfs_operations	include/kernel/vfs.h	/^typedef struct vfs_operations {$/;"	s
+vfs_operations_t	include/kernel/vfs.h	/^} vfs_operations_t;$/;"	t	typeref:struct:vfs_operations
+vfs_read	kernel/fs/vfs.c	/^bool vfs_read(vfs_node_t* node, void* buffer, size_t offset, size_t size) {$/;"	f
+vfs_resolve_path	kernel/fs/vfs.c	/^vfs_node_t* vfs_resolve_path(const char* path) {$/;"	f
+vfs_root	kernel/fs/vfs.c	/^static vfs_node_t* vfs_root = NULL;$/;"	v	file:
+vfs_write	kernel/fs/vfs.c	/^bool vfs_write(vfs_node_t* node, const void* data, size_t offset, size_t size) {$/;"	f
+vga_buffer	kernel/drivers/vga.c	/^static uint16_t* const vga_buffer = (uint16_t*)0xB8000;$/;"	v	file:
+vga_clear	kernel/drivers/vga.c	/^void vga_clear(void) {$/;"	f
+vga_col	kernel/drivers/vga.c	/^static size_t vga_col = 0;$/;"	v	file:
+vga_color	kernel/drivers/vga.c	/^static uint8_t vga_color = 0x0F;$/;"	v	file:
+vga_color_t	include/kernel/vga.h	/^} vga_color_t;$/;"	t	typeref:enum:__anon11
+vga_get_col	kernel/drivers/vga.c	/^size_t vga_get_col(void) {$/;"	f
+vga_get_row	kernel/drivers/vga.c	/^size_t vga_get_row(void) {$/;"	f
+vga_init	kernel/drivers/vga.c	/^void vga_init(void) {$/;"	f
+vga_putchar	kernel/drivers/vga.c	/^void vga_putchar(char c) {$/;"	f
+vga_putchar_at	kernel/drivers/vga.c	/^void vga_putchar_at(size_t row, size_t col, char c) {$/;"	f
+vga_row	kernel/drivers/vga.c	/^static size_t vga_row = 0;$/;"	v	file:
+vga_scroll	kernel/drivers/vga.c	/^static void vga_scroll(void) {$/;"	f	file:
+vga_set_color	kernel/drivers/vga.c	/^void vga_set_color(uint8_t fg, uint8_t bg) {$/;"	f
+vga_set_cursor	kernel/drivers/vga.c	/^void vga_set_cursor(size_t row, size_t col) {$/;"	f
+vga_write	kernel/drivers/vga.c	/^void vga_write(const char* str) {$/;"	f
+vga_write_dec	kernel/drivers/vga.c	/^void vga_write_dec(uint64_t value) {$/;"	f
+vmm_alloc_pages	kernel/mm/vmm.c	/^void* vmm_alloc_pages(size_t count) {$/;"	f
+vmm_change_flags	kernel/mm/vmm.c	/^bool vmm_change_flags(page_directory_t* dir, uint64_t virt, uint32_t flags) {$/;"	f
+vmm_create_address_space	kernel/mm/vmm.c	/^page_directory_t* vmm_create_address_space(void) {$/;"	f
+vmm_free_pages	kernel/mm/vmm.c	/^void vmm_free_pages(void* virt, size_t count) {$/;"	f
+vmm_get_kernel_directory	kernel/mm/vmm.c	/^page_directory_t* vmm_get_kernel_directory(void) {$/;"	f
+vmm_get_physical	kernel/mm/vmm.c	/^uint64_t vmm_get_physical(page_directory_t* dir, uint64_t virt) {$/;"	f
+vmm_init	kernel/mm/vmm.c	/^void vmm_init(void) {$/;"	f
+vmm_map_page	kernel/mm/vmm.c	/^bool vmm_map_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint32_t flags) {$/;"	f
+vmm_map_user_page	kernel/mm/vmm.c	/^bool vmm_map_user_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint32_t flags) {$/;"	f
+vmm_switch_directory	kernel/mm/vmm.c	/^void vmm_switch_directory(page_directory_t* dir) {$/;"	f
+vmm_temp_map	kernel/mm/vmm.c	/^void* vmm_temp_map(uint64_t phys) {$/;"	f
+vmm_unmap_page	kernel/mm/vmm.c	/^bool vmm_unmap_page(page_directory_t* dir, uint64_t virt) {$/;"	f
+write	include/kernel/vfs.h	/^    bool (*write)(struct vfs_node* node, const void* data, size_t offset, size_t size);$/;"	m	struct:vfs_operations
+write_hex	user/stdio.c	/^static int write_hex(unsigned long val, int upper) {$/;"	f	file:
+write_str	user/stdio.c	/^static int write_str(const char* s) {$/;"	f	file:
+wrmsr	include/kernel/msr.h	/^static inline void wrmsr(uint32_t msr, uint64_t value) {$/;"	f
