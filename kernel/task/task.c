@@ -6,7 +6,6 @@
 #include <kernel/scheduler.h>
 #include <kernel/serial.h>
 #include <kernel/elf.h>
-#include <kernel/scheduler.h>
 
 #define KERNEL_STACK_SIZE 8192
 #define USER_STACK_SIZE (4 * 4096)
@@ -18,26 +17,40 @@ static uint32_t next_pid = 1;
 extern void scheduler_add_task(task_t* task);
 extern void scheduler_remove_task(task_t* task);
 extern void schedule(void);
+extern uint64_t pit_get_ticks(void);
 
-static void strcpy(char* dst, const char* src) {
-    while (*src) *dst++ = *src++;
-    *dst = '\0';
+static void strcpy_safe(char* dst, const char* src, size_t max) {
+    if (!dst || !src || max == 0) return;
+    
+    size_t i = 0;
+    while (src[i] && i < max - 1) {
+        dst[i] = src[i];
+        i++;
+    }
+    dst[i] = '\0';
 }
 
 void task_init(void) {
     current_task = (task_t*)kmalloc(sizeof(task_t));
-    if (!current_task) return;
+    if (!current_task) {
+        serial_write("[TASK] ERROR: Failed to allocate idle task\n");
+        return;
+    }
+    
     current_task->pid = 0;
-    strcpy(current_task->name, "idle");
+    strcpy_safe(current_task->name, "idle", sizeof(current_task->name));
     current_task->state = TASK_RUNNING;
     current_task->kernel_stack = NULL;
     current_task->user_stack = NULL;
     current_task->stack_size = 0;
     current_task->next = NULL;
     current_task->time_slice = 10;
+    current_task->priority = 0;
     current_task->is_kernel = true;
     current_task->page_dir = NULL;
     current_task->cr3_phys = 0;
+    current_task->cpu_time = 0;
+    current_task->creation_time = 0;
 
     uint64_t cr3;
     __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
@@ -45,32 +58,58 @@ void task_init(void) {
     current_task->cr3_phys = cr3;
 
     task_list_head = current_task;
+    serial_write("[TASK] Idle task initialized\n");
 }
 
 task_t* task_create(const char* name, void (*entry_point)(void)) {
+    if (!name || !entry_point) {
+        serial_write("[TASK] ERROR: Invalid parameters to task_create\n");
+        return NULL;
+    }
+    
     task_t* task = (task_t*)kmalloc(sizeof(task_t));
-    if (!task) return NULL;
+    if (!task) {
+        serial_write("[TASK] ERROR: Failed to allocate task structure\n");
+        return NULL;
+    }
+    
     task->pid = next_pid++;
-    strcpy(task->name, name);
+    strcpy_safe(task->name, name, sizeof(task->name));
     task->state = TASK_READY;
     task->time_slice = 10;
+    task->priority = 5;
     task->is_kernel = true;
     task->page_dir = NULL;
     task->cr3_phys = 0;
+    task->cpu_time = 0;
+    task->creation_time = pit_get_ticks();
+    
     task->kernel_stack = kmalloc(KERNEL_STACK_SIZE);
-    if (!task->kernel_stack) { kfree(task); return NULL; }
+    if (!task->kernel_stack) {
+        serial_write("[TASK] ERROR: Failed to allocate kernel stack\n");
+        kfree(task);
+        return NULL;
+    }
+    
     task->stack_size = KERNEL_STACK_SIZE;
     task->user_stack = NULL;
     task->next = NULL;
 
-    task->context.rax = 0; task->context.rbx = 0;
-    task->context.rcx = 0; task->context.rdx = 0;
-    task->context.rsi = 0; task->context.rdi = 0;
+    task->context.rax = 0;
+    task->context.rbx = 0;
+    task->context.rcx = 0;
+    task->context.rdx = 0;
+    task->context.rsi = 0;
+    task->context.rdi = 0;
     task->context.rbp = 0;
-    task->context.r8  = 0; task->context.r9  = 0;
-    task->context.r10 = 0; task->context.r11 = 0;
-    task->context.r12 = 0; task->context.r13 = 0;
-    task->context.r14 = 0; task->context.r15 = 0;
+    task->context.r8  = 0;
+    task->context.r9  = 0;
+    task->context.r10 = 0;
+    task->context.r11 = 0;
+    task->context.r12 = 0;
+    task->context.r13 = 0;
+    task->context.r14 = 0;
+    task->context.r15 = 0;
     task->context.rip    = (uint64_t)entry_point;
     task->context.rflags = 0x202;
     task->context.cs     = 0x08;
@@ -83,25 +122,37 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
 }
 
 task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
+    if (!name || !elf_data || !elf_size) {
+        serial_write("[TASK] ERROR: Invalid parameters to task_create_user\n");
+        return NULL;
+    }
+    
     task_t* task = (task_t*)kmalloc(sizeof(task_t));
-    if (!task) return NULL;
+    if (!task) {
+        serial_write("[TASK] ERROR: Failed to allocate user task structure\n");
+        return NULL;
+    }
 
     task->pid = next_pid++;
-    strcpy(task->name, name);
+    strcpy_safe(task->name, name, sizeof(task->name));
     task->state = TASK_READY;
     task->is_kernel = false;
     task->next = NULL;
     task->time_slice = 10;
+    task->priority = 10;
+    task->cpu_time = 0;
+    task->creation_time = pit_get_ticks();
 
     task->kernel_stack = kmalloc(KERNEL_STACK_SIZE);
     if (!task->kernel_stack) {
+        serial_write("[TASK] ERROR: Failed to allocate kernel stack for user task\n");
         kfree(task);
         return NULL;
     }
 
     task->page_dir = vmm_create_address_space();
     if (!task->page_dir) {
-        serial_write("[TASK] Failed to create address space\n");
+        serial_write("[TASK] ERROR: Failed to create user address space\n");
         kfree(task->kernel_stack);
         kfree(task);
         return NULL;
@@ -152,14 +203,21 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
         }
     }
 
-    task->context.rax = 0; task->context.rbx = 0;
-    task->context.rcx = 0; task->context.rdx = 0;
-    task->context.rsi = 0; task->context.rdi = 0;
+    task->context.rax = 0;
+    task->context.rbx = 0;
+    task->context.rcx = 0;
+    task->context.rdx = 0;
+    task->context.rsi = 0;
+    task->context.rdi = 0;
     task->context.rbp = 0;
-    task->context.r8  = 0; task->context.r9  = 0;
-    task->context.r10 = 0; task->context.r11 = 0;
-    task->context.r12 = 0; task->context.r13 = 0;
-    task->context.r14 = 0; task->context.r15 = 0;
+    task->context.r8  = 0;
+    task->context.r9  = 0;
+    task->context.r10 = 0;
+    task->context.r11 = 0;
+    task->context.r12 = 0;
+    task->context.r13 = 0;
+    task->context.r14 = 0;
+    task->context.r15 = 0;
     task->context.rip    = entry;
     task->context.rsp    = stack_top;
     task->context.rflags = 0x202;

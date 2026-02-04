@@ -34,9 +34,9 @@ static const char scancode_to_ascii_shift[] = {
 };
 
 void keyboard_init(void) {
-     key_buffer_head = 0;
+    key_buffer_head = 0;
     key_buffer_tail = 0;
-     
+    
     pic_clear_mask(1);
     
     serial_write("[Keyboard] PS/2 Keyboard initialized\n");
@@ -47,6 +47,8 @@ static void key_buffer_push(char c) {
     if (next != key_buffer_tail) {
         key_buffer[key_buffer_head] = c;
         key_buffer_head = next;
+    } else {
+        serial_write("[KB] ERROR: Buffer overflow\n");
     }
 }
 

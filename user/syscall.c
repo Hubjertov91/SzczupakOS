@@ -86,3 +86,7 @@ void sys_sleep(long ms) {
 void sys_clear(void) {
     syscall0(SYS_CLEAR);
 }
+
+long sys_sysinfo(struct sysinfo* info) {
+    return syscall1(SYS_SYSINFO, (long)info);
+}

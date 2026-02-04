@@ -6,6 +6,7 @@
 #include <kernel/terminal.h>
 #include <kernel/scheduler.h>
 #include <drivers/pit.h>
+#include <kernel/pmm.h>
 
 extern void syscall_handler_asm(void);
 
@@ -62,6 +63,25 @@ static uint64_t sys_sleep(uint64_t ms) {
     return 0;
 }
 
+static uint64_t sys_sysinfo(uint64_t info_addr) {
+    if (!info_addr) return -1;
+    
+    struct sysinfo info;
+    info.uptime = pit_get_ticks() / 100;
+    info.total_memory = pmm_get_total_memory();
+    info.free_memory = pmm_get_total_memory() - pmm_get_used_memory();
+    info.nr_processes = 1;
+    
+    if (!copy_to_user((void*)info_addr, &info, sizeof(info))) {
+        return -1;
+    }
+    
+    return 0;
+}
+
+extern uint64_t pmm_get_total_memory(void);
+extern uint64_t pmm_get_used_memory(void);
+
 void syscall_handler(syscall_regs_t* regs) {
     switch (regs->rax) {
         case SYSCALL_EXIT:
@@ -85,6 +105,9 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_CLEAR:
             terminal_clear();
             regs->rax = 0;
+            break;
+        case SYSCALL_SYSINFO:
+            regs->rax = sys_sysinfo(regs->rdi);
             break;
         default:
             regs->rax = -1;

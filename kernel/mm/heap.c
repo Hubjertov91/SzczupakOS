@@ -16,12 +16,15 @@ typedef struct heap_block {
 static heap_block_t* heap_start = NULL;
 
 static void* sbrk(size_t size) {
+    if (size == 0) return NULL;
+    
     size_t pages_needed = (size + PAGE_SIZE - 1) / PAGE_SIZE;
     void* addr = NULL;
 
     for (size_t i = 0; i < pages_needed; i++) {
         uint64_t page = pmm_alloc_page();
         if (page == 0) {
+            serial_write("[HEAP] ERROR: Physical page allocation failed\n");
             return NULL;
         }
         if (i == 0) addr = (void*)page;
@@ -33,9 +36,9 @@ void heap_init(void) {
     heap_start = (heap_block_t*)sbrk(HEAP_INITIAL_SIZE);
     if (!heap_start) {
         vga_set_color(VGA_COLOR_RED, VGA_COLOR_BLACK);
-        vga_write("[HEAP] ERROR: Failed to initialize heap!\n");
+        vga_write("[HEAP] PANIC: Failed to initialize heap!\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        return;
+        while (1) __asm__ volatile("hlt");
     }
 
     heap_start->magic = HEAP_MAGIC;
@@ -43,12 +46,20 @@ void heap_init(void) {
     heap_start->is_free = true;
     heap_start->next = NULL;
 
-    serial_write("[HEAP] Initialized\n");
+    serial_write("[HEAP] Initialized (size: 0x");
+    serial_write_hex(HEAP_INITIAL_SIZE);
+    serial_write(")\n");
 }
 
 static heap_block_t* find_free_block(size_t size) {
+    if (size == 0) return NULL;
+    
     heap_block_t* current = heap_start;
     while (current) {
+        if (current->magic != HEAP_MAGIC) {
+            serial_write("[HEAP] ERROR: Heap corrupted (invalid magic)\n");
+            return NULL;
+        }
         if (current->is_free && current->size >= size)
             return current;
         current = current->next;
@@ -57,7 +68,8 @@ static heap_block_t* find_free_block(size_t size) {
 }
 
 static void split_block(heap_block_t* block, size_t size) {
-    if (block->size <= size + sizeof(heap_block_t)) return;
+    if (block->size <= size + sizeof(heap_block_t)) 
+        return;
 
     heap_block_t* new_block = (heap_block_t*)((char*)block + sizeof(heap_block_t) + size);
     new_block->magic = HEAP_MAGIC;
@@ -70,6 +82,8 @@ static void split_block(heap_block_t* block, size_t size) {
 }
 
 static void coalesce_free_blocks(void) {
+    if (!heap_start) return;
+    
     heap_block_t* current = heap_start;
     while (current && current->next) {
         if (current->is_free && current->next->is_free) {
@@ -83,11 +97,19 @@ static void coalesce_free_blocks(void) {
 
 void* kmalloc(size_t size) {
     if (!size) return NULL;
+    
+    if (!heap_start) {
+        serial_write("[HEAP] ERROR: Heap not initialized\n");
+        return NULL;
+    }
+    
     size = (size + 7) & ~7;
 
     heap_block_t* block = find_free_block(size);
     if (!block) {
-        serial_write("[HEAP] Out of memory\n");
+        serial_write("[HEAP] ERROR: Out of memory (requested 0x");
+        serial_write_hex(size);
+        serial_write(" bytes)\n");
         return NULL;
     }
 
@@ -101,17 +123,18 @@ void kfree(void* ptr) {
     if (!ptr) return;
 
     heap_block_t* block = (heap_block_t*)((char*)ptr - sizeof(heap_block_t));
+    
     if (block->magic != HEAP_MAGIC) {
         vga_set_color(VGA_COLOR_RED, VGA_COLOR_BLACK);
-        vga_write("[HEAP] PANIC: Invalid free!\n");
+        vga_write("[HEAP] PANIC: Invalid free - corrupted header!\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        for (;;) {}
+        while (1) __asm__ volatile("hlt");
     }
     if (block->is_free) {
         vga_set_color(VGA_COLOR_RED, VGA_COLOR_BLACK);
         vga_write("[HEAP] PANIC: Double free detected!\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        for (;;) {}
+        while (1) __asm__ volatile("hlt");
     }
 
     block->is_free = true;
@@ -119,7 +142,15 @@ void kfree(void* ptr) {
 }
 
 void* kcalloc(size_t num, size_t size) {
+    if (!num || !size) return NULL;
+    
     size_t total = num * size;
+    
+    if (total / num != size) {
+        serial_write("[HEAP] ERROR: kcalloc overflow\n");
+        return NULL;
+    }
+    
     void* ptr = kmalloc(total);
     if (!ptr) return NULL;
 
@@ -133,7 +164,11 @@ void* krealloc(void* ptr, size_t size) {
     if (!size) { kfree(ptr); return NULL; }
 
     heap_block_t* block = (heap_block_t*)((char*)ptr - sizeof(heap_block_t));
-    if (block->magic != HEAP_MAGIC) return NULL;
+    
+    if (block->magic != HEAP_MAGIC) {
+        serial_write("[HEAP] ERROR: krealloc on invalid pointer\n");
+        return NULL;
+    }
 
     if (block->size >= size) return ptr;
 

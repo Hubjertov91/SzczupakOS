@@ -46,6 +46,8 @@ static void cmd_exit(void) {
 }
 
 static int parse_command(char* input, char** argv) {
+    if (!input || !argv) return 0;
+    
     int argc = 0;
     char* tok = strtok(input, " \t\n");
     while (tok != NULL && argc < MAX_ARGS) {

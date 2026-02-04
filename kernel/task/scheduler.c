@@ -22,7 +22,10 @@ void scheduler_init(void) {
 }
 
 void scheduler_add_task(task_t* task) {
-    if (!task) return;
+    if (!task) {
+        serial_write("[SCHEDULER] ERROR: Attempted to add NULL task\n");
+        return;
+    }
     
     task->next = NULL;
     
@@ -30,7 +33,9 @@ void scheduler_add_task(task_t* task) {
         ready_queue = task;
         ready_queue_tail = task;
     } else {
-        ready_queue_tail->next = task;
+        if (ready_queue_tail) {
+            ready_queue_tail->next = task;
+        }
         ready_queue_tail = task;
     }
 }
@@ -53,6 +58,7 @@ void scheduler_remove_task(task_t* task) {
                 ready_queue_tail = prev;
             }
             
+            serial_write("[SCHEDULER] Task removed\n");
             break;
         }
         prev = current;

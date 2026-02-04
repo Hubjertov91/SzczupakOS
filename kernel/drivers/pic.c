@@ -30,14 +30,14 @@ void pic_init(void) {
     serial_write("[PIC] All IRQs masked by default\n");
 }
 
-void pic_send_eoi(uint8_t irq) {
+void pic_send_eoi(const uint8_t irq) {
     if (irq >= 8) {
         outb(PIC2_COMMAND, 0x20);
     }
     outb(PIC1_COMMAND, 0x20);
 }
 
-void pic_set_mask(uint8_t irq) {
+void pic_set_mask(const uint8_t irq) {
     uint16_t port;
     uint8_t actual_irq = irq;
     
@@ -52,7 +52,7 @@ void pic_set_mask(uint8_t irq) {
     outb(port, value);
 }
 
-void pic_clear_mask(uint8_t irq) {
+void pic_clear_mask(const uint8_t irq) {
     uint16_t port;
     uint8_t actual_irq = irq;
     
@@ -67,9 +67,11 @@ void pic_clear_mask(uint8_t irq) {
     outb(port, value);
     
     serial_write("[PIC] Unmasked IRQ ");
-    char buf[4];
-    buf[0] = '0' + irq;
-    buf[1] = '\n';
-    buf[2] = '\0';
-    serial_write(buf);
+    if (irq >= 10) {
+        outb(0x3F8, '0' + (irq / 10));
+        outb(0x3F8, '0' + (irq % 10));
+    } else {
+        outb(0x3F8, '0' + irq);
+    }
+    serial_write("\n");
 }

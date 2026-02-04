@@ -4,14 +4,14 @@
 static tss_t tss;
 
 void tss_init(void) {
-    for (int i = 0; i < sizeof(tss_t); i++) {
+    for (size_t i = 0; i < sizeof(tss_t); i++) {
         ((uint8_t*)&tss)[i] = 0;
     }
     
     tss.rsp0 = 0;
     tss.iomap_base = sizeof(tss_t);
     
-    serial_write("[TSS] Task State Segment initiazzlized\n");
+    serial_write("[TSS] Task State Segment initialized\n");
 }
 
 void tss_set_kernel_stack(uint64_t stack) {

@@ -3,6 +3,9 @@
 #include <kernel/idt.h>
 #include <kernel/pagefault.h>
 
+#define IDT_TRAP_GATE   0x8F
+#define IDT_INTR_GATE   0x8E
+
 static struct idt_entry idt[256];
 static struct idt_ptr idtp;
 
@@ -49,34 +52,34 @@ void idt_init(void) {
     idtp.limit = sizeof(idt) - 1;
     idtp.base = (uint64_t)&idt;
     
-    idt_set_gate(0, (uint64_t)isr0, 0x8E);
-    idt_set_gate(1, (uint64_t)isr1, 0x8E);
-    idt_set_gate(2, (uint64_t)isr2, 0x8E);
-    idt_set_gate(3, (uint64_t)isr3, 0x8E);
-    idt_set_gate(4, (uint64_t)isr4, 0x8E);
-    idt_set_gate(5, (uint64_t)isr5, 0x8E);
-    idt_set_gate(6, (uint64_t)isr6, 0x8E);
-    idt_set_gate(7, (uint64_t)isr7, 0x8E);
-    idt_set_gate(8, (uint64_t)isr8, 0x8E);
-    idt_set_gate(13, (uint64_t)isr13, 0x8E);
-    idt_set_gate(14, (uint64_t)isr14, 0x8E);
+    idt_set_gate(0, (uint64_t)isr0, IDT_TRAP_GATE);
+    idt_set_gate(1, (uint64_t)isr1, IDT_TRAP_GATE);
+    idt_set_gate(2, (uint64_t)isr2, IDT_TRAP_GATE);
+    idt_set_gate(3, (uint64_t)isr3, IDT_TRAP_GATE);
+    idt_set_gate(4, (uint64_t)isr4, IDT_TRAP_GATE);
+    idt_set_gate(5, (uint64_t)isr5, IDT_TRAP_GATE);
+    idt_set_gate(6, (uint64_t)isr6, IDT_TRAP_GATE);
+    idt_set_gate(7, (uint64_t)isr7, IDT_TRAP_GATE);
+    idt_set_gate(8, (uint64_t)isr8, IDT_TRAP_GATE);
+    idt_set_gate(13, (uint64_t)isr13, IDT_TRAP_GATE);
+    idt_set_gate(14, (uint64_t)isr14, IDT_TRAP_GATE);
 
-    idt_set_gate(32, (uint64_t)irq0, 0x8E);
-    idt_set_gate(33, (uint64_t)irq1, 0x8E);
-    idt_set_gate(34, (uint64_t)irq2, 0x8E);
-    idt_set_gate(35, (uint64_t)irq3, 0x8E);
-    idt_set_gate(36, (uint64_t)irq4, 0x8E);
-    idt_set_gate(37, (uint64_t)irq5, 0x8E);
-    idt_set_gate(38, (uint64_t)irq6, 0x8E);
-    idt_set_gate(39, (uint64_t)irq7, 0x8E);
-    idt_set_gate(40, (uint64_t)irq8, 0x8E);
-    idt_set_gate(41, (uint64_t)irq9, 0x8E);
-    idt_set_gate(42, (uint64_t)irq10, 0x8E);
-    idt_set_gate(43, (uint64_t)irq11, 0x8E);
-    idt_set_gate(44, (uint64_t)irq12, 0x8E);
-    idt_set_gate(45, (uint64_t)irq13, 0x8E);
-    idt_set_gate(46, (uint64_t)irq14, 0x8E);
-    idt_set_gate(47, (uint64_t)irq15, 0x8E);
+    idt_set_gate(32, (uint64_t)irq0, IDT_INTR_GATE);
+    idt_set_gate(33, (uint64_t)irq1, IDT_INTR_GATE);
+    idt_set_gate(34, (uint64_t)irq2, IDT_INTR_GATE);
+    idt_set_gate(35, (uint64_t)irq3, IDT_INTR_GATE);
+    idt_set_gate(36, (uint64_t)irq4, IDT_INTR_GATE);
+    idt_set_gate(37, (uint64_t)irq5, IDT_INTR_GATE);
+    idt_set_gate(38, (uint64_t)irq6, IDT_INTR_GATE);
+    idt_set_gate(39, (uint64_t)irq7, IDT_INTR_GATE);
+    idt_set_gate(40, (uint64_t)irq8, IDT_INTR_GATE);
+    idt_set_gate(41, (uint64_t)irq9, IDT_INTR_GATE);
+    idt_set_gate(42, (uint64_t)irq10, IDT_INTR_GATE);
+    idt_set_gate(43, (uint64_t)irq11, IDT_INTR_GATE);
+    idt_set_gate(44, (uint64_t)irq12, IDT_INTR_GATE);
+    idt_set_gate(45, (uint64_t)irq13, IDT_INTR_GATE);
+    idt_set_gate(46, (uint64_t)irq14, IDT_INTR_GATE);
+    idt_set_gate(47, (uint64_t)irq15, IDT_INTR_GATE);
     
     __asm__ volatile("lidt %0" : : "m"(idtp));
     

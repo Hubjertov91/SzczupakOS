@@ -7,14 +7,13 @@ typedef struct tmpfs_data {
     size_t allocated_size;
 } tmpfs_data_t;
 
-static int strcmp(const char* s1, const char* s2) {
-    while (*s1 && *s1 == *s2) { s1++; s2++; }
-    return *(unsigned char*)s1 - *(unsigned char*)s2;
-}
-
-static void strcpy(char* dst, const char* src) {
-    while (*src) *dst++ = *src++;
-    *dst = '\0';
+static void strcpy_safe(char* dst, const char* src, size_t max) {
+    size_t i = 0;
+    while (src[i] && i < max - 1) {
+        dst[i] = src[i];
+        i++;
+    }
+    dst[i] = '\0';
 }
 
 static vfs_node_t* tmpfs_create_file(vfs_node_t* parent, const char* name) {
@@ -33,7 +32,7 @@ static vfs_node_t* tmpfs_create_file(vfs_node_t* parent, const char* name) {
     data->data = NULL;
     data->allocated_size = 0;
     
-    strcpy(node->name, name);
+    strcpy_safe(node->name, name, sizeof(node->name));
     node->type = VFS_FILE;
     node->size = 0;
     node->fs_data = data;
@@ -53,7 +52,7 @@ static vfs_node_t* tmpfs_create_dir(vfs_node_t* parent, const char* name) {
     vfs_node_t* node = (vfs_node_t*)kmalloc(sizeof(vfs_node_t));
     if (!node) return NULL;
     
-    strcpy(node->name, name);
+    strcpy_safe(node->name, name, sizeof(node->name));
     node->type = VFS_DIRECTORY;
     node->size = 0;
     node->fs_data = NULL;

@@ -50,9 +50,19 @@ static void pmm_mark_used(uint64_t start, uint64_t end) {
 }
 
 void pmm_init(uint64_t mem_start, uint64_t mem_end) {
+    if (mem_start >= mem_end) {
+        serial_write("[PMM] ERROR: Invalid memory range\n");
+        return;
+    }
+    
     pmm_start = mem_start;
     pmm_end = mem_end;
     pmm_total_pages = (mem_end - mem_start) / PAGE_SIZE;
+    
+    if (pmm_total_pages == 0) {
+        serial_write("[PMM] ERROR: Zero total pages\n");
+        return;
+    }
     
     if (pmm_total_pages > MAX_MEMORY_PAGES) {
         pmm_total_pages = MAX_MEMORY_PAGES;

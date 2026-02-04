@@ -5,18 +5,39 @@
 
 static vfs_node_t* vfs_root = NULL;
 
+/**
+ * strcmp - Compare two strings
+ * @s1: First string
+ * @s2: Second string
+ *
+ * Return: 0 if equal, <0 if s1<s2, >0 if s1>s2
+ * Standard C library function implementation.
+ */
 static int strcmp(const char* s1, const char* s2) {
-    while (*s1 && *s1 == *s2) { s1++; s2++; }
+    if (!s1 || !s2) return -1;
+    
+    while (*s1 && *s1 == *s2) { 
+        s1++; 
+        s2++; 
+    }
     return *(unsigned char*)s1 - *(unsigned char*)s2;
 }
 
+/**
+ * vfs_init - Initialize virtual filesystem
+ *
+ * Sets up VFS layer. Must be called before any filesystem operations.
+ */
 void vfs_init(void) {
     vfs_root = NULL;
     serial_write("[VFS] Initialized\n");
 }
 
 bool vfs_mount(vfs_filesystem_t* fs, const char* mountpoint) {
-    if (!fs || !fs->root) return false;
+    if (!fs || !fs->root || !mountpoint) {
+        serial_write("[VFS] ERROR: Invalid mount parameters\n");
+        return false;
+    }
     
     if (strcmp(mountpoint, "/") == 0) {
         vfs_root = fs->root;
@@ -26,6 +47,7 @@ bool vfs_mount(vfs_filesystem_t* fs, const char* mountpoint) {
         return true;
     }
     
+    serial_write("[VFS] ERROR: Can only mount at /\n");
     return false;
 }
 

@@ -167,7 +167,7 @@ static bool fat16_read(vfs_node_t* node, void* buffer, size_t offset, size_t siz
     serial_write("[FAT16] Read ");
     serial_write_dec(bytes_read);
     serial_write(" bytes. First 16 bytes: ");
-    for(int i = 0; i < 16 && i < bytes_read; i++) {
+    for(size_t i = 0; i < 16 && i < bytes_read; i++) {
         serial_write_hex(buf[i]);
         serial_write(" ");
     }
@@ -265,7 +265,11 @@ static vfs_node_t* fat16_create_dir(vfs_node_t* parent, const char* name) {
     return node;
 }
 
-static bool fat16_delete(vfs_node_t* node) { serial_write("[FAT16] delete not implemented\n"); return false; }
+static bool fat16_delete(vfs_node_t* unused) {
+    (void)unused;
+    serial_write("[FAT16] delete not implemented\n");
+    return false;
+}
 
 static vfs_operations_t fat16_ops = { .create_file = fat16_create_file, .create_dir = fat16_create_dir, .delete = fat16_delete, .read = fat16_read, .write = fat16_write };
 

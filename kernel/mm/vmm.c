@@ -20,18 +20,17 @@ static uint64_t next_virt_addr = 0x100000000;
 extern uint64_t p4_table;
 
 static uint64_t* get_or_create_table(uint64_t* parent, size_t index, uint32_t flags) {
+    if (!parent) return NULL;
+    if (index >= 512) {
+        serial_write("[VMM] ERROR: Invalid table index\n");
+        return NULL;
+    }
+    
     if (parent[index] & PAGE_PRESENT) {
         uint64_t phys_addr = parent[index] & ~0xFFFULL;
         
         if (flags & PAGE_USER) {
-            serial_write("[VMM] Adding USER to existing entry at index ");
-            serial_write_dec(index);
-            serial_write(" old=0x");
-            serial_write_hex(parent[index]);
             parent[index] |= PAGE_USER;
-            serial_write(" new=0x");
-            serial_write_hex(parent[index]);
-            serial_write("\n");
         }
         
         return (uint64_t*)phys_addr;
@@ -39,7 +38,7 @@ static uint64_t* get_or_create_table(uint64_t* parent, size_t index, uint32_t fl
     
     uint64_t table_phys = pmm_alloc_page();
     if (!table_phys) {
-        serial_write("[VMM] Failed to allocate page table!\n");
+        serial_write("[VMM] ERROR: Failed to allocate page table\n");
         return NULL;
     }
     
@@ -51,18 +50,9 @@ static uint64_t* get_or_create_table(uint64_t* parent, size_t index, uint32_t fl
     uint32_t table_flags = PAGE_PRESENT | PAGE_WRITE;
     if (flags & PAGE_USER) {
         table_flags |= PAGE_USER;
-        serial_write("[VMM] Creating NEW entry with USER at index ");
-        serial_write_dec(index);
-        serial_write("\n");
     }
     
     parent[index] = table_phys | table_flags;
-    
-    serial_write("[VMM] New entry: parent[");
-    serial_write_dec(index);
-    serial_write("] = 0x");
-    serial_write_hex(parent[index]);
-    serial_write("\n");
     
     return table;
 }
@@ -71,9 +61,9 @@ void vmm_init(void) {
     kernel_directory = (page_directory_t*)kmalloc(sizeof(page_directory_t));
     if (!kernel_directory) {
         vga_set_color(VGA_COLOR_RED, VGA_COLOR_BLACK);
-        vga_write("[VMM] Failed to allocate kernel directory!\n");
+        vga_write("[VMM] PANIC: Failed to allocate kernel directory\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        return;
+        while (1) __asm__ volatile("hlt");
     }
     
     kernel_directory->pml4 = (uint64_t*)&p4_table;

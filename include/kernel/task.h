@@ -12,15 +12,15 @@ typedef enum {
 } task_state_t;
 
 typedef struct {
-    uint64_t rax, rbx, rcx, rdx;       // 0-24
-    uint64_t rsi, rdi, rbp, rsp;       // 32-56
-    uint64_t r8, r9, r10, r11;         // 64-88
-    uint64_t r12, r13, r14, r15;       // 96-120
-    uint64_t rip;                       // 128
-    uint64_t rflags;                    // 136
-    uint64_t cs, ss;                    // 144-152
-    uint64_t _pad[18];                  // 160-296
-    uint64_t cr3;                       // 304
+    uint64_t rax, rbx, rcx, rdx;
+    uint64_t rsi, rdi, rbp, rsp;
+    uint64_t r8, r9, r10, r11;
+    uint64_t r12, r13, r14, r15;
+    uint64_t rip;
+    uint64_t rflags;
+    uint64_t cs, ss;
+    uint64_t _pad[18];
+    uint64_t cr3;
 } cpu_context_t;
 
 typedef struct task {
@@ -32,10 +32,13 @@ typedef struct task {
     uint64_t stack_size;
     struct task* next;
     uint64_t time_slice;
+    uint8_t priority;
     bool is_kernel;
     page_directory_t* page_dir;
     void* user_stack;
     uint64_t cr3_phys;
+    uint64_t cpu_time;
+    uint64_t creation_time;
 } task_t;
 
 void task_init(void);

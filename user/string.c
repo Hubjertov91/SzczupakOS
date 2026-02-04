@@ -1,12 +1,15 @@
 #include <string.h>
+#include <stddef.h>
 
 long strlen(const char* s) {
+    if (!s) return 0;
     long i = 0;
     while (s[i]) i++;
     return i;
 }
 
 char* strcpy(char* dst, const char* src) {
+    if (!dst || !src) return dst;
     long i = 0;
     while (src[i]) {
         dst[i] = src[i];
@@ -17,6 +20,7 @@ char* strcpy(char* dst, const char* src) {
 }
 
 char* strncpy(char* dst, const char* src, long n) {
+    if (!dst || !src || n <= 0) return dst;
     long i = 0;
     while (i < n && src[i]) {
         dst[i] = src[i];
@@ -30,6 +34,7 @@ char* strncpy(char* dst, const char* src, long n) {
 }
 
 int strcmp(const char* a, const char* b) {
+    if (!a || !b) return (a == b) ? 0 : ((a > b) ? 1 : -1);
     while (*a && *b) {
         if (*a != *b) return (unsigned char)*a - (unsigned char)*b;
         a++;
@@ -59,21 +64,24 @@ char* strcat(char* dst, const char* src) {
 }
 
 const char* strchr(const char* s, char c) {
+    if (!s) return NULL;
     while (*s) {
         if (*s == c) return s;
         s++;
     }
-    return (c == '\0') ? s : 0;
+    return (c == '\0') ? s : NULL;
 }
 
-static char* strtok_ptr = 0;
+static char* strtok_ptr = NULL;
 
 char* strtok(char* str, const char* delims) {
+    if (!delims) return NULL;
+    
     if (str) strtok_ptr = str;
-    if (!strtok_ptr) return 0;
+    if (!strtok_ptr) return NULL;
 
     while (*strtok_ptr && strchr(delims, *strtok_ptr)) strtok_ptr++;
-    if (!*strtok_ptr) return 0;
+    if (!*strtok_ptr) return NULL;
 
     char* token = strtok_ptr;
     while (*strtok_ptr && !strchr(delims, *strtok_ptr)) strtok_ptr++;

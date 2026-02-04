@@ -7,7 +7,7 @@
 static uint64_t pagefault_count = 0;
 
 void pagefault_init(void) {
-    serial_write("[PF] Page Fault Handler initialzzized\n");
+    serial_write("[PF] Page Fault Handler initialized\n");
 }
 
 void pagefault_handler(uint64_t error_code, uint64_t faulting_addr) {

@@ -10,8 +10,7 @@ _start:
     call main
     
     mov rdi, rax
-    mov rax, 1
-    syscall
+    int 0x80
     
 .hang:
     hlt

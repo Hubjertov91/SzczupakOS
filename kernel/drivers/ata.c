@@ -26,7 +26,6 @@
 #define ATA_STATUS_ERR  0x01
 
 static uint16_t ata_base = ATA_PRIMARY_IO;
-static uint16_t ata_control = ATA_PRIMARY_CONTROL;
 
 static void ata_wait_bsy(void) {
     while (inb(ata_base + ATA_REG_STATUS) & ATA_STATUS_BSY);
@@ -64,9 +63,8 @@ void ata_init(void) {
     
     ata_wait_drq();
     
-    uint16_t identify[256];
     for (int i = 0; i < 256; i++) {
-        identify[i] = inw(ata_base + ATA_REG_DATA);
+        inw(ata_base + ATA_REG_DATA);
     }
     
     serial_write("[ATA] ATA drive detected and initialized\n");
