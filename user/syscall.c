@@ -90,3 +90,7 @@ void sys_clear(void) {
 long sys_sysinfo(struct sysinfo* info) {
     return syscall1(SYS_SYSINFO, (long)info);
 }
+
+long sys_fork(void) {
+    return syscall0(SYS_FORK);
+}

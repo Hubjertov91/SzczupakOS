@@ -8,6 +8,9 @@ typedef enum {
     TASK_READY,
     TASK_RUNNING,
     TASK_BLOCKED,
+    TASK_SLEEPING,
+    TASK_WAITING,
+    TASK_ZOMBIE,
     TASK_TERMINATED
 } task_state_t;
 
@@ -44,6 +47,7 @@ typedef struct task {
 void task_init(void);
 task_t* task_create(const char* name, void (*entry_point)(void));
 task_t* task_create_user(const char* name, uint8_t* elf_data, size_t size);
+task_t* task_fork(void);
 void task_exit(void);
 void task_yield(void);
 task_t* task_get_current(void);

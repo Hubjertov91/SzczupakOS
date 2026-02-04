@@ -2,6 +2,7 @@
 #include <kernel/stdint.h>
 #include <kernel/vga.h>
 #include <kernel/pmm.h>
+#include <kernel/spinlock.h>
 
 extern uint8_t kernel_end;
 extern uint64_t p4_table;
@@ -19,6 +20,7 @@ static uint64_t pmm_total_pages = 0;
 static uint64_t pmm_used_pages = 0;
 static uint64_t pmm_start = 0;
 static uint64_t pmm_end = 0;
+static spinlock_t pmm_lock = SPINLOCK_INIT;
 
 static inline void bitmap_set(uint64_t bit) {
     if (bit >= pmm_total_pages) return;
@@ -39,6 +41,8 @@ static void pmm_mark_used(uint64_t start, uint64_t end) {
     uint64_t page_start = ALIGN_DOWN(start, PAGE_SIZE);
     uint64_t page_end = ALIGN_UP(end, PAGE_SIZE);
     
+    irq_state_t state = spinlock_acquire_irqsave(&pmm_lock);
+    
     for (uint64_t addr = page_start; addr < page_end; addr += PAGE_SIZE) {
         if (addr < pmm_start || addr >= pmm_end) continue;
         uint64_t page = (addr - pmm_start) / PAGE_SIZE;
@@ -47,6 +51,8 @@ static void pmm_mark_used(uint64_t start, uint64_t end) {
             pmm_used_pages++;
         }
     }
+    
+    spinlock_release_irqrestore(&pmm_lock, state);
 }
 
 void pmm_init(uint64_t mem_start, uint64_t mem_end) {
@@ -128,23 +134,36 @@ void pmm_init(uint64_t mem_start, uint64_t mem_end) {
 }
 
 uint64_t pmm_alloc_page(void) {
+    irq_state_t state = spinlock_acquire_irqsave(&pmm_lock);
+    
     for (uint64_t i = 0; i < pmm_total_pages; i++) {
         if (!bitmap_test(i)) {
             bitmap_set(i);
             pmm_used_pages++;
-            return pmm_start + i * PAGE_SIZE;
+            uint64_t result = pmm_start + i * PAGE_SIZE;
+            spinlock_release_irqrestore(&pmm_lock, state);
+            return result;
         }
     }
     serial_write("[PMM] OUT OF MEMORY\n");
+    spinlock_release_irqrestore(&pmm_lock, state);
     return 0;
 }
 
 void pmm_free_page(uint64_t addr) {
     if (addr < pmm_start || addr >= pmm_end) return;
+    
+    irq_state_t state = spinlock_acquire_irqsave(&pmm_lock);
+    
     uint64_t page = (addr - pmm_start) / PAGE_SIZE;
-    if (!bitmap_test(page)) return;
+    if (!bitmap_test(page)) {
+        spinlock_release_irqrestore(&pmm_lock, state);
+        return;
+    }
     bitmap_clear(page);
     pmm_used_pages--;
+    
+    spinlock_release_irqrestore(&pmm_lock, state);
 }
 
 uint64_t pmm_get_total_memory(void) {

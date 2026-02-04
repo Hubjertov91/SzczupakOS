@@ -13,6 +13,11 @@ static volatile uint64_t system_ticks = 0;
 static uint32_t pit_frequency = 0;
 
 void pit_init(uint32_t frequency) {
+    if (frequency == 0) {
+        serial_write("[PIT] ERROR: Invalid frequency\n");
+        return;
+    }
+    
     pit_frequency = frequency;
     uint32_t divisor = PIT_FREQUENCY / frequency;
     
@@ -21,10 +26,12 @@ void pit_init(uint32_t frequency) {
     outb(PIT_CHANNEL0, (divisor >> 8) & 0xFF);
 
     pic_clear_mask(0);
+    serial_write("[PIT] Initialized with frequency ");
+    serial_write_dec(frequency);
+    serial_write(" Hz\n");
 }
 
 void pit_handler(void) {
-    serial_write_char('.');
     system_ticks++;
     pic_send_eoi(0);
     schedule();

@@ -5,12 +5,14 @@
 #include <kernel/serial.h>
 #include <kernel/tss.h>
 #include <kernel/gdt.h>
+#include <kernel/spinlock.h>
 
 #define KERNEL_STACK_SIZE 8192
 
 static task_t* ready_queue = NULL;
 static task_t* ready_queue_tail = NULL;
 static bool scheduler_enabled = false;
+static spinlock_t scheduler_lock = SPINLOCK_INIT;
 
 extern void switch_task(cpu_context_t* old_ctx, cpu_context_t* new_ctx);
 extern void task_set_current(task_t* task);
@@ -27,21 +29,44 @@ void scheduler_add_task(task_t* task) {
         return;
     }
     
+    irq_state_t state = spinlock_acquire_irqsave(&scheduler_lock);
+    
     task->next = NULL;
+    task->state = TASK_READY;
     
     if (!ready_queue) {
         ready_queue = task;
         ready_queue_tail = task;
-    } else {
-        if (ready_queue_tail) {
-            ready_queue_tail->next = task;
-        }
-        ready_queue_tail = task;
+        spinlock_release_irqrestore(&scheduler_lock, state);
+        return;
     }
+    
+    task_t* current = ready_queue;
+    task_t* prev = NULL;
+    
+    while (current && current->priority <= task->priority) {
+        prev = current;
+        current = current->next;
+    }
+    
+    if (!prev) {
+        task->next = ready_queue;
+        ready_queue = task;
+    } else {
+        task->next = current;
+        prev->next = task;
+        if (!current) {
+            ready_queue_tail = task;
+        }
+    }
+    
+    spinlock_release_irqrestore(&scheduler_lock, state);
 }
 
 void scheduler_remove_task(task_t* task) {
     if (!task || !ready_queue) return;
+    
+    irq_state_t state = spinlock_acquire_irqsave(&scheduler_lock);
     
     task_t* prev = NULL;
     task_t* current = ready_queue;
@@ -64,15 +89,31 @@ void scheduler_remove_task(task_t* task) {
         prev = current;
         current = current->next;
     }
+    
+    spinlock_release_irqrestore(&scheduler_lock, state);
 }
 
 void schedule(void) {
     if (!scheduler_enabled || !ready_queue) return;
     
-    task_t* prev = task_get_current();
-    task_t* next = ready_queue;
+    irq_state_t state = spinlock_acquire_irqsave(&scheduler_lock);
     
-    if (!next) return;
+    task_t* prev = task_get_current();
+    task_t* next = NULL;
+    
+    task_t* candidate = ready_queue;
+    while (candidate) {
+        if (candidate->state == TASK_READY || candidate->state == TASK_RUNNING) {
+            next = candidate;
+            break;
+        }
+        candidate = candidate->next;
+    }
+    
+    if (!next) {
+        spinlock_release_irqrestore(&scheduler_lock, state);
+        return;
+    }
     
     ready_queue = next->next;
     if (ready_queue) {
@@ -101,9 +142,11 @@ void schedule(void) {
     
     if (prev && prev->state == TASK_RUNNING) {
         prev->state = TASK_READY;
+        spinlock_release_irqrestore(&scheduler_lock, state);
         scheduler_add_task(prev);
         switch_task(&prev->context, &next->context);
     } else {
+        spinlock_release_irqrestore(&scheduler_lock, state);
         switch_task(NULL, &next->context);
     }
 }

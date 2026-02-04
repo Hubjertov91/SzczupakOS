@@ -2,6 +2,7 @@
 #include <kernel/vga.h>
 #include <kernel/pmm.h>
 #include <kernel/heap.h>
+#include <kernel/spinlock.h>
 
 #define HEAP_MAGIC 0xDEADBEEF
 #define HEAP_INITIAL_SIZE (1024 * 1024)
@@ -14,6 +15,7 @@ typedef struct heap_block {
 } heap_block_t;
 
 static heap_block_t* heap_start = NULL;
+static spinlock_t heap_lock = SPINLOCK_INIT;
 
 static void* sbrk(size_t size) {
     if (size == 0) return NULL;
@@ -55,16 +57,23 @@ static heap_block_t* find_free_block(size_t size) {
     if (size == 0) return NULL;
     
     heap_block_t* current = heap_start;
+    heap_block_t* best_fit = NULL;
+    size_t best_fit_size = (size_t)-1;
+    
     while (current) {
         if (current->magic != HEAP_MAGIC) {
             serial_write("[HEAP] ERROR: Heap corrupted (invalid magic)\n");
             return NULL;
         }
-        if (current->is_free && current->size >= size)
-            return current;
+        if (current->is_free && current->size >= size) {
+            if (current->size < best_fit_size) {
+                best_fit = current;
+                best_fit_size = current->size;
+            }
+        }
         current = current->next;
     }
-    return NULL;
+    return best_fit;
 }
 
 static void split_block(heap_block_t* block, size_t size) {
@@ -103,6 +112,8 @@ void* kmalloc(size_t size) {
         return NULL;
     }
     
+    irq_state_t state = spinlock_acquire_irqsave(&heap_lock);
+    
     size = (size + 7) & ~7;
 
     heap_block_t* block = find_free_block(size);
@@ -110,11 +121,14 @@ void* kmalloc(size_t size) {
         serial_write("[HEAP] ERROR: Out of memory (requested 0x");
         serial_write_hex(size);
         serial_write(" bytes)\n");
+        spinlock_release_irqrestore(&heap_lock, state);
         return NULL;
     }
 
     split_block(block, size);
     block->is_free = false;
+    
+    spinlock_release_irqrestore(&heap_lock, state);
 
     return (void*)((char*)block + sizeof(heap_block_t));
 }
@@ -122,15 +136,19 @@ void* kmalloc(size_t size) {
 void kfree(void* ptr) {
     if (!ptr) return;
 
+    irq_state_t state = spinlock_acquire_irqsave(&heap_lock);
+    
     heap_block_t* block = (heap_block_t*)((char*)ptr - sizeof(heap_block_t));
     
     if (block->magic != HEAP_MAGIC) {
+        spinlock_release_irqrestore(&heap_lock, state);
         vga_set_color(VGA_COLOR_RED, VGA_COLOR_BLACK);
         vga_write("[HEAP] PANIC: Invalid free - corrupted header!\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
         while (1) __asm__ volatile("hlt");
     }
     if (block->is_free) {
+        spinlock_release_irqrestore(&heap_lock, state);
         vga_set_color(VGA_COLOR_RED, VGA_COLOR_BLACK);
         vga_write("[HEAP] PANIC: Double free detected!\n");
         vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
@@ -139,6 +157,8 @@ void kfree(void* ptr) {
 
     block->is_free = true;
     coalesce_free_blocks();
+    
+    spinlock_release_irqrestore(&heap_lock, state);
 }
 
 void* kcalloc(size_t num, size_t size) {
@@ -154,8 +174,11 @@ void* kcalloc(size_t num, size_t size) {
     void* ptr = kmalloc(total);
     if (!ptr) return NULL;
 
+    irq_state_t state = spinlock_acquire_irqsave(&heap_lock);
     for (size_t i = 0; i < total; i++)
         ((char*)ptr)[i] = 0;
+    spinlock_release_irqrestore(&heap_lock, state);
+    
     return ptr;
 }
 
@@ -163,20 +186,29 @@ void* krealloc(void* ptr, size_t size) {
     if (!ptr) return kmalloc(size);
     if (!size) { kfree(ptr); return NULL; }
 
+    irq_state_t state = spinlock_acquire_irqsave(&heap_lock);
+    
     heap_block_t* block = (heap_block_t*)((char*)ptr - sizeof(heap_block_t));
     
     if (block->magic != HEAP_MAGIC) {
+        spinlock_release_irqrestore(&heap_lock, state);
         serial_write("[HEAP] ERROR: krealloc on invalid pointer\n");
         return NULL;
     }
 
-    if (block->size >= size) return ptr;
+    if (block->size >= size) {
+        spinlock_release_irqrestore(&heap_lock, state);
+        return ptr;
+    }
 
+    spinlock_release_irqrestore(&heap_lock, state);
     void* new_ptr = kmalloc(size);
     if (!new_ptr) return NULL;
 
+    state = spinlock_acquire_irqsave(&heap_lock);
     for (size_t i = 0; i < block->size && i < size; i++)
         ((char*)new_ptr)[i] = ((char*)ptr)[i];
+    spinlock_release_irqrestore(&heap_lock, state);
 
     kfree(ptr);
     return new_ptr;

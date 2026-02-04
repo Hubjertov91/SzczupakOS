@@ -20,25 +20,37 @@ typedef struct {
 extern uint64_t pit_get_ticks(void);
 
 static uint64_t sys_write(uint64_t str_addr, uint64_t size) {
-    if (!str_addr || size == 0 || size > 4096) return -1;
+    if (!str_addr || size == 0) return 0;
+    if (size > 4096) {
+        serial_write("[SYSCALL] ERROR: Write buffer too large\n");
+        return -1;
+    }
 
     char buffer[4097];
-    if (!copy_from_user(buffer, (const void*)str_addr, size)) return -1;
+    if (!copy_from_user(buffer, (const void*)str_addr, size)) {
+        serial_write("[SYSCALL] ERROR: Invalid user pointer\n");
+        return -1;
+    }
 
     terminal_write(buffer, size);
     return size;
 }
 
 static uint64_t sys_read(uint64_t buf_addr, uint64_t size) {
-    if (!buf_addr || size == 0) return -1;
+    if (!buf_addr || size == 0) return 0;
+    if (size > 256) {
+        serial_write("[SYSCALL] ERROR: Read buffer too large\n");
+        return -1;
+    }
 
     scheduler_disable();
 
     char tmp_buf[256];
-    size_t len = terminal_read(tmp_buf, size < 256 ? size : 256);
+    size_t len = terminal_read(tmp_buf, size);
 
     if (!copy_to_user((void*)buf_addr, tmp_buf, len)) {
         scheduler_enable();
+        serial_write("[SYSCALL] ERROR: Invalid user buffer\n");
         return -1;
     }
 
@@ -79,6 +91,15 @@ static uint64_t sys_sysinfo(uint64_t info_addr) {
     return 0;
 }
 
+static uint64_t sys_fork(void) {
+    task_t* child = task_fork();
+    if (!child) {
+        serial_write("[SYSCALL] fork() failed\n");
+        return -1;
+    }
+    return (uint64_t)child->pid;
+}
+
 extern uint64_t pmm_get_total_memory(void);
 extern uint64_t pmm_get_used_memory(void);
 
@@ -108,6 +129,9 @@ void syscall_handler(syscall_regs_t* regs) {
             break;
         case SYSCALL_SYSINFO:
             regs->rax = sys_sysinfo(regs->rdi);
+            break;
+        case SYSCALL_FORK:
+            regs->rax = sys_fork();
             break;
         default:
             regs->rax = -1;

@@ -34,5 +34,6 @@ long sys_gettime(void);
 void sys_sleep(long ms);
 void sys_clear(void);
 long sys_sysinfo(struct sysinfo* info);
+long sys_fork(void);
 
 #endif

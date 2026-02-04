@@ -28,11 +28,19 @@
 static uint16_t ata_base = ATA_PRIMARY_IO;
 
 static void ata_wait_bsy(void) {
-    while (inb(ata_base + ATA_REG_STATUS) & ATA_STATUS_BSY);
+    uint32_t timeout = 100000;
+    while ((inb(ata_base + ATA_REG_STATUS) & ATA_STATUS_BSY) && timeout--);
+    if (timeout == 0) {
+        serial_write("[ATA] WARNING: Timeout waiting for BSY\n");
+    }
 }
 
 static void ata_wait_drq(void) {
-    while (!(inb(ata_base + ATA_REG_STATUS) & ATA_STATUS_DRQ));
+    uint32_t timeout = 100000;
+    while (!(inb(ata_base + ATA_REG_STATUS) & ATA_STATUS_DRQ) && timeout--);
+    if (timeout == 0) {
+        serial_write("[ATA] WARNING: Timeout waiting for DRQ\n");
+    }
 }
 
 void ata_init(void) {

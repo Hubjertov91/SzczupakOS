@@ -276,3 +276,91 @@ uint32_t task_get_pid(void) {
 void task_set_current(task_t* task) {
     current_task = task;
 }
+
+task_t* task_fork(void) {
+    if (!current_task) {
+        serial_write("[TASK] ERROR: No current task to fork\n");
+        return NULL;
+    }
+    
+    task_t* child = (task_t*)kmalloc(sizeof(task_t));
+    if (!child) {
+        serial_write("[TASK] ERROR: Failed to allocate child task\n");
+        return NULL;
+    }
+    
+    child->pid = next_pid++;
+    strcpy_safe(child->name, current_task->name, sizeof(child->name));
+    child->state = TASK_READY;
+    child->time_slice = current_task->time_slice;
+    child->priority = current_task->priority;
+    child->is_kernel = current_task->is_kernel;
+    child->cpu_time = 0;
+    child->creation_time = pit_get_ticks();
+    child->next = NULL;
+    
+    child->kernel_stack = kmalloc(KERNEL_STACK_SIZE);
+    if (!child->kernel_stack) {
+        serial_write("[TASK] ERROR: Failed to allocate kernel stack for child\n");
+        kfree(child);
+        return NULL;
+    }
+    child->stack_size = KERNEL_STACK_SIZE;
+    
+    if (current_task->is_kernel) {
+        child->user_stack = NULL;
+        child->page_dir = NULL;
+        child->cr3_phys = 0;
+        __asm__ volatile("mov %%cr3, %0" : "=r"(child->context.cr3));
+    } else {
+        if (current_task->user_stack) {
+            child->user_stack = kmalloc(USER_STACK_SIZE);
+            if (!child->user_stack) {
+                serial_write("[TASK] ERROR: Failed to allocate user stack for child\n");
+                kfree(child->kernel_stack);
+                kfree(child);
+                return NULL;
+            }
+            for (size_t i = 0; i < USER_STACK_SIZE; i++) {
+                ((char*)child->user_stack)[i] = ((char*)current_task->user_stack)[i];
+            }
+        } else {
+            child->user_stack = NULL;
+        }
+        
+        child->page_dir = current_task->page_dir;
+        child->cr3_phys = current_task->cr3_phys;
+        child->context.cr3 = current_task->context.cr3;
+    }
+    
+    child->context.rax = 0;
+    child->context.rbx = current_task->context.rbx;
+    child->context.rcx = current_task->context.rcx;
+    child->context.rdx = current_task->context.rdx;
+    child->context.rsi = current_task->context.rsi;
+    child->context.rdi = current_task->context.rdi;
+    child->context.rbp = current_task->context.rbp;
+    child->context.r8  = current_task->context.r8;
+    child->context.r9  = current_task->context.r9;
+    child->context.r10 = current_task->context.r10;
+    child->context.r11 = current_task->context.r11;
+    child->context.r12 = current_task->context.r12;
+    child->context.r13 = current_task->context.r13;
+    child->context.r14 = current_task->context.r14;
+    child->context.r15 = current_task->context.r15;
+    child->context.rip = current_task->context.rip;
+    child->context.rflags = current_task->context.rflags;
+    child->context.cs = current_task->context.cs;
+    child->context.ss = current_task->context.ss;
+    child->context.rsp = (uint64_t)child->kernel_stack + KERNEL_STACK_SIZE;
+    
+    scheduler_add_task(child);
+    
+    serial_write("[TASK] Forked task ");
+    serial_write_dec(child->pid);
+    serial_write(" from task ");
+    serial_write_dec(current_task->pid);
+    serial_write("\n");
+    
+    return child;
+}
