@@ -1,7 +1,7 @@
 #ifndef KERNEL_STRING_H
 #define KERNEL_STRING_H
 
-#include <kernel/stdint.h>
+#include "stdint.h"
 
 void* memset(void* s, int c, size_t n);
 void* memcpy(void* dest, const void* src, size_t n);
