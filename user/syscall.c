@@ -3,12 +3,10 @@
 long syscall0(long n) {
     long ret;
     __asm__ volatile(
-        "mov %1, %%rax;"
-        "int $0x80;"
-        "mov %%rax, %0;"
-        : "=r"(ret)
-        : "r"(n)
-        : "rax", "rdi", "rsi", "rdx", "memory"
+        "syscall"
+        : "=a"(ret)
+        : "a"(n)
+        : "rcx", "r11", "memory"
     );
     return ret;
 }
@@ -16,13 +14,10 @@ long syscall0(long n) {
 long syscall1(long n, long a1) {
     long ret;
     __asm__ volatile(
-        "mov %1, %%rax;"
-        "mov %2, %%rdi;"
-        "int $0x80;"
-        "mov %%rax, %0;"
-        : "=r"(ret)
-        : "r"(n), "r"(a1)
-        : "rax", "rdi", "rsi", "rdx", "memory"
+        "syscall"
+        : "=a"(ret)
+        : "a"(n), "D"(a1)
+        : "rcx", "r11", "memory"
     );
     return ret;
 }
@@ -30,14 +25,10 @@ long syscall1(long n, long a1) {
 long syscall2(long n, long a1, long a2) {
     long ret;
     __asm__ volatile(
-        "mov %1, %%rax;"
-        "mov %2, %%rdi;"
-        "mov %3, %%rsi;"
-        "int $0x80;"
-        "mov %%rax, %0;"
-        : "=r"(ret)
-        : "r"(n), "r"(a1), "r"(a2)
-        : "rax", "rdi", "rsi", "rdx", "memory"
+        "syscall"
+        : "=a"(ret)
+        : "a"(n), "D"(a1), "S"(a2)
+        : "rcx", "r11", "memory"
     );
     return ret;
 }
@@ -45,15 +36,35 @@ long syscall2(long n, long a1, long a2) {
 long syscall3(long n, long a1, long a2, long a3) {
     long ret;
     __asm__ volatile(
-        "mov %1, %%rax;"
-        "mov %2, %%rdi;"
-        "mov %3, %%rsi;"
-        "mov %4, %%rdx;"
-        "int $0x80;"
-        "mov %%rax, %0;"
-        : "=r"(ret)
-        : "r"(n), "r"(a1), "r"(a2), "r"(a3)
-        : "rax", "rdi", "rsi", "rdx", "memory"
+        "syscall"
+        : "=a"(ret)
+        : "a"(n), "D"(a1), "S"(a2), "d"(a3)
+        : "rcx", "r11", "memory"
+    );
+    return ret;
+}
+
+long syscall4(long n, long a1, long a2, long a3, long a4) {
+    long ret;
+    register long r10 __asm__("r10") = a4;
+    __asm__ volatile(
+        "syscall"
+        : "=a"(ret)
+        : "a"(n), "D"(a1), "S"(a2), "d"(a3), "r"(r10)
+        : "rcx", "r11", "memory"
+    );
+    return ret;
+}
+
+long syscall5(long n, long a1, long a2, long a3, long a4, long a5) {
+    long ret;
+    register long r10 __asm__("r10") = a4;
+    register long r8 __asm__("r8") = a5;
+    __asm__ volatile(
+        "syscall"
+        : "=a"(ret)
+        : "a"(n), "D"(a1), "S"(a2), "d"(a3), "r"(r10), "r"(r8)
+        : "rcx", "r11", "memory"
     );
     return ret;
 }

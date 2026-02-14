@@ -26,12 +26,18 @@ align 4096
 global p4_table
 global p3_table
 global p2_table
+global p3_table_higher
+global p2_tables_higher
 p4_table:
     resb 4096
 p3_table:
     resb 4096
 p2_table:
     resb 4096
+p3_table_higher:
+    resb 4096
+p2_tables_higher:
+    resb 4096 * 4
 
 section .text
 bits 32
@@ -94,28 +100,56 @@ check_long_mode:
     hlt
 
 setup_page_tables:
-    mov edi, p4_table
-    mov ecx, 3072
-    xor eax, eax
-    rep stosd
-    
     mov eax, p3_table
     or eax, 0b11
     mov [p4_table], eax
+    
+    mov eax, p3_table_higher
+    or eax, 0b11
+    mov [p4_table + 256 * 8], eax
     
     mov eax, p2_table
     or eax, 0b11
     mov [p3_table], eax
     
     mov ecx, 0
-.map_p2:
+.map_p2_identity:
     mov eax, 0x200000
-    mul ecx
+    mov edx, ecx
+    mul edx
     or eax, 0b10000011
     mov [p2_table + ecx * 8], eax
     inc ecx
     cmp ecx, 512
-    jne .map_p2
+    jne .map_p2_identity
+    
+    mov eax, p2_tables_higher
+    or eax, 0b11
+    mov [p3_table_higher], eax
+    
+    mov eax, p2_tables_higher + 4096
+    or eax, 0b11
+    mov [p3_table_higher + 8], eax
+    
+    mov eax, p2_tables_higher + 8192
+    or eax, 0b11
+    mov [p3_table_higher + 16], eax
+    
+    mov eax, p2_tables_higher + 12288
+    or eax, 0b11
+    mov [p3_table_higher + 24], eax
+    
+    mov ecx, 0
+.map_p2_higher:
+    mov eax, 0x200000
+    mov edx, ecx
+    mul edx
+    or eax, 0b10000011
+    mov [p2_tables_higher + ecx * 8], eax
+    inc ecx
+    cmp ecx, 2048
+    jne .map_p2_higher
+    
     ret
 
 enable_paging:

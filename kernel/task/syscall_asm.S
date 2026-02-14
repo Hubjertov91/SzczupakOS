@@ -3,44 +3,59 @@ section .text
 
 extern syscall_handler
 global syscall_handler_asm
+global syscall_kernel_rsp
+
+section .bss
+syscall_user_rsp:   resq 1
+syscall_kernel_rsp: resq 1
+
+section .text
 
 syscall_handler_asm:
-    cli
-    
+    mov [rel syscall_user_rsp], rsp
+    mov rsp, [rel syscall_kernel_rsp]
+
+    push qword [rel syscall_user_rsp]
+    push r11
+    push rcx
+
     push r15
     push r14
     push r13
     push r12
-    push r11
+    push rbp
+    push rbx
     push r10
     push r9
     push r8
-    push rbp
     push rdi
     push rsi
     push rdx
-    push rcx
-    push rbx
     push rax
-    
+
+    sti
+
     mov rdi, rsp
     call syscall_handler
-    
+
+    cli
+
     pop rax
-    pop rbx
-    pop rcx
     pop rdx
     pop rsi
     pop rdi
-    pop rbp
     pop r8
     pop r9
     pop r10
-    pop r11
+    pop rbx
+    pop rbp
     pop r12
     pop r13
     pop r14
     pop r15
-    
-    sti
-    iretq
+
+    pop rcx
+    pop r11
+    pop rsp
+
+    o64 sysret

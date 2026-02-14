@@ -18,6 +18,7 @@ extern void scheduler_add_task(task_t* task);
 extern void scheduler_remove_task(task_t* task);
 extern void schedule(void);
 extern uint64_t pit_get_ticks(void);
+extern void usermode_entry(void);
 
 static void strcpy_safe(char* dst, const char* src, size_t max) {
     if (!dst || !src || max == 0) return;
@@ -52,10 +53,14 @@ void task_init(void) {
     current_task->cpu_time = 0;
     current_task->creation_time = 0;
 
-    uint64_t cr3;
-    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
-    current_task->context.cr3 = cr3;
-    current_task->cr3_phys = cr3;
+    current_task->context.r15 = 0;
+    current_task->context.r14 = 0;
+    current_task->context.r13 = 0;
+    current_task->context.r12 = 0;
+    current_task->context.rbp = 0;
+    current_task->context.rbx = 0;
+    current_task->context.kernel_rsp = 0;
+    current_task->context.cr3 = 0;
 
     task_list_head = current_task;
     serial_write("[TASK] Idle task initialized\n");
@@ -95,27 +100,24 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     task->user_stack = NULL;
     task->next = NULL;
 
-    task->context.rax = 0;
-    task->context.rbx = 0;
-    task->context.rcx = 0;
-    task->context.rdx = 0;
-    task->context.rsi = 0;
-    task->context.rdi = 0;
-    task->context.rbp = 0;
-    task->context.r8  = 0;
-    task->context.r9  = 0;
-    task->context.r10 = 0;
-    task->context.r11 = 0;
-    task->context.r12 = 0;
-    task->context.r13 = 0;
-    task->context.r14 = 0;
+    uint64_t* kstack = (uint64_t*)((uint64_t)task->kernel_stack + KERNEL_STACK_SIZE);
+    
+    *(--kstack) = (uint64_t)entry_point;
+    *(--kstack) = 0;
+    *(--kstack) = 0;
+    *(--kstack) = 0;
+    *(--kstack) = 0;
+    *(--kstack) = 0;
+    *(--kstack) = 0;
+
     task->context.r15 = 0;
-    task->context.rip    = (uint64_t)entry_point;
-    task->context.rflags = 0x202;
-    task->context.cs     = 0x08;
-    task->context.ss     = 0x10;
-    task->context.rsp    = (uint64_t)task->kernel_stack + KERNEL_STACK_SIZE;
-    task->context.cr3    = 0;
+    task->context.r14 = 0;
+    task->context.r13 = 0;
+    task->context.r12 = 0;
+    task->context.rbp = 0;
+    task->context.rbx = 0;
+    task->context.kernel_rsp = (uint64_t)kstack;
+    task->context.cr3 = 0;
 
     scheduler_add_task(task);
     return task;
@@ -123,13 +125,13 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
 
 task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
     if (!name || !elf_data || !elf_size) {
-        serial_write("[TASK] ERROR: Invalid parameters to task_create_user\n");
+        serial_write("[TASK] ERROR: Invalid parameters\n");
         return NULL;
     }
     
     task_t* task = (task_t*)kmalloc(sizeof(task_t));
     if (!task) {
-        serial_write("[TASK] ERROR: Failed to allocate user task structure\n");
+        serial_write("[TASK] ERROR: Failed to allocate task\n");
         return NULL;
     }
 
@@ -143,98 +145,110 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
     task->cpu_time = 0;
     task->creation_time = pit_get_ticks();
 
-    task->kernel_stack = kmalloc(KERNEL_STACK_SIZE);
+    task->kernel_stack = vmm_alloc_pages(KERNEL_STACK_SIZE / PAGE_SIZE);
     if (!task->kernel_stack) {
-        serial_write("[TASK] ERROR: Failed to allocate kernel stack for user task\n");
+        serial_write("[TASK] ERROR: Failed to allocate kernel stack\n");
         kfree(task);
         return NULL;
     }
+    task->stack_size = KERNEL_STACK_SIZE;
 
     task->page_dir = vmm_create_address_space();
     if (!task->page_dir) {
-        serial_write("[TASK] ERROR: Failed to create user address space\n");
-        kfree(task->kernel_stack);
+        serial_write("[TASK] ERROR: Failed to create address space\n");
+        vmm_free_pages(task->kernel_stack, KERNEL_STACK_SIZE / PAGE_SIZE);
         kfree(task);
         return NULL;
     }
     task->cr3_phys = task->page_dir->pml4_phys;
 
-    serial_write("[TASK] CR3 physical: 0x");
-    serial_write_hex(task->cr3_phys);
-    serial_write("\n");
-
     uint64_t entry = elf_load(task, elf_data, elf_size);
     if (!entry) {
         serial_write("[TASK] ELF loading failed\n");
-        kfree(task->kernel_stack);
+        vmm_destroy_address_space(task->page_dir);
+        vmm_free_pages(task->kernel_stack, KERNEL_STACK_SIZE / PAGE_SIZE);
         kfree(task);
         return NULL;
     }
 
-    serial_write("[TASK] Entry point: 0x");
-    serial_write_hex(entry);
-    serial_write("\n");
-
     uint64_t stack_top = 0x20000000;
     task->user_stack = (void*)stack_top;
-    task->stack_size = USER_STACK_SIZE;
 
     for (uint64_t offset = 0; offset < USER_STACK_SIZE; offset += 4096) {
         uint64_t page_vaddr = stack_top - USER_STACK_SIZE + offset;
         uint64_t phys = pmm_alloc_page();
         if (!phys) {
             serial_write("[TASK] Failed to allocate stack page\n");
-            kfree(task->kernel_stack);
+            vmm_destroy_address_space(task->page_dir);
+            vmm_free_pages(task->kernel_stack, KERNEL_STACK_SIZE / PAGE_SIZE);
             kfree(task);
             return NULL;
         }
 
-        serial_write("[TASK] Mapping stack page 0x");
-        serial_write_hex(page_vaddr);
-        serial_write(" -> 0x");
-        serial_write_hex(phys);
-        serial_write("\n");
-
         if (!vmm_map_user_page(task->page_dir, page_vaddr, phys, PAGE_PRESENT | PAGE_WRITE)) {
             serial_write("[TASK] Failed to map stack page\n");
-            kfree(task->kernel_stack);
+            vmm_destroy_address_space(task->page_dir);
+            vmm_free_pages(task->kernel_stack, KERNEL_STACK_SIZE / PAGE_SIZE);
             kfree(task);
             return NULL;
         }
     }
 
-    task->context.rax = 0;
-    task->context.rbx = 0;
-    task->context.rcx = 0;
-    task->context.rdx = 0;
-    task->context.rsi = 0;
-    task->context.rdi = 0;
-    task->context.rbp = 0;
-    task->context.r8  = 0;
-    task->context.r9  = 0;
-    task->context.r10 = 0;
-    task->context.r11 = 0;
-    task->context.r12 = 0;
-    task->context.r13 = 0;
-    task->context.r14 = 0;
-    task->context.r15 = 0;
-    task->context.rip    = entry;
-    task->context.rsp    = stack_top;
-    task->context.rflags = 0x202;
-    task->context.cs     = 0x1B;
-    task->context.ss     = 0x23;
-    task->context.cr3    = task->cr3_phys;
+    uint64_t* kstack = (uint64_t*)((uint64_t)task->kernel_stack + KERNEL_STACK_SIZE);
+    
+    serial_write("[TASK] Setting up stack, initial kstack=0x");
+    serial_write_hex((uint64_t)kstack);
+    serial_write("\n");
+    
+    *(--kstack) = 0x23;
+    *(--kstack) = stack_top - 16;
+    *(--kstack) = 0x202;
+    *(--kstack) = 0x1B;
+    *(--kstack) = entry;
+    
+    serial_write("[TASK] IRET frame setup, kstack=0x");
+    serial_write_hex((uint64_t)kstack);
+    serial_write("\n");
+    
+    serial_write("[TASK] usermode_entry addr=0x");
+    serial_write_hex((uint64_t)usermode_entry);
+    serial_write("\n");
+    
+    *(--kstack) = (uint64_t)usermode_entry;
+    
+    serial_write("[TASK] After return addr, kstack=0x");
+    serial_write_hex((uint64_t)kstack);
+    serial_write(" value=0x");
+    serial_write_hex(*kstack);
+    serial_write("\n");
+    
+    *(--kstack) = 0;
+    *(--kstack) = 0;
+    *(--kstack) = 0;
+    *(--kstack) = 0;
+    *(--kstack) = 0;
+    *(--kstack) = 0;
 
-    serial_write("[TASK] CS=0x");
-    serial_write_hex(task->context.cs);
-    serial_write(" SS=0x");
-    serial_write_hex(task->context.ss);
-    serial_write(" CR3=0x");
+    serial_write("[TASK] Final kstack=0x");
+    serial_write_hex((uint64_t)kstack);
+    serial_write("\n");
+
+    task->context.r15 = 0;
+    task->context.r14 = 0;
+    task->context.r13 = 0;
+    task->context.r12 = 0;
+    task->context.rbp = 0;
+    task->context.rbx = 0;
+    task->context.kernel_rsp = (uint64_t)kstack;
+    task->context.cr3 = task->cr3_phys;
+
+    serial_write("[TASK] Context: rsp=0x");
+    serial_write_hex(task->context.kernel_rsp);
+    serial_write(" cr3=0x");
     serial_write_hex(task->context.cr3);
     serial_write("\n");
 
     scheduler_add_task(task);
-
     return task;
 }
 
@@ -311,7 +325,6 @@ task_t* task_fork(void) {
         child->user_stack = NULL;
         child->page_dir = NULL;
         child->cr3_phys = 0;
-        __asm__ volatile("mov %%cr3, %0" : "=r"(child->context.cr3));
     } else {
         if (current_task->user_stack) {
             child->user_stack = kmalloc(USER_STACK_SIZE);
@@ -330,29 +343,15 @@ task_t* task_fork(void) {
         
         child->page_dir = current_task->page_dir;
         child->cr3_phys = current_task->cr3_phys;
-        child->context.cr3 = current_task->context.cr3;
     }
     
-    child->context.rax = 0;
-    child->context.rbx = current_task->context.rbx;
-    child->context.rcx = current_task->context.rcx;
-    child->context.rdx = current_task->context.rdx;
-    child->context.rsi = current_task->context.rsi;
-    child->context.rdi = current_task->context.rdi;
-    child->context.rbp = current_task->context.rbp;
-    child->context.r8  = current_task->context.r8;
-    child->context.r9  = current_task->context.r9;
-    child->context.r10 = current_task->context.r10;
-    child->context.r11 = current_task->context.r11;
-    child->context.r12 = current_task->context.r12;
-    child->context.r13 = current_task->context.r13;
-    child->context.r14 = current_task->context.r14;
-    child->context.r15 = current_task->context.r15;
-    child->context.rip = current_task->context.rip;
-    child->context.rflags = current_task->context.rflags;
-    child->context.cs = current_task->context.cs;
-    child->context.ss = current_task->context.ss;
-    child->context.rsp = (uint64_t)child->kernel_stack + KERNEL_STACK_SIZE;
+    child->context.r15 = 0;
+    child->context.r14 = 0;
+    child->context.r13 = 0;
+    child->context.r12 = 0;
+    child->context.rbp = 0;
+    child->context.rbx = 0;
+    child->context.kernel_rsp = (uint64_t)child->kernel_stack + KERNEL_STACK_SIZE;
     
     scheduler_add_task(child);
     

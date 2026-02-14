@@ -1,16 +1,23 @@
 bits 64
 section .text
 
-extern main
 global _start
 
 _start:
+    mov ax, 0x23
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    
     xor rbp, rbp
     
+    extern main
     call main
     
     mov rdi, rax
-    int 0x80
+    mov rax, 6
+    syscall
     
 .hang:
     hlt

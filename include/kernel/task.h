@@ -15,16 +15,15 @@ typedef enum {
 } task_state_t;
 
 typedef struct {
-    uint64_t rax, rbx, rcx, rdx;
-    uint64_t rsi, rdi, rbp, rsp;
-    uint64_t r8, r9, r10, r11;
-    uint64_t r12, r13, r14, r15;
-    uint64_t rip;
-    uint64_t rflags;
-    uint64_t cs, ss;
-    uint64_t _pad[18];
+    uint64_t r15;
+    uint64_t r14;
+    uint64_t r13;
+    uint64_t r12;
+    uint64_t rbp;
+    uint64_t rbx;
+    uint64_t kernel_rsp;
     uint64_t cr3;
-} cpu_context_t;
+} __attribute__((packed)) cpu_context_t;
 
 typedef struct task {
     uint32_t pid;

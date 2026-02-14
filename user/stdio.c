@@ -43,9 +43,12 @@ static int write_hex(unsigned long val, int upper) {
 }
 
 int printf(const char* fmt, ...) {
+    static char buffer[1024];
+    int buf_pos = 0;
+    
     va_list ap;
     va_start(ap, fmt);
-    int total = 0;
+    
     for (const char* p = fmt; *p; p++) {
         if (*p == '%') {
             p++;
@@ -58,40 +61,61 @@ int printf(const char* fmt, ...) {
                 long val = is_long ? va_arg(ap, long) : (long)va_arg(ap, int);
                 char num[32];
                 itoa(val, num);
-                total += write_str(num);
+                for (char* n = num; *n; n++) {
+                    if (buf_pos < 1023) buffer[buf_pos++] = *n;
+                }
             } else if (*p == 'u') {
                 unsigned long val = is_long ? va_arg(ap, unsigned long) : (unsigned long)va_arg(ap, unsigned int);
                 char num[32];
                 uitoa(val, num);
-                total += write_str(num);
-            } else if (*p == 'x') {
+                for (char* n = num; *n; n++) {
+                    if (buf_pos < 1023) buffer[buf_pos++] = *n;
+                }
+            } else if (*p == 'x' || *p == 'X') {
                 unsigned long val = is_long ? va_arg(ap, unsigned long) : (unsigned long)va_arg(ap, unsigned int);
-                total += write_hex(val, 0);
-            } else if (*p == 'X') {
-                unsigned long val = is_long ? va_arg(ap, unsigned long) : (unsigned long)va_arg(ap, unsigned int);
-                total += write_hex(val, 1);
+                char hex[32];
+                int i = 0;
+                if (val == 0) {
+                    hex[i++] = '0';
+                } else {
+                    char tmp[32];
+                    int j = 0;
+                    while (val > 0) {
+                        int d = val & 0xf;
+                        if (d < 10)
+                            tmp[j++] = '0' + d;
+                        else
+                            tmp[j++] = ((*p == 'X') ? 'A' : 'a') + (d - 10);
+                        val >>= 4;
+                    }
+                    while (j--) hex[i++] = tmp[j];
+                }
+                for (int k = 0; k < i; k++) {
+                    if (buf_pos < 1023) buffer[buf_pos++] = hex[k];
+                }
             } else if (*p == 'c') {
                 char c = (char)va_arg(ap, int);
-                sys_write(&c, 1);
-                total += 1;
+                if (buf_pos < 1023) buffer[buf_pos++] = c;
             } else if (*p == 's') {
                 char* s = va_arg(ap, char*);
-                total += write_str(s);
+                while (*s) {
+                    if (buf_pos < 1023) buffer[buf_pos++] = *s++;
+                }
             } else if (*p == '%') {
-                sys_write("%", 1);
-                total += 1;
-            } else {
-                sys_write("%", 1);
-                sys_write(p, 1);
-                total += 2;
+                if (buf_pos < 1023) buffer[buf_pos++] = '%';
             }
         } else {
-            sys_write(p, 1);
-            total += 1;
+            if (buf_pos < 1023) buffer[buf_pos++] = *p;
         }
     }
+    
     va_end(ap);
-    return total;
+    
+    if (buf_pos > 0) {
+        sys_write(buffer, buf_pos);
+    }
+    
+    return buf_pos;
 }
 
 char* fgets(char* buf, int n, FILE* f) {

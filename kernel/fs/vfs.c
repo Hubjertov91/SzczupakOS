@@ -5,14 +5,6 @@
 
 static vfs_node_t* vfs_root = NULL;
 
-/**
- * strcmp - Compare two strings
- * @s1: First string
- * @s2: Second string
- *
- * Return: 0 if equal, <0 if s1<s2, >0 if s1>s2
- * Standard C library function implementation.
- */
 static int strcmp(const char* s1, const char* s2) {
     if (!s1 || !s2) return -1;
     
@@ -23,11 +15,6 @@ static int strcmp(const char* s1, const char* s2) {
     return *(unsigned char*)s1 - *(unsigned char*)s2;
 }
 
-/**
- * vfs_init - Initialize virtual filesystem
- *
- * Sets up VFS layer. Must be called before any filesystem operations.
- */
 void vfs_init(void) {
     vfs_root = NULL;
     serial_write("[VFS] Initialized\n");

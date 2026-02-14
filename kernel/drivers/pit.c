@@ -35,6 +35,8 @@ void pit_handler(void) {
     system_ticks++;
     pic_send_eoi(0);
     schedule();
+    
+    
 }
 
 uint64_t pit_get_ticks(void) {

@@ -4,11 +4,11 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
-ALIGN_DOWN	kernel/mm/pmm.c	13;"	d	file:
-ALIGN_DOWN	kernel/mm/vmm.c	14;"	d	file:
-ALIGN_UP	kernel/loader/elf.c	19;"	d	file:
-ALIGN_UP	kernel/mm/pmm.c	12;"	d	file:
-ALIGN_UP	kernel/mm/vmm.c	15;"	d	file:
+ALIGN_DOWN	kernel/mm/pmm.c	18;"	d	file:
+ALIGN_DOWN	kernel/mm/vmm.c	13;"	d	file:
+ALIGN_UP	kernel/loader/elf.c	20;"	d	file:
+ALIGN_UP	kernel/mm/pmm.c	17;"	d	file:
+ALIGN_UP	kernel/mm/vmm.c	14;"	d	file:
 ARCH	kernel/arch/x86_64/boot.S	/^ARCH     equ 0$/;"	d
 AS	Makefile	/^AS = nasm$/;"	m
 ASFLAGS	Makefile	/^ASFLAGS = -f elf64$/;"	m
@@ -31,8 +31,9 @@ ATA_SECONDARY_IO	kernel/drivers/ata.c	7;"	d	file:
 ATA_STATUS_BSY	kernel/drivers/ata.c	24;"	d	file:
 ATA_STATUS_DRQ	kernel/drivers/ata.c	25;"	d	file:
 ATA_STATUS_ERR	kernel/drivers/ata.c	26;"	d	file:
-BITMAP_SIZE	kernel/mm/pmm.c	16;"	d	file:
+BITMAP_SIZE	kernel/mm/pmm.c	20;"	d	file:
 BOOT_H	include/kernel/boot.h	2;"	d
+BUDDY_MAX_ORDER	kernel/mm/pmm.c	21;"	d	file:
 BUFFER_SIZE	user/programs/cat.c	6;"	d	file:
 BUILD_DIR	Makefile	/^BUILD_DIR = build$/;"	m
 CC	Makefile	/^CC = gcc$/;"	m
@@ -42,6 +43,22 @@ COLOR_DIR	user/programs/ls.c	6;"	d	file:
 COLOR_RESET	user/programs/ls.c	7;"	d	file:
 COM1	kernel/drivers/serial.c	5;"	d	file:
 DISK_IMG	Makefile	/^DISK_IMG = disk.img$/;"	m
+E2BIG	include/kernel/errno.h	10;"	d
+EACCES	include/kernel/errno.h	16;"	d
+EAGAIN	include/kernel/errno.h	14;"	d
+EBADF	include/kernel/errno.h	12;"	d
+EBUSY	include/kernel/errno.h	19;"	d
+ECHILD	include/kernel/errno.h	13;"	d
+EDOM	include/kernel/errno.h	36;"	d
+EEXIST	include/kernel/errno.h	20;"	d
+EFAULT	include/kernel/errno.h	17;"	d
+EFAULT	kernel/mm/uaccess.c	15;"	d	file:
+EFBIG	include/kernel/errno.h	30;"	d
+EINTR	include/kernel/errno.h	7;"	d
+EINVAL	include/kernel/errno.h	25;"	d
+EINVAL	kernel/mm/uaccess.c	16;"	d	file:
+EIO	include/kernel/errno.h	8;"	d
+EISDIR	include/kernel/errno.h	24;"	d
 EI_NIDENT	include/kernel/elf.h	7;"	d
 ELFCLASS64	include/kernel/elf.h	40;"	d
 ELFDATA2LSB	include/kernel/elf.h	41;"	d
@@ -49,17 +66,39 @@ ELFMAG0	include/kernel/elf.h	36;"	d
 ELFMAG1	include/kernel/elf.h	37;"	d
 ELFMAG2	include/kernel/elf.h	38;"	d
 ELFMAG3	include/kernel/elf.h	39;"	d
+EMFILE	include/kernel/errno.h	27;"	d
+EMLINK	include/kernel/errno.h	34;"	d
+ENFILE	include/kernel/errno.h	26;"	d
+ENODEV	include/kernel/errno.h	22;"	d
+ENOENT	include/kernel/errno.h	5;"	d
+ENOEXEC	include/kernel/errno.h	11;"	d
+ENOMEM	include/kernel/errno.h	15;"	d
+ENOSPC	include/kernel/errno.h	31;"	d
+ENOTBLK	include/kernel/errno.h	18;"	d
+ENOTDIR	include/kernel/errno.h	23;"	d
+ENOTTY	include/kernel/errno.h	28;"	d
+ENXIO	include/kernel/errno.h	9;"	d
+EPERM	include/kernel/errno.h	4;"	d
+EPIPE	include/kernel/errno.h	35;"	d
+ERANGE	include/kernel/errno.h	37;"	d
+EROFS	include/kernel/errno.h	33;"	d
+ESPIPE	include/kernel/errno.h	32;"	d
+ESRCH	include/kernel/errno.h	6;"	d
+ETXTBSY	include/kernel/errno.h	29;"	d
 ET_EXEC	include/kernel/elf.h	43;"	d
 EV_CURRENT	include/kernel/elf.h	42;"	d
+EXDEV	include/kernel/errno.h	21;"	d
 Elf64_Ehdr	include/kernel/elf.h	/^} Elf64_Ehdr;$/;"	t	typeref:struct:__anon8
 Elf64_Phdr	include/kernel/elf.h	/^} Elf64_Phdr;$/;"	t	typeref:struct:__anon9
+FAST_COPY_THRESHOLD	kernel/mm/uaccess.c	13;"	d	file:
 FAT16_MAX_FILENAME	kernel/fs/fat16.c	8;"	d	file:
 FAT16_SECTOR_SIZE	kernel/fs/fat16.c	7;"	d	file:
 FILE	user/include/stdio.h	/^typedef struct { int dummy; } FILE;$/;"	t	typeref:struct:__anon7
 GDT_ENTRIES	kernel/task/gdt.c	19;"	d	file:
 HEADER_LEN	kernel/arch/x86_64/boot.S	/^HEADER_LEN equ header_end - header_start$/;"	d
-HEAP_INITIAL_SIZE	kernel/mm/heap.c	8;"	d	file:
-HEAP_MAGIC	kernel/mm/heap.c	7;"	d	file:
+HEAP_MAGIC	kernel/mm/heap.c	8;"	d	file:
+HEAP_MIN_SIZE	kernel/mm/heap.c	10;"	d	file:
+HEAP_PAGES	kernel/mm/heap.c	11;"	d	file:
 ICW1_ICW4	include/drivers/pic.h	12;"	d
 ICW1_INIT	include/drivers/pic.h	11;"	d
 ICW4_8086	include/drivers/pic.h	13;"	d
@@ -105,9 +144,11 @@ ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 5$/;"	l
 ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 6$/;"	l
 ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 7$/;"	l
 ISR_NOERRCODE	kernel/arch/x86_64/interrupt_asm.S	/^ISR_NOERRCODE 9$/;"	l
+KERNEL_ERRNO_H	include/kernel/errno.h	2;"	d
 KERNEL_OBJS	Makefile	/^KERNEL_OBJS = $(OBJ_DIR)\/kernel\/arch\/x86_64\/boot.o \\$/;"	m
 KERNEL_STACK_SIZE	kernel/task/scheduler.c	10;"	d	file:
 KERNEL_STACK_SIZE	kernel/task/task.c	10;"	d	file:
+KERNEL_STRING_H	include/kernel/string.h	2;"	d
 KEYBOARD_DATA_PORT	kernel/drivers/keyboard.c	7;"	d	file:
 KEYBOARD_STATUS_PORT	kernel/drivers/keyboard.c	8;"	d	file:
 KEY_BUFFER_SIZE	kernel/drivers/keyboard.c	10;"	d	file:
@@ -119,8 +160,9 @@ MATH_H	user/include/math.h	2;"	d
 MAX_ARGS	user/shell.c	8;"	d	file:
 MAX_CMD_LEN	user/shell.c	7;"	d	file:
 MAX_FILENAME	include/kernel/vfs.h	6;"	d
-MAX_MEMORY_PAGES	kernel/mm/pmm.c	15;"	d	file:
+MAX_MEMORY_PAGES	kernel/mm/pmm.c	19;"	d	file:
 MAX_PATH	include/kernel/vfs.h	7;"	d
+MAX_USER_STRING	kernel/mm/uaccess.c	12;"	d	file:
 MULTIBOOT_MEMORY_AVAILABLE	include/kernel/multiboot2.h	28;"	d
 MULTIBOOT_MEMORY_RESERVED	include/kernel/multiboot2.h	29;"	d
 MULTIBOOT_TAG_TYPE_END	include/kernel/multiboot2.h	25;"	d
@@ -133,14 +175,17 @@ PAGE_CACHE_DISABLE	include/kernel/vmm.h	12;"	d
 PAGE_DIRTY	include/kernel/vmm.h	14;"	d
 PAGE_GLOBAL	include/kernel/vmm.h	16;"	d
 PAGE_HUGE	include/kernel/vmm.h	15;"	d
+PAGE_MASK	kernel/mm/uaccess.c	11;"	d	file:
 PAGE_PRESENT	include/kernel/vmm.h	8;"	d
-PAGE_SIZE	include/kernel/pmm.h	6;"	d
 PAGE_SIZE	include/kernel/vmm.h	6;"	d
+PAGE_SIZE	kernel/mm/heap.c	9;"	d	file:
+PAGE_SIZE	kernel/mm/pmm.c	7;"	d	file:
+PAGE_SIZE	kernel/mm/uaccess.c	10;"	d	file:
 PAGE_USER	include/kernel/vmm.h	10;"	d
 PAGE_WRITE	include/kernel/vmm.h	9;"	d
 PAGE_WRITETHROUGH	include/kernel/vmm.h	11;"	d
-PDP_INDEX	kernel/mm/vmm.c	10;"	d	file:
-PD_INDEX	kernel/mm/vmm.c	11;"	d	file:
+PDP_INDEX	kernel/mm/vmm.c	9;"	d	file:
+PD_INDEX	kernel/mm/vmm.c	10;"	d	file:
 PF_FETCH	include/kernel/pagefault.h	10;"	d
 PF_PRESENT	include/kernel/pagefault.h	6;"	d
 PF_R	include/kernel/elf.h	49;"	d
@@ -156,8 +201,8 @@ PIC2_DATA	include/drivers/pic.h	9;"	d
 PIT_CHANNEL0	kernel/drivers/pit.c	8;"	d	file:
 PIT_COMMAND	kernel/drivers/pit.c	9;"	d	file:
 PIT_FREQUENCY	kernel/drivers/pit.c	10;"	d	file:
-PML4_INDEX	kernel/mm/vmm.c	9;"	d	file:
-PT_INDEX	kernel/mm/vmm.c	12;"	d	file:
+PML4_INDEX	kernel/mm/vmm.c	8;"	d	file:
+PT_INDEX	kernel/mm/vmm.c	11;"	d	file:
 PT_LOAD	include/kernel/elf.h	45;"	d
 SPINLOCK_INIT	include/kernel/spinlock.h	10;"	d
 STDARG_H	user/include/stdarg.h	2;"	d
@@ -200,6 +245,8 @@ UINT8_MAX	user/include/stdint.h	50;"	d
 USER_CFLAGS	Makefile	/^USER_CFLAGS = -m64 -ffreestanding -nostdlib -nostdinc -fno-pie -O0 -I.\/user\/include$/;"	m
 USER_LDFLAGS	Makefile	/^USER_LDFLAGS = -nostdlib -T user\/user.ld$/;"	m
 USER_LIBS	Makefile	/^USER_LIBS = $(OBJ_DIR)\/user\/syscall.o \\$/;"	m
+USER_SPACE_END	kernel/mm/uaccess.c	9;"	d	file:
+USER_SPACE_START	kernel/mm/uaccess.c	8;"	d	file:
 USER_STACK_SIZE	kernel/task/task.c	11;"	d	file:
 VFS_DIRECTORY	include/kernel/vfs.h	/^    VFS_DIRECTORY$/;"	e	enum:__anon10
 VFS_FILE	include/kernel/vfs.h	/^    VFS_FILE,$/;"	e	enum:__anon10
@@ -253,43 +300,21 @@ _STDINT_H_	user/include/stdint.h	2;"	d
 __anon12::lock	include/kernel/spinlock.h	/^    volatile uint32_t lock;$/;"	m	struct:__anon12
 __anon13::irq_state	include/kernel/spinlock.h	/^    uint32_t irq_state;$/;"	m	struct:__anon13
 __anon13::rflags	include/kernel/spinlock.h	/^    uint64_t rflags;$/;"	m	struct:__anon13
-__anon15::_pad	include/kernel/task.h	/^    uint64_t _pad[18];$/;"	m	struct:__anon15
-__anon15::cr3	include/kernel/task.h	/^    uint64_t cr3;$/;"	m	struct:__anon15
-__anon15::cs	include/kernel/task.h	/^    uint64_t cs, ss;$/;"	m	struct:__anon15
-__anon15::r10	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon15
-__anon15::r11	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon15
-__anon15::r12	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon15
-__anon15::r13	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon15
-__anon15::r14	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon15
-__anon15::r15	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon15
-__anon15::r8	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon15
-__anon15::r9	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon15
-__anon15::rax	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon15
-__anon15::rbp	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;$/;"	m	struct:__anon15
-__anon15::rbx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon15
-__anon15::rcx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon15
-__anon15::rdi	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;$/;"	m	struct:__anon15
-__anon15::rdx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon15
-__anon15::rflags	include/kernel/task.h	/^    uint64_t rflags;$/;"	m	struct:__anon15
-__anon15::rip	include/kernel/task.h	/^    uint64_t rip;$/;"	m	struct:__anon15
-__anon15::rsi	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;$/;"	m	struct:__anon15
-__anon15::rsp	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;$/;"	m	struct:__anon15
-__anon15::ss	include/kernel/task.h	/^    uint64_t cs, ss;$/;"	m	struct:__anon15
-__anon16::iomap_base	include/kernel/tss.h	/^    uint16_t iomap_base;$/;"	m	struct:__anon16
-__anon16::ist1	include/kernel/tss.h	/^    uint64_t ist1;$/;"	m	struct:__anon16
-__anon16::ist2	include/kernel/tss.h	/^    uint64_t ist2;$/;"	m	struct:__anon16
-__anon16::ist3	include/kernel/tss.h	/^    uint64_t ist3;$/;"	m	struct:__anon16
-__anon16::ist4	include/kernel/tss.h	/^    uint64_t ist4;$/;"	m	struct:__anon16
-__anon16::ist5	include/kernel/tss.h	/^    uint64_t ist5;$/;"	m	struct:__anon16
-__anon16::ist6	include/kernel/tss.h	/^    uint64_t ist6;$/;"	m	struct:__anon16
-__anon16::ist7	include/kernel/tss.h	/^    uint64_t ist7;$/;"	m	struct:__anon16
-__anon16::reserved0	include/kernel/tss.h	/^    uint32_t reserved0;$/;"	m	struct:__anon16
-__anon16::reserved1	include/kernel/tss.h	/^    uint64_t reserved1;$/;"	m	struct:__anon16
-__anon16::reserved2	include/kernel/tss.h	/^    uint64_t reserved2;$/;"	m	struct:__anon16
-__anon16::reserved3	include/kernel/tss.h	/^    uint16_t reserved3;$/;"	m	struct:__anon16
-__anon16::rsp0	include/kernel/tss.h	/^    uint64_t rsp0;$/;"	m	struct:__anon16
-__anon16::rsp1	include/kernel/tss.h	/^    uint64_t rsp1;$/;"	m	struct:__anon16
-__anon16::rsp2	include/kernel/tss.h	/^    uint64_t rsp2;$/;"	m	struct:__anon16
+__anon15::iomap_base	include/kernel/tss.h	/^    uint16_t iomap_base;$/;"	m	struct:__anon15
+__anon15::ist1	include/kernel/tss.h	/^    uint64_t ist1;$/;"	m	struct:__anon15
+__anon15::ist2	include/kernel/tss.h	/^    uint64_t ist2;$/;"	m	struct:__anon15
+__anon15::ist3	include/kernel/tss.h	/^    uint64_t ist3;$/;"	m	struct:__anon15
+__anon15::ist4	include/kernel/tss.h	/^    uint64_t ist4;$/;"	m	struct:__anon15
+__anon15::ist5	include/kernel/tss.h	/^    uint64_t ist5;$/;"	m	struct:__anon15
+__anon15::ist6	include/kernel/tss.h	/^    uint64_t ist6;$/;"	m	struct:__anon15
+__anon15::ist7	include/kernel/tss.h	/^    uint64_t ist7;$/;"	m	struct:__anon15
+__anon15::reserved0	include/kernel/tss.h	/^    uint32_t reserved0;$/;"	m	struct:__anon15
+__anon15::reserved1	include/kernel/tss.h	/^    uint64_t reserved1;$/;"	m	struct:__anon15
+__anon15::reserved2	include/kernel/tss.h	/^    uint64_t reserved2;$/;"	m	struct:__anon15
+__anon15::reserved3	include/kernel/tss.h	/^    uint16_t reserved3;$/;"	m	struct:__anon15
+__anon15::rsp0	include/kernel/tss.h	/^    uint64_t rsp0;$/;"	m	struct:__anon15
+__anon15::rsp1	include/kernel/tss.h	/^    uint64_t rsp1;$/;"	m	struct:__anon15
+__anon15::rsp2	include/kernel/tss.h	/^    uint64_t rsp2;$/;"	m	struct:__anon15
 __anon1::bytes_per_sector	kernel/fs/fat16.c	/^    uint16_t bytes_per_sector;$/;"	m	struct:__anon1	file:
 __anon1::hidden_sectors	kernel/fs/fat16.c	/^    uint32_t hidden_sectors;$/;"	m	struct:__anon1	file:
 __anon1::jmp	kernel/fs/fat16.c	/^    uint8_t jmp[3];$/;"	m	struct:__anon1	file:
@@ -370,7 +395,7 @@ __anon9::p_paddr	include/kernel/elf.h	/^    uint64_t p_paddr;$/;"	m	struct:__ano
 __anon9::p_type	include/kernel/elf.h	/^    uint32_t p_type;$/;"	m	struct:__anon9
 __anon9::p_vaddr	include/kernel/elf.h	/^    uint64_t p_vaddr;$/;"	m	struct:__anon9
 __bool_true_false_are_defined	user/include/stdbool.h	7;"	d
-_pad	include/kernel/task.h	/^    uint64_t _pad[18];$/;"	m	struct:__anon15
+_padding	include/kernel/task.h	/^    uint64_t _padding;                \/\/ 160$/;"	m	struct:cpu_context
 _start	kernel/arch/x86_64/boot.S	/^_start:$/;"	l
 _start	user/crt0.S	/^_start:$/;"	l
 _stdin	user/stdio.c	/^FILE _stdin = {0};$/;"	v
@@ -400,9 +425,9 @@ base	kernel/task/gdt.c	/^    uint64_t base;$/;"	m	struct:__anon5	file:
 base_high	kernel/task/gdt.c	/^    uint8_t base_high;$/;"	m	struct:__anon4	file:
 base_low	kernel/task/gdt.c	/^    uint16_t base_low;$/;"	m	struct:__anon4	file:
 base_mid	kernel/task/gdt.c	/^    uint8_t base_mid;$/;"	m	struct:__anon4	file:
-bitmap_clear	kernel/mm/pmm.c	/^static inline void bitmap_clear(uint64_t bit) {$/;"	f	file:	signature:(uint64_t bit)
-bitmap_set	kernel/mm/pmm.c	/^static inline void bitmap_set(uint64_t bit) {$/;"	f	file:	signature:(uint64_t bit)
-bitmap_test	kernel/mm/pmm.c	/^static inline bool bitmap_test(uint64_t bit) {$/;"	f	file:	signature:(uint64_t bit)
+bitmap_clear_bit	kernel/mm/pmm.c	/^static inline void bitmap_clear_bit(uint64_t bit) {$/;"	f	file:	signature:(uint64_t bit)
+bitmap_set_bit	kernel/mm/pmm.c	/^static inline void bitmap_set_bit(uint64_t bit) {$/;"	f	file:	signature:(uint64_t bit)
+bitmap_test_bit	kernel/mm/pmm.c	/^static inline bool bitmap_test_bit(uint64_t bit) {$/;"	f	file:	signature:(uint64_t bit)
 bits	kernel/arch/x86_64/boot.S	/^bits 32$/;"	l
 bits	kernel/arch/x86_64/boot.S	/^bits 64$/;"	l
 bits	kernel/arch/x86_64/interrupt_asm.S	/^bits 64$/;"	l
@@ -413,10 +438,17 @@ bits	user/crt0.S	/^bits 64$/;"	l
 bool	include/kernel/stdint.h	/^typedef uint8_t bool;$/;"	t
 bool	include/kernel/vfs.h	/^    bool (*delete)(struct vfs_node* node);$/;"	p	struct:vfs_operations	signature:(struct vfs_node* node)
 bool	user/include/stdbool.h	4;"	d
+buddy_add_block	kernel/mm/pmm.c	/^static void buddy_add_block(uint64_t page, uint32_t order) {$/;"	f	file:	signature:(uint64_t page, uint32_t order)
+buddy_init	kernel/mm/pmm.c	/^static void buddy_init(void) {$/;"	f	file:	signature:(void)
+buddy_remove_block	kernel/mm/pmm.c	/^static uint64_t buddy_remove_block(uint32_t order) {$/;"	f	file:	signature:(uint32_t order)
 bytes_per_sector	kernel/fs/fat16.c	/^    uint16_t bytes_per_sector;$/;"	m	struct:__anon1	file:
 caps_lock	kernel/drivers/keyboard.c	/^static bool caps_lock = false;$/;"	v	file:
 check_cpuid	kernel/arch/x86_64/boot.S	/^check_cpuid:$/;"	l
 check_long_mode	kernel/arch/x86_64/boot.S	/^check_long_mode:$/;"	l
+check_page_permissions	kernel/mm/uaccess.c	/^static inline bool check_page_permissions(page_directory_t* dir, uint64_t virt, bool write) {$/;"	f	file:	signature:(page_directory_t* dir, uint64_t virt, bool write)
+clac	kernel/mm/uaccess.c	/^static inline void clac(void) {$/;"	f	file:	signature:(void)
+clear_user	include/kernel/uaccess.h	/^int clear_user(void* user_dst, size_t size);$/;"	p	signature:(void* user_dst, size_t size)
+clear_user	kernel/mm/uaccess.c	/^int clear_user(void* user_dst, size_t size) {$/;"	f	signature:(void* user_dst, size_t size)
 cluster_high	kernel/fs/fat16.c	/^    uint16_t cluster_high;$/;"	m	struct:__anon2	file:
 cluster_low	kernel/fs/fat16.c	/^    uint16_t cluster_low;$/;"	m	struct:__anon2	file:
 cmd_clear	user/shell.c	/^static void cmd_clear(void) {$/;"	f	file:	signature:(void)
@@ -425,15 +457,37 @@ cmd_exit	user/shell.c	/^static void cmd_exit(void) {$/;"	f	file:	signature:(void
 cmd_help	user/shell.c	/^static void cmd_help(void) {$/;"	f	file:	signature:(void)
 cmd_pid	user/shell.c	/^static void cmd_pid(void) {$/;"	f	file:	signature:(void)
 cmd_uptime	user/shell.c	/^static void cmd_uptime(void) {$/;"	f	file:	signature:(void)
-coalesce_free_blocks	kernel/mm/heap.c	/^static void coalesce_free_blocks(void) {$/;"	f	file:	signature:(void)
 context	include/kernel/task.h	/^    cpu_context_t context;$/;"	m	struct:task
-copy_from_user	include/kernel/uaccess.h	/^bool copy_from_user(void* kernel_dst, const void* user_src, size_t size);$/;"	p	signature:(void* kernel_dst, const void* user_src, size_t size)
-copy_from_user	kernel/mm/uaccess.c	/^bool copy_from_user(void* kernel_dst, const void* user_src, size_t size) {$/;"	f	signature:(void* kernel_dst, const void* user_src, size_t size)
-copy_to_user	include/kernel/uaccess.h	/^bool copy_to_user(void* user_dst, const void* kernel_src, size_t size);$/;"	p	signature:(void* user_dst, const void* kernel_src, size_t size)
-copy_to_user	kernel/mm/uaccess.c	/^bool copy_to_user(void* user_dst, const void* kernel_src, size_t size) {$/;"	f	signature:(void* user_dst, const void* kernel_src, size_t size)
-cpu_context_t	include/kernel/task.h	/^} cpu_context_t;$/;"	t	typeref:struct:__anon15
+copy_from_user	include/kernel/uaccess.h	/^int copy_from_user(void* kernel_dst, const void* user_src, size_t size);$/;"	p	signature:(void* kernel_dst, const void* user_src, size_t size)
+copy_from_user	kernel/mm/uaccess.c	/^int copy_from_user(void* kernel_dst, const void* user_src, size_t size) {$/;"	f	signature:(void* kernel_dst, const void* user_src, size_t size)
+copy_to_user	include/kernel/uaccess.h	/^int copy_to_user(void* user_dst, const void* kernel_src, size_t size);$/;"	p	signature:(void* user_dst, const void* kernel_src, size_t size)
+copy_to_user	kernel/mm/uaccess.c	/^int copy_to_user(void* user_dst, const void* kernel_src, size_t size) {$/;"	f	signature:(void* user_dst, const void* kernel_src, size_t size)
+cpu_context	include/kernel/task.h	/^typedef struct cpu_context {$/;"	s
+cpu_context::_padding	include/kernel/task.h	/^    uint64_t _padding;                \/\/ 160$/;"	m	struct:cpu_context
+cpu_context::cr3	include/kernel/task.h	/^    uint64_t cr3;                     \/\/ 168$/;"	m	struct:cpu_context
+cpu_context::cs	include/kernel/task.h	/^    uint64_t cs;                      \/\/ 144$/;"	m	struct:cpu_context
+cpu_context::r10	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;       \/\/ 56, 64, 72, 80$/;"	m	struct:cpu_context
+cpu_context::r11	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;       \/\/ 56, 64, 72, 80$/;"	m	struct:cpu_context
+cpu_context::r12	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;     \/\/ 88, 96, 104, 112$/;"	m	struct:cpu_context
+cpu_context::r13	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;     \/\/ 88, 96, 104, 112$/;"	m	struct:cpu_context
+cpu_context::r14	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;     \/\/ 88, 96, 104, 112$/;"	m	struct:cpu_context
+cpu_context::r15	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;     \/\/ 88, 96, 104, 112$/;"	m	struct:cpu_context
+cpu_context::r8	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;       \/\/ 56, 64, 72, 80$/;"	m	struct:cpu_context
+cpu_context::r9	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;       \/\/ 56, 64, 72, 80$/;"	m	struct:cpu_context
+cpu_context::rax	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;    \/\/ 0, 8, 16, 24$/;"	m	struct:cpu_context
+cpu_context::rbp	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp;          \/\/ 32, 40, 48$/;"	m	struct:cpu_context
+cpu_context::rbx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;    \/\/ 0, 8, 16, 24$/;"	m	struct:cpu_context
+cpu_context::rcx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;    \/\/ 0, 8, 16, 24$/;"	m	struct:cpu_context
+cpu_context::rdi	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp;          \/\/ 32, 40, 48$/;"	m	struct:cpu_context
+cpu_context::rdx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;    \/\/ 0, 8, 16, 24$/;"	m	struct:cpu_context
+cpu_context::rflags	include/kernel/task.h	/^    uint64_t rflags;                  \/\/ 136$/;"	m	struct:cpu_context
+cpu_context::rip	include/kernel/task.h	/^    uint64_t rip;                     \/\/ 120$/;"	m	struct:cpu_context
+cpu_context::rsi	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp;          \/\/ 32, 40, 48$/;"	m	struct:cpu_context
+cpu_context::rsp	include/kernel/task.h	/^    uint64_t rsp;                     \/\/ 128$/;"	m	struct:cpu_context
+cpu_context::ss	include/kernel/task.h	/^    uint64_t ss;                      \/\/ 152$/;"	m	struct:cpu_context
+cpu_context_t	include/kernel/task.h	/^} cpu_context_t;$/;"	t	typeref:struct:cpu_context
 cpu_time	include/kernel/task.h	/^    uint64_t cpu_time;$/;"	m	struct:task
-cr3	include/kernel/task.h	/^    uint64_t cr3;$/;"	m	struct:__anon15
+cr3	include/kernel/task.h	/^    uint64_t cr3;                     \/\/ 168$/;"	m	struct:cpu_context
 cr3_phys	include/kernel/task.h	/^    uint64_t cr3_phys;$/;"	m	struct:task
 create_date	kernel/fs/fat16.c	/^    uint16_t create_date;$/;"	m	struct:__anon2	file:
 create_dir	include/kernel/vfs.h	/^    struct vfs_node* (*create_dir)(struct vfs_node* parent, const char* name);$/;"	m	struct:vfs_operations	typeref:struct:vfs_operations::create_dir
@@ -441,7 +495,7 @@ create_file	include/kernel/vfs.h	/^    struct vfs_node* (*create_file)(struct vf
 create_time	kernel/fs/fat16.c	/^    uint16_t create_time;$/;"	m	struct:__anon2	file:
 create_time_tenth	kernel/fs/fat16.c	/^    uint8_t create_time_tenth;$/;"	m	struct:__anon2	file:
 creation_time	include/kernel/task.h	/^    uint64_t creation_time;$/;"	m	struct:task
-cs	include/kernel/task.h	/^    uint64_t cs, ss;$/;"	m	struct:__anon15
+cs	include/kernel/task.h	/^    uint64_t cs;                      \/\/ 144$/;"	m	struct:cpu_context
 current_task	kernel/task/task.c	/^static task_t* current_task = NULL;$/;"	v	file:
 data	kernel/fs/tmpfs.c	/^    void* data;$/;"	m	struct:tmpfs_data	file:
 data_start	kernel/fs/fat16.c	/^    uint32_t data_start;$/;"	m	struct:__anon3	file:
@@ -460,11 +514,10 @@ e_shoff	include/kernel/elf.h	/^    uint64_t e_shoff;$/;"	m	struct:__anon8
 e_type	include/kernel/elf.h	/^    uint16_t e_type;$/;"	m	struct:__anon8
 e_version	include/kernel/elf.h	/^    uint32_t e_version;$/;"	m	struct:__anon8
 elf_load	include/kernel/elf.h	/^uint64_t elf_load(task_t* task, uint8_t* buffer, size_t size);$/;"	p	signature:(task_t* task, uint8_t* buffer, size_t size)
-elf_load	kernel/loader/elf.c	/^uint64_t elf_load(task_t* task, uint8_t* buffer, size_t unused_size) {$/;"	f	signature:(task_t* task, uint8_t* buffer, size_t unused_size)
+elf_load	kernel/loader/elf.c	/^uint64_t elf_load(task_t* task, uint8_t* buffer, size_t size) {$/;"	f	signature:(task_t* task, uint8_t* buffer, size_t size)
 elf_validate	include/kernel/elf.h	/^bool elf_validate(Elf64_Ehdr* header);$/;"	p	signature:(Elf64_Ehdr* header)
 elf_validate	kernel/loader/elf.c	/^bool elf_validate(Elf64_Ehdr* header) {$/;"	f	signature:(Elf64_Ehdr* header)
 enable_paging	kernel/arch/x86_64/boot.S	/^enable_paging:$/;"	l
-enter_usermode	kernel/task/switch.S	/^enter_usermode:$/;"	l
 entry_size	include/kernel/multiboot2.h	/^    uint32_t entry_size;$/;"	m	struct:multiboot_tag_mmap
 entry_version	include/kernel/multiboot2.h	/^    uint32_t entry_version;$/;"	m	struct:multiboot_tag_mmap
 exception_handler	kernel/interrupt.c	/^void exception_handler(uint64_t vector, uint64_t error_code, uint64_t rip) {$/;"	f	signature:(uint64_t vector, uint64_t error_code, uint64_t rip)
@@ -478,6 +531,7 @@ factorial	user/include/math.h	/^long factorial(long n);$/;"	p	signature:(long n)
 factorial	user/math.c	/^long factorial(long n) {$/;"	f	signature:(long n)
 false	include/kernel/stdint.h	19;"	d
 false	user/include/stdbool.h	6;"	d
+fast_copy_aligned	kernel/mm/uaccess.c	/^static inline void fast_copy_aligned(uint64_t* dst, const uint64_t* src, size_t qwords) {$/;"	f	file:	signature:(uint64_t* dst, const uint64_t* src, size_t qwords)
 fat16_allocate_cluster	kernel/fs/fat16.c	/^static uint16_t fat16_allocate_cluster(void) {$/;"	f	file:	signature:(void)
 fat16_boot_sector_t	kernel/fs/fat16.c	/^} __attribute__((packed)) fat16_boot_sector_t;$/;"	t	typeref:struct:__anon1	file:
 fat16_create	include/kernel/fat16.h	/^vfs_filesystem_t* fat16_create(void);$/;"	p	signature:(void)
@@ -499,8 +553,14 @@ fat_start	kernel/fs/fat16.c	/^    uint32_t fat_start;$/;"	m	struct:__anon3	file:
 fgets	user/include/stdio.h	/^char* fgets(char* buf, int n, FILE* f);$/;"	p	signature:(char* buf, int n, FILE* f)
 fgets	user/stdio.c	/^char* fgets(char* buf, int n, FILE* f) {$/;"	f	signature:(char* buf, int n, FILE* f)
 file_size	kernel/fs/fat16.c	/^    uint32_t file_size;$/;"	m	struct:__anon2	file:
-find_free_block	kernel/mm/heap.c	/^static heap_block_t* find_free_block(size_t size) {$/;"	f	file:	signature:(size_t size)
 first_child	include/kernel/vfs.h	/^    struct vfs_node* first_child;$/;"	m	struct:vfs_node	typeref:struct:vfs_node::vfs_node
+free	kernel/mm/heap.c	/^    bool free;$/;"	m	struct:heap_block	file:
+free_area	kernel/mm/pmm.c	/^static free_area_t free_area[BUDDY_MAX_ORDER];$/;"	v	file:
+free_area	kernel/mm/pmm.c	/^typedef struct free_area {$/;"	s	file:
+free_area::free_list	kernel/mm/pmm.c	/^    uint64_t* free_list;$/;"	m	struct:free_area	file:
+free_area::nr_free	kernel/mm/pmm.c	/^    uint32_t nr_free;$/;"	m	struct:free_area	file:
+free_area_t	kernel/mm/pmm.c	/^} free_area_t;$/;"	t	typeref:struct:free_area	file:
+free_list	kernel/mm/pmm.c	/^    uint64_t* free_list;$/;"	m	struct:free_area	file:
 free_memory	include/kernel/syscall.h	/^    uint64_t free_memory;$/;"	m	struct:sysinfo
 free_memory	user/include/syscall.h	/^    uint64_t free_memory;$/;"	m	struct:sysinfo
 fs	include/kernel/vfs.h	/^    struct vfs_filesystem* fs;$/;"	m	struct:vfs_node	typeref:struct:vfs_node::vfs_filesystem
@@ -520,8 +580,18 @@ gdt_ptr_t	kernel/task/gdt.c	/^} __attribute__((packed)) gdt_ptr_t;$/;"	t	typeref
 gdt_set_gate	kernel/task/gdt.c	/^static void gdt_set_gate(int num, uint64_t base, uint64_t limit, uint8_t access, uint8_t gran) {$/;"	f	file:	signature:(int num, uint64_t base, uint64_t limit, uint8_t access, uint8_t gran)
 gdt_set_kernel_stack	include/kernel/gdt.h	/^void gdt_set_kernel_stack(uint64_t stack);$/;"	p	signature:(uint64_t stack)
 gdt_set_kernel_stack	kernel/task/gdt.c	/^void gdt_set_kernel_stack(uint64_t stack) {$/;"	f	signature:(uint64_t stack)
+get_buddy	kernel/mm/pmm.c	/^static inline uint64_t get_buddy(uint64_t page, uint32_t order) {$/;"	f	file:	signature:(uint64_t page, uint32_t order)
+get_current_user_dir	kernel/mm/uaccess.c	/^static inline page_directory_t* get_current_user_dir(void) {$/;"	f	file:	signature:(void)
 get_or_create_table	kernel/mm/vmm.c	/^static uint64_t* get_or_create_table(uint64_t* parent, size_t index, uint32_t flags) {$/;"	f	file:	signature:(uint64_t* parent, size_t index, uint32_t flags)
-get_user_dir	kernel/mm/uaccess.c	/^static page_directory_t* get_user_dir(void) {$/;"	f	file:	signature:(void)
+get_order	kernel/mm/pmm.c	/^static inline uint32_t get_order(uint64_t size) {$/;"	f	file:	signature:(uint64_t size)
+get_user_u16	include/kernel/uaccess.h	/^int get_user_u16(uint16_t* kernel_dst, const uint16_t* user_src);$/;"	p	signature:(uint16_t* kernel_dst, const uint16_t* user_src)
+get_user_u16	kernel/mm/uaccess.c	/^int get_user_u16(uint16_t* kernel_dst, const uint16_t* user_src) {$/;"	f	signature:(uint16_t* kernel_dst, const uint16_t* user_src)
+get_user_u32	include/kernel/uaccess.h	/^int get_user_u32(uint32_t* kernel_dst, const uint32_t* user_src);$/;"	p	signature:(uint32_t* kernel_dst, const uint32_t* user_src)
+get_user_u32	kernel/mm/uaccess.c	/^int get_user_u32(uint32_t* kernel_dst, const uint32_t* user_src) {$/;"	f	signature:(uint32_t* kernel_dst, const uint32_t* user_src)
+get_user_u64	include/kernel/uaccess.h	/^int get_user_u64(uint64_t* kernel_dst, const uint64_t* user_src);$/;"	p	signature:(uint64_t* kernel_dst, const uint64_t* user_src)
+get_user_u64	kernel/mm/uaccess.c	/^int get_user_u64(uint64_t* kernel_dst, const uint64_t* user_src) {$/;"	f	signature:(uint64_t* kernel_dst, const uint64_t* user_src)
+get_user_u8	include/kernel/uaccess.h	/^int get_user_u8(uint8_t* kernel_dst, const uint8_t* user_src);$/;"	p	signature:(uint8_t* kernel_dst, const uint8_t* user_src)
+get_user_u8	kernel/mm/uaccess.c	/^int get_user_u8(uint8_t* kernel_dst, const uint8_t* user_src) {$/;"	f	signature:(uint8_t* kernel_dst, const uint8_t* user_src)
 global	kernel/arch/x86_64/boot.S	/^global _start$/;"	l
 global	kernel/arch/x86_64/boot.S	/^global kernel_end$/;"	l
 global	kernel/arch/x86_64/boot.S	/^global p2_table$/;"	l
@@ -531,24 +601,24 @@ global	kernel/arch/x86_64/interrupt_asm.S	/^global irq%1$/;"	l
 global	kernel/arch/x86_64/interrupt_asm.S	/^global isr%1$/;"	l
 global	kernel/task/gdt_asm.S	/^global gdt_flush$/;"	l
 global	kernel/task/gdt_asm.S	/^global tss_flush$/;"	l
-global	kernel/task/switch.S	/^global enter_usermode$/;"	l
 global	kernel/task/switch.S	/^global switch_task$/;"	l
 global	kernel/task/syscall_asm.S	/^global syscall_handler_asm$/;"	l
 global	user/crt0.S	/^global _start$/;"	l
 granularity	kernel/task/gdt.c	/^    uint8_t granularity;$/;"	m	struct:__anon4	file:
+has_smap	kernel/mm/uaccess.c	/^static inline bool has_smap(void) {$/;"	f	file:	signature:(void)
 header_end	kernel/arch/x86_64/boot.S	/^header_end:$/;"	l
 header_start	kernel/arch/x86_64/boot.S	/^header_start:$/;"	l
 heap_block	kernel/mm/heap.c	/^typedef struct heap_block {$/;"	s	file:
-heap_block::is_free	kernel/mm/heap.c	/^    bool is_free;$/;"	m	struct:heap_block	file:
+heap_block::free	kernel/mm/heap.c	/^    bool free;$/;"	m	struct:heap_block	file:
 heap_block::magic	kernel/mm/heap.c	/^    uint32_t magic;$/;"	m	struct:heap_block	file:
 heap_block::next	kernel/mm/heap.c	/^    struct heap_block* next;$/;"	m	struct:heap_block	typeref:struct:heap_block::heap_block	file:
+heap_block::prev	kernel/mm/heap.c	/^    struct heap_block* prev;$/;"	m	struct:heap_block	typeref:struct:heap_block::heap_block	file:
 heap_block::size	kernel/mm/heap.c	/^    size_t size;$/;"	m	struct:heap_block	file:
 heap_block_t	kernel/mm/heap.c	/^} heap_block_t;$/;"	t	typeref:struct:heap_block	file:
 heap_init	include/kernel/heap.h	/^void heap_init(void);$/;"	p	signature:(void)
 heap_init	kernel/mm/heap.c	/^void heap_init(void) {$/;"	f	signature:(void)
 heap_lock	kernel/mm/heap.c	/^static spinlock_t heap_lock = SPINLOCK_INIT;$/;"	v	file:
 heap_print_stats	include/kernel/heap.h	/^void heap_print_stats(void);$/;"	p	signature:(void)
-heap_print_stats	kernel/mm/heap.c	/^void heap_print_stats(void) {$/;"	f	signature:(void)
 heap_start	kernel/mm/heap.c	/^static heap_block_t* heap_start = NULL;$/;"	v	file:
 hidden_sectors	kernel/fs/fat16.c	/^    uint32_t hidden_sectors;$/;"	m	struct:__anon1	file:
 idt	kernel/interrupt.c	/^static struct idt_entry idt[256];$/;"	v	typeref:struct:idt_entry	file:
@@ -587,9 +657,10 @@ int_least64_t	user/include/stdint.h	/^typedef int64_t  int_least64_t;$/;"	t
 int_least8_t	user/include/stdint.h	/^typedef int8_t   int_least8_t;$/;"	t
 intmax_t	user/include/stdint.h	/^typedef int64_t   intmax_t;$/;"	t
 intptr_t	user/include/stdint.h	/^typedef long long           intptr_t;$/;"	t
+invlpg	kernel/mm/vmm.c	/^static inline void invlpg(uint64_t addr) {$/;"	f	file:	signature:(uint64_t addr)
 inw	include/kernel/io.h	/^static inline uint16_t inw(uint16_t port) {$/;"	f	signature:(uint16_t port)
 io_wait	include/kernel/io.h	/^static inline void io_wait(void) {$/;"	f	signature:(void)
-iomap_base	include/kernel/tss.h	/^    uint16_t iomap_base;$/;"	m	struct:__anon16
+iomap_base	include/kernel/tss.h	/^    uint16_t iomap_base;$/;"	m	struct:__anon15
 irq0	kernel/interrupt.c	/^extern void irq0(void);$/;"	p	file:	signature:(void)
 irq1	kernel/interrupt.c	/^extern void irq1(void);$/;"	p	file:	signature:(void)
 irq10	kernel/interrupt.c	/^extern void irq10(void);$/;"	p	file:	signature:(void)
@@ -609,7 +680,7 @@ irq9	kernel/interrupt.c	/^extern void irq9(void);$/;"	p	file:	signature:(void)
 irq_common	kernel/arch/x86_64/interrupt_asm.S	/^irq_common:$/;"	l
 irq_state	include/kernel/spinlock.h	/^    uint32_t irq_state;$/;"	m	struct:__anon13
 irq_state_t	include/kernel/spinlock.h	/^} irq_state_t;$/;"	t	typeref:struct:__anon13
-is_free	kernel/mm/heap.c	/^    bool is_free;$/;"	m	struct:heap_block	file:
+is_canonical	kernel/mm/vmm.c	/^static inline bool is_canonical(uint64_t addr) {$/;"	f	file:	signature:(uint64_t addr)
 is_kernel	include/kernel/task.h	/^    bool is_kernel;$/;"	m	struct:task
 is_prime	user/include/math.h	/^int is_prime(long n);$/;"	p	signature:(long n)
 is_prime	user/math.c	/^int is_prime(long n) {$/;"	f	signature:(long n)
@@ -627,13 +698,13 @@ isr7	kernel/interrupt.c	/^extern void isr7(void);$/;"	p	file:	signature:(void)
 isr8	kernel/interrupt.c	/^extern void isr8(void);$/;"	p	file:	signature:(void)
 isr_common	kernel/arch/x86_64/interrupt_asm.S	/^isr_common:$/;"	l
 ist	include/kernel/idt.h	/^    uint8_t ist;$/;"	m	struct:idt_entry
-ist1	include/kernel/tss.h	/^    uint64_t ist1;$/;"	m	struct:__anon16
-ist2	include/kernel/tss.h	/^    uint64_t ist2;$/;"	m	struct:__anon16
-ist3	include/kernel/tss.h	/^    uint64_t ist3;$/;"	m	struct:__anon16
-ist4	include/kernel/tss.h	/^    uint64_t ist4;$/;"	m	struct:__anon16
-ist5	include/kernel/tss.h	/^    uint64_t ist5;$/;"	m	struct:__anon16
-ist6	include/kernel/tss.h	/^    uint64_t ist6;$/;"	m	struct:__anon16
-ist7	include/kernel/tss.h	/^    uint64_t ist7;$/;"	m	struct:__anon16
+ist1	include/kernel/tss.h	/^    uint64_t ist1;$/;"	m	struct:__anon15
+ist2	include/kernel/tss.h	/^    uint64_t ist2;$/;"	m	struct:__anon15
+ist3	include/kernel/tss.h	/^    uint64_t ist3;$/;"	m	struct:__anon15
+ist4	include/kernel/tss.h	/^    uint64_t ist4;$/;"	m	struct:__anon15
+ist5	include/kernel/tss.h	/^    uint64_t ist5;$/;"	m	struct:__anon15
+ist6	include/kernel/tss.h	/^    uint64_t ist6;$/;"	m	struct:__anon15
+ist7	include/kernel/tss.h	/^    uint64_t ist7;$/;"	m	struct:__anon15
 itoa	user/include/stdlib.h	/^int itoa(long val, char* buf);$/;"	p	signature:(long val, char* buf)
 itoa	user/stdlib.c	/^int itoa(long val, char* buf) {$/;"	f	signature:(long val, char* buf)
 jmp	kernel/fs/fat16.c	/^    uint8_t jmp[3];$/;"	m	struct:__anon1	file:
@@ -661,6 +732,7 @@ kmalloc	include/kernel/heap.h	/^void* kmalloc(size_t size);$/;"	p	signature:(siz
 kmalloc	kernel/mm/heap.c	/^void* kmalloc(size_t size) {$/;"	f	signature:(size_t size)
 krealloc	include/kernel/heap.h	/^void* krealloc(void* ptr, size_t size);$/;"	p	signature:(void* ptr, size_t size)
 krealloc	kernel/mm/heap.c	/^void* krealloc(void* ptr, size_t size) {$/;"	f	signature:(void* ptr, size_t size)
+last_alloc_hint	kernel/mm/pmm.c	/^static uint64_t last_alloc_hint = 0;$/;"	v	file:
 lcm	user/include/math.h	/^long lcm(long a, long b);$/;"	p	signature:(long a, long b)
 lcm	user/math.c	/^long lcm(long a, long b) {$/;"	f	signature:(long a, long b)
 len	include/kernel/multiboot2.h	/^    uint64_t len;$/;"	m	struct:multiboot_mmap_entry
@@ -681,14 +753,24 @@ main	user/shell.c	/^int main(void) {$/;"	f	signature:(void)
 max	user/include/stdlib.h	/^long max(long a, long b);$/;"	p	signature:(long a, long b)
 max	user/stdlib.c	/^long max(long a, long b) {$/;"	f	signature:(long a, long b)
 media_type	kernel/fs/fat16.c	/^    uint8_t media_type;$/;"	m	struct:__anon1	file:
+memcmp	include/kernel/string.h	/^int memcmp(const void* s1, const void* s2, size_t n);$/;"	p	signature:(const void* s1, const void* s2, size_t n)
+memcmp	kernel/string.c	/^int memcmp(const void* s1, const void* s2, size_t n) {$/;"	f	signature:(const void* s1, const void* s2, size_t n)
 memcmp	user/include/string.h	/^int memcmp(const void* a, const void* b, long n);$/;"	p	signature:(const void* a, const void* b, long n)
 memcmp	user/string.c	/^int memcmp(const void* a, const void* b, long n) {$/;"	f	signature:(const void* a, const void* b, long n)
+memcpy	include/kernel/string.h	/^void* memcpy(void* dest, const void* src, size_t n);$/;"	p	signature:(void* dest, const void* src, size_t n)
 memcpy	kernel/loader/elf.c	/^static void memcpy(void* dest, void* src, size_t n) {$/;"	f	file:	signature:(void* dest, void* src, size_t n)
+memcpy	kernel/string.c	/^void* memcpy(void* dest, const void* src, size_t n) {$/;"	f	signature:(void* dest, const void* src, size_t n)
 memcpy	user/include/string.h	/^void* memcpy(void* dst, const void* src, long n);$/;"	p	signature:(void* dst, const void* src, long n)
 memcpy	user/string.c	/^void* memcpy(void* dst, const void* src, long n) {$/;"	f	signature:(void* dst, const void* src, long n)
+memmove	include/kernel/string.h	/^void* memmove(void* dest, const void* src, size_t n);$/;"	p	signature:(void* dest, const void* src, size_t n)
+memmove	kernel/string.c	/^void* memmove(void* dest, const void* src, size_t n) {$/;"	f	signature:(void* dest, const void* src, size_t n)
+memset	include/kernel/string.h	/^void* memset(void* s, int c, size_t n);$/;"	p	signature:(void* s, int c, size_t n)
 memset	kernel/loader/elf.c	/^static void memset(void* dest, int c, size_t n) {$/;"	f	file:	signature:(void* dest, int c, size_t n)
+memset	kernel/string.c	/^void* memset(void* s, int c, size_t n) {$/;"	f	signature:(void* s, int c, size_t n)
 memset	user/include/string.h	/^void* memset(void* dst, int val, long n);$/;"	p	signature:(void* dst, int val, long n)
 memset	user/string.c	/^void* memset(void* dst, int val, long n) {$/;"	f	signature:(void* dst, int val, long n)
+memset_pmm	kernel/mm/pmm.c	/^static void* memset_pmm(void* s, int c, size_t n) {$/;"	f	file:	signature:(void* s, int c, size_t n)
+memset_vmm	kernel/mm/vmm.c	/^static void* memset_vmm(void* s, int c, size_t n) {$/;"	f	file:	signature:(void* s, int c, size_t n)
 min	user/include/stdlib.h	/^long min(long a, long b);$/;"	p	signature:(long a, long b)
 min	user/stdlib.c	/^long min(long a, long b) {$/;"	f	signature:(long a, long b)
 modify_date	kernel/fs/fat16.c	/^    uint16_t modify_date;$/;"	m	struct:__anon2	file:
@@ -717,6 +799,7 @@ next	kernel/mm/heap.c	/^    struct heap_block* next;$/;"	m	struct:heap_block	typ
 next_pid	kernel/task/task.c	/^static uint32_t next_pid = 1;$/;"	v	file:
 next_sibling	include/kernel/vfs.h	/^    struct vfs_node* next_sibling;$/;"	m	struct:vfs_node	typeref:struct:vfs_node::vfs_node
 next_virt_addr	kernel/mm/vmm.c	/^static uint64_t next_virt_addr = 0x100000000;$/;"	v	file:
+nr_free	kernel/mm/pmm.c	/^    uint32_t nr_free;$/;"	m	struct:free_area	file:
 nr_processes	include/kernel/syscall.h	/^    uint32_t nr_processes;$/;"	m	struct:sysinfo
 nr_processes	user/include/syscall.h	/^    uint32_t nr_processes;$/;"	m	struct:sysinfo
 num_fats	kernel/fs/fat16.c	/^    uint8_t num_fats;$/;"	m	struct:__anon1	file:
@@ -745,6 +828,7 @@ page_directory	include/kernel/vmm.h	/^typedef struct page_directory {$/;"	s
 page_directory::pml4	include/kernel/vmm.h	/^    uint64_t* pml4;$/;"	m	struct:page_directory
 page_directory::pml4_phys	include/kernel/vmm.h	/^    uint64_t pml4_phys;$/;"	m	struct:page_directory
 page_directory_t	include/kernel/vmm.h	/^} page_directory_t;$/;"	t	typeref:struct:page_directory
+page_orders	kernel/mm/pmm.c	/^static uint32_t* page_orders;$/;"	v	file:
 pagefault_count	kernel/mm/pagefault.c	/^static uint64_t pagefault_count = 0;$/;"	v	file:
 pagefault_handler	include/kernel/pagefault.h	/^void pagefault_handler(uint64_t error_code, uint64_t faulting_addr);$/;"	p	signature:(uint64_t error_code, uint64_t faulting_addr)
 pagefault_handler	kernel/mm/pagefault.c	/^void pagefault_handler(uint64_t error_code, uint64_t faulting_addr) {$/;"	f	signature:(uint64_t error_code, uint64_t faulting_addr)
@@ -775,10 +859,16 @@ pml4	include/kernel/vmm.h	/^    uint64_t* pml4;$/;"	m	struct:page_directory
 pml4_phys	include/kernel/vmm.h	/^    uint64_t pml4_phys;$/;"	m	struct:page_directory
 pmm_alloc_page	include/kernel/pmm.h	/^uint64_t pmm_alloc_page(void);$/;"	p	signature:(void)
 pmm_alloc_page	kernel/mm/pmm.c	/^uint64_t pmm_alloc_page(void) {$/;"	f	signature:(void)
-pmm_bitmap	kernel/mm/pmm.c	/^static uint32_t pmm_bitmap[BITMAP_SIZE];$/;"	v	file:
+pmm_alloc_pages	include/kernel/pmm.h	/^uint64_t pmm_alloc_pages(uint32_t count);$/;"	p	signature:(uint32_t count)
+pmm_alloc_pages	kernel/mm/pmm.c	/^uint64_t pmm_alloc_pages(uint32_t count) {$/;"	f	signature:(uint32_t count)
+pmm_alloc_pages	kernel/mm/pmm.c	/^uint64_t pmm_alloc_pages(uint32_t count);$/;"	p	file:	signature:(uint32_t count)
+pmm_bitmap	kernel/mm/pmm.c	/^static uint64_t pmm_bitmap[BITMAP_SIZE];$/;"	v	file:
 pmm_end	kernel/mm/pmm.c	/^static uint64_t pmm_end = 0;$/;"	v	file:
 pmm_free_page	include/kernel/pmm.h	/^void pmm_free_page(uint64_t addr);$/;"	p	signature:(uint64_t addr)
 pmm_free_page	kernel/mm/pmm.c	/^void pmm_free_page(uint64_t addr) {$/;"	f	signature:(uint64_t addr)
+pmm_free_pages	include/kernel/pmm.h	/^void pmm_free_pages(uint64_t addr, uint32_t count);$/;"	p	signature:(uint64_t addr, uint32_t count)
+pmm_free_pages	kernel/mm/pmm.c	/^void pmm_free_pages(uint64_t addr, uint32_t count) {$/;"	f	signature:(uint64_t addr, uint32_t count)
+pmm_free_pages	kernel/mm/pmm.c	/^void pmm_free_pages(uint64_t addr, uint32_t count);$/;"	p	file:	signature:(uint64_t addr, uint32_t count)
 pmm_get_free_memory	include/kernel/pmm.h	/^uint64_t pmm_get_free_memory(void);$/;"	p	signature:(void)
 pmm_get_free_memory	kernel/mm/pmm.c	/^uint64_t pmm_get_free_memory(void) {$/;"	f	signature:(void)
 pmm_get_total_memory	include/kernel/pmm.h	/^uint64_t pmm_get_total_memory(void);$/;"	p	signature:(void)
@@ -796,44 +886,53 @@ pmm_total_pages	kernel/mm/pmm.c	/^static uint64_t pmm_total_pages = 0;$/;"	v	fil
 pmm_used_pages	kernel/mm/pmm.c	/^static uint64_t pmm_used_pages = 0;$/;"	v	file:
 power	user/include/math.h	/^long power(long base, long exp);$/;"	p	signature:(long base, long exp)
 power	user/math.c	/^long power(long base, long exp) {$/;"	f	signature:(long base, long exp)
+prev	kernel/mm/heap.c	/^    struct heap_block* prev;$/;"	m	struct:heap_block	typeref:struct:heap_block::heap_block	file:
 print_prompt	user/shell.c	/^static void print_prompt(void) {$/;"	f	file:	signature:(void)
 printf	user/include/stdio.h	/^int printf(const char* fmt, ...);$/;"	p	signature:(const char* fmt, ...)
 printf	user/stdio.c	/^int printf(const char* fmt, ...) {$/;"	f	signature:(const char* fmt, ...)
 priority	include/kernel/task.h	/^    uint8_t priority;$/;"	m	struct:task
 private_data	include/kernel/vfs.h	/^    void* private_data;$/;"	m	struct:vfs_filesystem
+put_user_u16	include/kernel/uaccess.h	/^int put_user_u16(uint16_t* user_dst, uint16_t value);$/;"	p	signature:(uint16_t* user_dst, uint16_t value)
+put_user_u16	kernel/mm/uaccess.c	/^int put_user_u16(uint16_t* user_dst, uint16_t value) {$/;"	f	signature:(uint16_t* user_dst, uint16_t value)
+put_user_u32	include/kernel/uaccess.h	/^int put_user_u32(uint32_t* user_dst, uint32_t value);$/;"	p	signature:(uint32_t* user_dst, uint32_t value)
+put_user_u32	kernel/mm/uaccess.c	/^int put_user_u32(uint32_t* user_dst, uint32_t value) {$/;"	f	signature:(uint32_t* user_dst, uint32_t value)
+put_user_u64	include/kernel/uaccess.h	/^int put_user_u64(uint64_t* user_dst, uint64_t value);$/;"	p	signature:(uint64_t* user_dst, uint64_t value)
+put_user_u64	kernel/mm/uaccess.c	/^int put_user_u64(uint64_t* user_dst, uint64_t value) {$/;"	f	signature:(uint64_t* user_dst, uint64_t value)
+put_user_u8	include/kernel/uaccess.h	/^int put_user_u8(uint8_t* user_dst, uint8_t value);$/;"	p	signature:(uint8_t* user_dst, uint8_t value)
+put_user_u8	kernel/mm/uaccess.c	/^int put_user_u8(uint8_t* user_dst, uint8_t value) {$/;"	f	signature:(uint8_t* user_dst, uint8_t value)
 putchar	user/include/stdio.h	/^int putchar(char c);$/;"	p	signature:(char c)
 putchar	user/stdio.c	/^int putchar(char c) {$/;"	f	signature:(char c)
-r10	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon15
+r10	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;       \/\/ 56, 64, 72, 80$/;"	m	struct:cpu_context
 r10	kernel/task/syscall.c	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon6	file:
-r11	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon15
+r11	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;       \/\/ 56, 64, 72, 80$/;"	m	struct:cpu_context
 r11	kernel/task/syscall.c	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon6	file:
-r12	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon15
+r12	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;     \/\/ 88, 96, 104, 112$/;"	m	struct:cpu_context
 r12	kernel/task/syscall.c	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon6	file:
-r13	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon15
+r13	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;     \/\/ 88, 96, 104, 112$/;"	m	struct:cpu_context
 r13	kernel/task/syscall.c	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon6	file:
-r14	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon15
+r14	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;     \/\/ 88, 96, 104, 112$/;"	m	struct:cpu_context
 r14	kernel/task/syscall.c	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon6	file:
-r15	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon15
+r15	include/kernel/task.h	/^    uint64_t r12, r13, r14, r15;     \/\/ 88, 96, 104, 112$/;"	m	struct:cpu_context
 r15	kernel/task/syscall.c	/^    uint64_t r12, r13, r14, r15;$/;"	m	struct:__anon6	file:
-r8	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon15
+r8	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;       \/\/ 56, 64, 72, 80$/;"	m	struct:cpu_context
 r8	kernel/task/syscall.c	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon6	file:
-r9	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon15
+r9	include/kernel/task.h	/^    uint64_t r8, r9, r10, r11;       \/\/ 56, 64, 72, 80$/;"	m	struct:cpu_context
 r9	kernel/task/syscall.c	/^    uint64_t r8, r9, r10, r11;$/;"	m	struct:__anon6	file:
 rand	user/include/stdlib.h	/^unsigned long rand(void);$/;"	p	signature:(void)
 rand	user/stdlib.c	/^unsigned long rand(void) {$/;"	f	signature:(void)
 rand_state	user/stdlib.c	/^static unsigned long rand_state = 12345;$/;"	v	file:
-rax	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon15
+rax	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;    \/\/ 0, 8, 16, 24$/;"	m	struct:cpu_context
 rax	kernel/task/syscall.c	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon6	file:
-rbp	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;$/;"	m	struct:__anon15
+rbp	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp;          \/\/ 32, 40, 48$/;"	m	struct:cpu_context
 rbp	kernel/task/syscall.c	/^    uint64_t rsi, rdi, rbp;$/;"	m	struct:__anon6	file:
-rbx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon15
+rbx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;    \/\/ 0, 8, 16, 24$/;"	m	struct:cpu_context
 rbx	kernel/task/syscall.c	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon6	file:
-rcx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon15
+rcx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;    \/\/ 0, 8, 16, 24$/;"	m	struct:cpu_context
 rcx	kernel/task/syscall.c	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon6	file:
-rdi	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;$/;"	m	struct:__anon15
+rdi	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp;          \/\/ 32, 40, 48$/;"	m	struct:cpu_context
 rdi	kernel/task/syscall.c	/^    uint64_t rsi, rdi, rbp;$/;"	m	struct:__anon6	file:
 rdmsr	include/kernel/msr.h	/^static inline uint64_t rdmsr(uint32_t msr) {$/;"	f	signature:(uint32_t msr)
-rdx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon15
+rdx	include/kernel/task.h	/^    uint64_t rax, rbx, rcx, rdx;    \/\/ 0, 8, 16, 24$/;"	m	struct:cpu_context
 rdx	kernel/task/syscall.c	/^    uint64_t rax, rbx, rcx, rdx;$/;"	m	struct:__anon6	file:
 read	include/kernel/vfs.h	/^    bool (*read)(struct vfs_node* node, void* buffer, size_t offset, size_t size);$/;"	m	struct:vfs_operations
 ready_queue	kernel/task/scheduler.c	/^static task_t* ready_queue = NULL;$/;"	v	file:
@@ -841,25 +940,24 @@ ready_queue_tail	kernel/task/scheduler.c	/^static task_t* ready_queue_tail = NUL
 reserved	include/kernel/idt.h	/^    uint32_t reserved;$/;"	m	struct:idt_entry
 reserved	include/kernel/multiboot2.h	/^    uint32_t reserved;$/;"	m	struct:multiboot_mmap_entry
 reserved	kernel/fs/fat16.c	/^    uint8_t reserved;$/;"	m	struct:__anon2	file:
-reserved0	include/kernel/tss.h	/^    uint32_t reserved0;$/;"	m	struct:__anon16
-reserved1	include/kernel/tss.h	/^    uint64_t reserved1;$/;"	m	struct:__anon16
-reserved2	include/kernel/tss.h	/^    uint64_t reserved2;$/;"	m	struct:__anon16
-reserved3	include/kernel/tss.h	/^    uint16_t reserved3;$/;"	m	struct:__anon16
+reserved0	include/kernel/tss.h	/^    uint32_t reserved0;$/;"	m	struct:__anon15
+reserved1	include/kernel/tss.h	/^    uint64_t reserved1;$/;"	m	struct:__anon15
+reserved2	include/kernel/tss.h	/^    uint64_t reserved2;$/;"	m	struct:__anon15
+reserved3	include/kernel/tss.h	/^    uint16_t reserved3;$/;"	m	struct:__anon15
 reserved_sectors	kernel/fs/fat16.c	/^    uint16_t reserved_sectors;$/;"	m	struct:__anon1	file:
 rflags	include/kernel/spinlock.h	/^    uint64_t rflags;$/;"	m	struct:__anon13
-rflags	include/kernel/task.h	/^    uint64_t rflags;$/;"	m	struct:__anon15
-rip	include/kernel/task.h	/^    uint64_t rip;$/;"	m	struct:__anon15
+rflags	include/kernel/task.h	/^    uint64_t rflags;                  \/\/ 136$/;"	m	struct:cpu_context
+rip	include/kernel/task.h	/^    uint64_t rip;                     \/\/ 120$/;"	m	struct:cpu_context
 root	include/kernel/vfs.h	/^    vfs_node_t* root;$/;"	m	struct:vfs_filesystem
 root_entries	kernel/fs/fat16.c	/^    uint16_t root_entries;$/;"	m	struct:__anon1	file:
 root_entries	kernel/fs/fat16.c	/^    uint16_t root_entries;$/;"	m	struct:__anon3	file:
 root_start	kernel/fs/fat16.c	/^    uint32_t root_start;$/;"	m	struct:__anon3	file:
-rsi	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;$/;"	m	struct:__anon15
+rsi	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp;          \/\/ 32, 40, 48$/;"	m	struct:cpu_context
 rsi	kernel/task/syscall.c	/^    uint64_t rsi, rdi, rbp;$/;"	m	struct:__anon6	file:
-rsp	include/kernel/task.h	/^    uint64_t rsi, rdi, rbp, rsp;$/;"	m	struct:__anon15
-rsp0	include/kernel/tss.h	/^    uint64_t rsp0;$/;"	m	struct:__anon16
-rsp1	include/kernel/tss.h	/^    uint64_t rsp1;$/;"	m	struct:__anon16
-rsp2	include/kernel/tss.h	/^    uint64_t rsp2;$/;"	m	struct:__anon16
-sbrk	kernel/mm/heap.c	/^static void* sbrk(size_t size) {$/;"	f	file:	signature:(size_t size)
+rsp	include/kernel/task.h	/^    uint64_t rsp;                     \/\/ 128$/;"	m	struct:cpu_context
+rsp0	include/kernel/tss.h	/^    uint64_t rsp0;$/;"	m	struct:__anon15
+rsp1	include/kernel/tss.h	/^    uint64_t rsp1;$/;"	m	struct:__anon15
+rsp2	include/kernel/tss.h	/^    uint64_t rsp2;$/;"	m	struct:__anon15
 scancode_to_ascii	kernel/drivers/keyboard.c	/^static const char scancode_to_ascii[] = {$/;"	v	file:
 scancode_to_ascii_shift	kernel/drivers/keyboard.c	/^static const char scancode_to_ascii_shift[] = {$/;"	v	file:
 schedule	include/kernel/scheduler.h	/^void schedule(void);$/;"	p	signature:(void)
@@ -914,19 +1012,19 @@ size	include/kernel/multiboot2.h	/^    uint32_t size;$/;"	m	struct:multiboot_tag
 size	include/kernel/vfs.h	/^    size_t size;$/;"	m	struct:vfs_node
 size	kernel/mm/heap.c	/^    size_t size;$/;"	m	struct:heap_block	file:
 size_t	include/kernel/stdint.h	/^typedef unsigned long size_t;$/;"	t
+smap_enabled	kernel/mm/uaccess.c	/^static bool smap_enabled = false;$/;"	v	file:
 spinlock_acquire	include/kernel/spinlock.h	/^static inline void spinlock_acquire(spinlock_t* lock) {$/;"	f	signature:(spinlock_t* lock)
 spinlock_acquire_irqsave	include/kernel/spinlock.h	/^static inline irq_state_t spinlock_acquire_irqsave(spinlock_t* lock) {$/;"	f	signature:(spinlock_t* lock)
 spinlock_release	include/kernel/spinlock.h	/^static inline void spinlock_release(spinlock_t* lock) {$/;"	f	signature:(spinlock_t* lock)
 spinlock_release_irqrestore	include/kernel/spinlock.h	/^static inline void spinlock_release_irqrestore(spinlock_t* lock, irq_state_t state) {$/;"	f	signature:(spinlock_t* lock, irq_state_t state)
 spinlock_t	include/kernel/spinlock.h	/^} spinlock_t;$/;"	t	typeref:struct:__anon12
 spinlock_trylock	include/kernel/spinlock.h	/^static inline int spinlock_trylock(spinlock_t* lock) {$/;"	f	signature:(spinlock_t* lock)
-split_block	kernel/mm/heap.c	/^static void split_block(heap_block_t* block, size_t size) {$/;"	f	file:	signature:(heap_block_t* block, size_t size)
 split_huge_page	kernel/mm/vmm.c	/^static bool split_huge_page(uint64_t* pd, size_t pd_idx) {$/;"	f	file:	signature:(uint64_t* pd, size_t pd_idx)
-split_huge_page	kernel/mm/vmm.c	/^static bool split_huge_page(uint64_t* pd, size_t pd_idx);$/;"	p	file:	signature:(uint64_t* pd, size_t pd_idx)
 srand	user/include/stdlib.h	/^void srand(unsigned long seed);$/;"	p	signature:(unsigned long seed)
 srand	user/stdlib.c	/^void srand(unsigned long seed) {$/;"	f	signature:(unsigned long seed)
-ss	include/kernel/task.h	/^    uint64_t cs, ss;$/;"	m	struct:__anon15
+ss	include/kernel/task.h	/^    uint64_t ss;                      \/\/ 152$/;"	m	struct:cpu_context
 ssize_t	include/kernel/stdint.h	/^typedef long ssize_t;$/;"	t
+stac	kernel/mm/uaccess.c	/^static inline void stac(void) {$/;"	f	file:	signature:(void)
 stack_bottom	kernel/arch/x86_64/boot.S	/^stack_bottom:$/;"	l
 stack_size	include/kernel/task.h	/^    uint64_t stack_size;$/;"	m	struct:task
 stack_top	kernel/arch/x86_64/boot.S	/^stack_top:$/;"	l
@@ -938,19 +1036,31 @@ strcat	user/include/string.h	/^char* strcat(char* dst, const char* src);$/;"	p	s
 strcat	user/string.c	/^char* strcat(char* dst, const char* src) {$/;"	f	signature:(char* dst, const char* src)
 strchr	user/include/string.h	/^const char* strchr(const char* s, char c);$/;"	p	signature:(const char* s, char c)
 strchr	user/string.c	/^const char* strchr(const char* s, char c) {$/;"	f	signature:(const char* s, char c)
+strcmp	include/kernel/string.h	/^int strcmp(const char* s1, const char* s2);$/;"	p	signature:(const char* s1, const char* s2)
 strcmp	kernel/fs/vfs.c	/^static int strcmp(const char* s1, const char* s2) {$/;"	f	file:	signature:(const char* s1, const char* s2)
+strcmp	kernel/string.c	/^int strcmp(const char* s1, const char* s2) {$/;"	f	signature:(const char* s1, const char* s2)
 strcmp	user/include/string.h	/^int strcmp(const char* a, const char* b);$/;"	p	signature:(const char* a, const char* b)
 strcmp	user/string.c	/^int strcmp(const char* a, const char* b) {$/;"	f	signature:(const char* a, const char* b)
+strcpy	include/kernel/string.h	/^char* strcpy(char* dest, const char* src);$/;"	p	signature:(char* dest, const char* src)
+strcpy	kernel/string.c	/^char* strcpy(char* dest, const char* src) {$/;"	f	signature:(char* dest, const char* src)
 strcpy	user/include/string.h	/^char* strcpy(char* dst, const char* src);$/;"	p	signature:(char* dst, const char* src)
 strcpy	user/string.c	/^char* strcpy(char* dst, const char* src) {$/;"	f	signature:(char* dst, const char* src)
 strcpy_safe	kernel/fs/tmpfs.c	/^static void strcpy_safe(char* dst, const char* src, size_t max) {$/;"	f	file:	signature:(char* dst, const char* src, size_t max)
 strcpy_safe	kernel/task/task.c	/^static void strcpy_safe(char* dst, const char* src, size_t max) {$/;"	f	file:	signature:(char* dst, const char* src, size_t max)
+strlen	include/kernel/string.h	/^size_t strlen(const char* s);$/;"	p	signature:(const char* s)
+strlen	kernel/string.c	/^size_t strlen(const char* s) {$/;"	f	signature:(const char* s)
 strlen	user/include/string.h	/^long strlen(const char* s);$/;"	p	signature:(const char* s)
 strlen	user/string.c	/^long strlen(const char* s) {$/;"	f	signature:(const char* s)
+strncmp	include/kernel/string.h	/^int strncmp(const char* s1, const char* s2, size_t n);$/;"	p	signature:(const char* s1, const char* s2, size_t n)
+strncmp	kernel/string.c	/^int strncmp(const char* s1, const char* s2, size_t n) {$/;"	f	signature:(const char* s1, const char* s2, size_t n)
 strncmp	user/include/string.h	/^int strncmp(const char* a, const char* b, long n);$/;"	p	signature:(const char* a, const char* b, long n)
 strncmp	user/string.c	/^int strncmp(const char* a, const char* b, long n) {$/;"	f	signature:(const char* a, const char* b, long n)
+strncpy	include/kernel/string.h	/^char* strncpy(char* dest, const char* src, size_t n);$/;"	p	signature:(char* dest, const char* src, size_t n)
+strncpy	kernel/string.c	/^char* strncpy(char* dest, const char* src, size_t n) {$/;"	f	signature:(char* dest, const char* src, size_t n)
 strncpy	user/include/string.h	/^char* strncpy(char* dst, const char* src, long n);$/;"	p	signature:(char* dst, const char* src, long n)
 strncpy	user/string.c	/^char* strncpy(char* dst, const char* src, long n) {$/;"	f	signature:(char* dst, const char* src, long n)
+strncpy_from_user	include/kernel/uaccess.h	/^int strncpy_from_user(char* kernel_dst, const char* user_src, size_t max_len);$/;"	p	signature:(char* kernel_dst, const char* user_src, size_t max_len)
+strncpy_from_user	kernel/mm/uaccess.c	/^int strncpy_from_user(char* kernel_dst, const char* user_src, size_t max_len) {$/;"	f	signature:(char* kernel_dst, const char* user_src, size_t max_len)
 strnlen_user	include/kernel/uaccess.h	/^ssize_t strnlen_user(const char* user_str, size_t max_len);$/;"	p	signature:(const char* user_str, size_t max_len)
 strnlen_user	kernel/mm/uaccess.c	/^ssize_t strnlen_user(const char* user_str, size_t max_len) {$/;"	f	signature:(const char* user_str, size_t max_len)
 strtok	user/include/string.h	/^char* strtok(char* str, const char* delims);$/;"	p	signature:(char* str, const char* delims)
@@ -1084,12 +1194,14 @@ tss_init	include/kernel/tss.h	/^void tss_init(void);$/;"	p	signature:(void)
 tss_init	kernel/task/tss.c	/^void tss_init(void) {$/;"	f	signature:(void)
 tss_set_kernel_stack	include/kernel/tss.h	/^void tss_set_kernel_stack(uint64_t stack);$/;"	p	signature:(uint64_t stack)
 tss_set_kernel_stack	kernel/task/tss.c	/^void tss_set_kernel_stack(uint64_t stack) {$/;"	f	signature:(uint64_t stack)
-tss_t	include/kernel/tss.h	/^} __attribute__((packed)) tss_t;$/;"	t	typeref:struct:__anon16
+tss_t	include/kernel/tss.h	/^} __attribute__((packed)) tss_t;$/;"	t	typeref:struct:__anon15
 type	include/kernel/multiboot2.h	/^    uint32_t type;$/;"	m	struct:multiboot_mmap_entry
 type	include/kernel/multiboot2.h	/^    uint32_t type;$/;"	m	struct:multiboot_tag
 type	include/kernel/multiboot2.h	/^    uint32_t type;$/;"	m	struct:multiboot_tag_mmap
 type	include/kernel/vfs.h	/^    vfs_node_type_t type;$/;"	m	struct:vfs_node
 type_attr	include/kernel/idt.h	/^    uint8_t type_attr;$/;"	m	struct:idt_entry
+uaccess_init	include/kernel/uaccess.h	/^void uaccess_init(void);$/;"	p	signature:(void)
+uaccess_init	kernel/mm/uaccess.c	/^void uaccess_init(void) {$/;"	f	signature:(void)
 uint16_t	include/kernel/stdint.h	/^typedef unsigned short uint16_t;$/;"	t
 uint16_t	user/include/stdint.h	/^typedef unsigned short     uint16_t;$/;"	t
 uint32_t	include/kernel/stdint.h	/^typedef unsigned int uint32_t;$/;"	t
@@ -1118,6 +1230,11 @@ va_copy	user/include/stdarg.h	9;"	d
 va_end	user/include/stdarg.h	7;"	d
 va_list	user/include/stdarg.h	/^typedef __builtin_va_list va_list;$/;"	t
 va_start	user/include/stdarg.h	6;"	d
+validate_user_range	kernel/mm/uaccess.c	/^static inline int validate_user_range(uint64_t addr, size_t size) {$/;"	f	file:	signature:(uint64_t addr, size_t size)
+verify_user_read	include/kernel/uaccess.h	/^int verify_user_read(const void* user_ptr, size_t size);$/;"	p	signature:(const void* user_ptr, size_t size)
+verify_user_read	kernel/mm/uaccess.c	/^int verify_user_read(const void* user_ptr, size_t size) {$/;"	f	signature:(const void* user_ptr, size_t size)
+verify_user_write	include/kernel/uaccess.h	/^int verify_user_write(void* user_ptr, size_t size);$/;"	p	signature:(void* user_ptr, size_t size)
+verify_user_write	kernel/mm/uaccess.c	/^int verify_user_write(void* user_ptr, size_t size) {$/;"	f	signature:(void* user_ptr, size_t size)
 vfs_close	include/kernel/vfs.h	/^void vfs_close(vfs_node_t* node);$/;"	p	signature:(vfs_node_t* node)
 vfs_close	kernel/fs/vfs.c	/^void vfs_close(vfs_node_t* node) {$/;"	f	signature:(vfs_node_t* node)
 vfs_create_directory	include/kernel/vfs.h	/^vfs_node_t* vfs_create_directory(vfs_node_t* parent, const char* name);$/;"	p	signature:(vfs_node_t* parent, const char* name)
@@ -1203,6 +1320,7 @@ vmm_change_flags	include/kernel/vmm.h	/^bool vmm_change_flags(page_directory_t* 
 vmm_change_flags	kernel/mm/vmm.c	/^bool vmm_change_flags(page_directory_t* dir, uint64_t virt, uint32_t flags) {$/;"	f	signature:(page_directory_t* dir, uint64_t virt, uint32_t flags)
 vmm_create_address_space	include/kernel/vmm.h	/^page_directory_t* vmm_create_address_space(void);$/;"	p	signature:(void)
 vmm_create_address_space	kernel/mm/vmm.c	/^page_directory_t* vmm_create_address_space(void) {$/;"	f	signature:(void)
+vmm_destroy_address_space	kernel/mm/vmm.c	/^void vmm_destroy_address_space(page_directory_t* dir) {$/;"	f	signature:(page_directory_t* dir)
 vmm_free_pages	include/kernel/vmm.h	/^void vmm_free_pages(void* virt, size_t count);$/;"	p	signature:(void* virt, size_t count)
 vmm_free_pages	kernel/mm/vmm.c	/^void vmm_free_pages(void* virt, size_t count) {$/;"	f	signature:(void* virt, size_t count)
 vmm_get_kernel_directory	include/kernel/vmm.h	/^page_directory_t* vmm_get_kernel_directory(void);$/;"	p	signature:(void)
@@ -1211,6 +1329,7 @@ vmm_get_physical	include/kernel/vmm.h	/^uint64_t vmm_get_physical(page_directory
 vmm_get_physical	kernel/mm/vmm.c	/^uint64_t vmm_get_physical(page_directory_t* dir, uint64_t virt) {$/;"	f	signature:(page_directory_t* dir, uint64_t virt)
 vmm_init	include/kernel/vmm.h	/^void vmm_init(void);$/;"	p	signature:(void)
 vmm_init	kernel/mm/vmm.c	/^void vmm_init(void) {$/;"	f	signature:(void)
+vmm_lock	kernel/mm/vmm.c	/^static spinlock_t vmm_lock = SPINLOCK_INIT;$/;"	v	file:
 vmm_map_page	include/kernel/vmm.h	/^bool vmm_map_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint32_t flags);$/;"	p	signature:(page_directory_t* dir, uint64_t virt, uint64_t phys, uint32_t flags)
 vmm_map_page	kernel/mm/vmm.c	/^bool vmm_map_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint32_t flags) {$/;"	f	signature:(page_directory_t* dir, uint64_t virt, uint64_t phys, uint32_t flags)
 vmm_map_user_page	include/kernel/vmm.h	/^bool vmm_map_user_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint32_t flags);$/;"	p	signature:(page_directory_t* dir, uint64_t virt, uint64_t phys, uint32_t flags)

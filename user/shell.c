@@ -6,6 +6,8 @@
 
 #define MAX_CMD_LEN 128
 #define MAX_ARGS    8
+int readline(char* buf, int n);
+
 
 static void print_prompt(void) {
     printf("SzczupakOS> ");
@@ -19,6 +21,33 @@ static void cmd_help(void) {
     printf("  uptime     - show system uptime\n");
     printf("  clear      - clear screen\n");
     printf("  exit       - exit shell\n");
+}
+
+int readline(char* buf, int n) {
+    int pos = 0;
+    char c;
+    while (1) {
+        if (sys_read(&c, 1) <= 0) continue; 
+        if (c == '\n') {
+            buf[pos++] = '\n';
+            buf[pos] = 0;
+            putchar('\n'); 
+            return pos;
+        }
+        if (c == '\b' || c == 127) {
+            if (pos > 0) {
+                pos--;
+                putchar('\b');
+                putchar(' ');
+                putchar('\b');
+            }
+            continue;
+        }
+        if (pos < n - 1) {
+            buf[pos++] = c;
+            putchar(c); 
+        }
+    }
 }
 
 static void cmd_echo(int argc, char** argv) {
@@ -64,34 +93,22 @@ int main(void) {
     int argc;
     
     sys_clear();
-
     printf("Welcome to SzczupakOS Shell\n");
 
     while (1) {
         print_prompt();
-        if (fgets(line, sizeof(line), stdin) == NULL) {
-            printf("\n");
-            continue;
-        }
+        readline(line, sizeof(line));
 
         argc = parse_command(line, argv);
         if (argc == 0) continue;
 
-        if (strcmp(argv[0], "help") == 0) {
-            cmd_help();
-        } else if (strcmp(argv[0], "echo") == 0) {
-            cmd_echo(argc, argv);
-        } else if (strcmp(argv[0], "pid") == 0) {
-            cmd_pid();
-        } else if (strcmp(argv[0], "uptime") == 0) {
-            cmd_uptime();
-        } else if (strcmp(argv[0], "clear") == 0) {
-            cmd_clear();
-        } else if (strcmp(argv[0], "exit") == 0) {
-            cmd_exit();
-        } else {
-            printf("Unknown command: %s\n", argv[0]);
-        }
+        if (strcmp(argv[0], "help") == 0) cmd_help();
+        else if (strcmp(argv[0], "echo") == 0) cmd_echo(argc, argv);
+        else if (strcmp(argv[0], "pid") == 0) cmd_pid();
+        else if (strcmp(argv[0], "uptime") == 0) cmd_uptime();
+        else if (strcmp(argv[0], "clear") == 0) cmd_clear();
+        else if (strcmp(argv[0], "exit") == 0) cmd_exit();
+        else printf("Unknown command: %s\n", argv[0]);
     }
 
     return 0;

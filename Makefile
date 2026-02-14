@@ -39,6 +39,8 @@ KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
               $(OBJ_DIR)/kernel/mm/uaccess.o \
               $(OBJ_DIR)/kernel/loader/elf.o \
               $(OBJ_DIR)/kernel/terminal.o \
+              $(OBJ_DIR)/kernel/string.o \
+			  $(OBJ_DIR)/kernel/task/entry.o \
 
 
 USER_CFLAGS = -m64 -ffreestanding -nostdlib -nostdinc -fno-pie -O0 -I./user/include
@@ -104,5 +106,16 @@ run: $(BUILD_DIR)/os.iso $(DISK_IMG)
 	                   -boot order=d \
 	                   -m 256M \
 	                   -serial stdio
+run2: $(BUILD_DIR)/os.iso $(DISK_IMG)
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso \
+	-drive file=$(DISK_IMG),format=raw,if=ide \
+	-boot order=d \
+	-m 256M \
+	-serial stdio \
+	-d int,cpu_reset \
+	-D qemu.log
+
+
+
 
 .PHONY: all clean clean-disk setup-disk run
