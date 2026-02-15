@@ -21,6 +21,6 @@ gdt_flush:
     retfq
 
 tss_flush:
-    mov ax, 0x2B
+    mov ax, 0x30
     ltr ax
     ret

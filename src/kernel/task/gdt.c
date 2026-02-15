@@ -16,7 +16,7 @@ typedef struct {
     uint64_t base;
 } __attribute__((packed)) gdt_ptr_t;
 
-#define GDT_ENTRIES 7
+#define GDT_ENTRIES 8
 
 static gdt_entry_t gdt[GDT_ENTRIES];
 static gdt_ptr_t gdt_ptr;
@@ -38,6 +38,7 @@ static void gdt_set_gate(int num, uint64_t base, uint64_t limit, uint8_t access,
         *ext = base >> 32;
     }
 }
+
 void gdt_init(void) {
     gdt_ptr.limit = (sizeof(gdt_entry_t) * GDT_ENTRIES) - 1;
     gdt_ptr.base = (uint64_t)&gdt;
@@ -47,17 +48,18 @@ void gdt_init(void) {
     gdt_set_gate(0, 0, 0, 0, 0);
     gdt_set_gate(1, 0, 0, 0x9A, 0xAF);
     gdt_set_gate(2, 0, 0, 0x92, 0xCF);
-    gdt_set_gate(3, 0, 0, 0xFA, 0xAF);
+    gdt_set_gate(3, 0, 0, 0, 0);
     gdt_set_gate(4, 0, 0, 0xF2, 0xCF);
+    gdt_set_gate(5, 0, 0, 0xFA, 0xAF);
     
     serial_write("[GDT] Segments configured:\n");
     serial_write("  Kernel CS = 0x08, Kernel DS = 0x10\n");
-    serial_write("  User CS = 0x1B (0x18|3), User DS = 0x23 (0x20|3)\n");
+    serial_write("  User CS = 0x2B, User DS = 0x23\n");
     
     tss_init();
     uint64_t tss_base = (uint64_t)tss_get_address();
-    gdt_set_gate(5, tss_base & 0xFFFFFFFF, sizeof(tss_t) - 1, 0x89, 0x00);
-    uint64_t* tss_high = (uint64_t*)&gdt[6];
+    gdt_set_gate(6, tss_base & 0xFFFFFFFF, sizeof(tss_t) - 1, 0x89, 0x00);
+    uint64_t* tss_high = (uint64_t*)&gdt[7];
     *tss_high = tss_base >> 32;
     
     serial_write("[GDT] TSS at 0x");

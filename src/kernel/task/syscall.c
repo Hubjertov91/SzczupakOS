@@ -210,7 +210,7 @@ void syscall_handler(syscall_regs_t* regs) {
 }
 
 void syscall_init(void) {
-    uint64_t star   = ((uint64_t)0x1B << 48) | ((uint64_t)0x08 << 32);
+    uint64_t star   = ((uint64_t)0x28 << 48) | ((uint64_t)0x08 << 32);
     uint64_t lstar  = (uint64_t)syscall_handler_asm;
     uint64_t sfmask = (1ULL << 9);
 

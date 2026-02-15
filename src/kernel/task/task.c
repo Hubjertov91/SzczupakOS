@@ -203,7 +203,7 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
     *(--kstack) = 0x23;
     *(--kstack) = stack_top - 16;
     *(--kstack) = 0x202;
-    *(--kstack) = 0x1B;
+    *(--kstack) = 0x2B;
     *(--kstack) = entry;
     
     serial_write("[TASK] IRET frame setup, kstack=0x");
