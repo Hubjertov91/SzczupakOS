@@ -13,12 +13,25 @@
 #define SYSCALL_SYSINFO 7
 #define SYSCALL_FORK    8
 #define SYSCALL_EXEC    9
+#define SYSCALL_FB_PUTPIXEL 10
+#define SYSCALL_FB_CLEAR    11
+#define SYSCALL_FB_RECT     12
+#define SYSCALL_FB_INFO     13
+#define SYSCALL_FB_PUTCHAR  14
+#define SYSCALL_FB_PUTCHAR_PSF 15   
+
 
 struct sysinfo {
     uint64_t uptime;
     uint64_t total_memory;
     uint64_t free_memory;
     uint32_t nr_processes;
+};
+
+struct fb_info {
+    uint32_t width;
+    uint32_t height;
+    uint32_t bpp;
 };
 
 void syscall_init(void);

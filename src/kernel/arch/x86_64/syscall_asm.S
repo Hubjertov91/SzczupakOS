@@ -16,9 +16,9 @@ syscall_handler_asm:
     mov rsp, [rel syscall_kernel_rsp]
 
     push qword [rel syscall_user_rsp]
-    push r11
+    
     push rcx
-
+    push r11
     push r15
     push r14
     push r13
@@ -53,9 +53,9 @@ syscall_handler_asm:
     pop r13
     pop r14
     pop r15
-
-    pop rcx
     pop r11
+    pop rcx
+
     pop rsp
 
     o64 sysret

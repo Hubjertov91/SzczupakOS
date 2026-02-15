@@ -1,0 +1,35 @@
+#ifndef _KERNEL_FRAMEBUFFER_H
+#define _KERNEL_FRAMEBUFFER_H
+
+#include "stdint.h"
+#include <kernel/multiboot2.h>
+
+typedef struct {
+    uint64_t address;
+    void*    virt_address;
+    uint32_t width;
+    uint32_t height;
+    uint32_t pitch;
+    uint8_t  bpp;
+    uint8_t  type;
+    uint32_t bytes_per_pixel;
+    size_t   buffer_size;
+} framebuffer_info_t;
+
+typedef struct {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+} __attribute__((packed)) fb_color_t;
+
+bool framebuffer_init(struct multiboot_tag_framebuffer* fb_tag);
+framebuffer_info_t* framebuffer_get_info(void);
+bool framebuffer_available(void);
+void fb_putpixel(uint32_t x, uint32_t y, fb_color_t color);
+void fb_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, fb_color_t color);
+void fb_clear(fb_color_t color);
+void fb_putchar(uint32_t x, uint32_t y, char c, fb_color_t fg, fb_color_t bg);
+void fb_write_string(uint32_t x, uint32_t y, const char* str, fb_color_t fg, fb_color_t bg);
+
+#endif

@@ -8,7 +8,7 @@
 #include <kernel/elf.h>
 
 #define KERNEL_STACK_SIZE 8192
-#define USER_STACK_SIZE (4 * 4096)
+#define USER_STACK_SIZE (16 * 4096)
 
 static task_t* current_task = NULL;
 static task_t* task_list_head = NULL;
@@ -249,6 +249,14 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
     serial_write("\n");
 
     scheduler_add_task(task);
+
+    extern uint64_t syscall_kernel_rsp;
+    syscall_kernel_rsp = (uint64_t)task->kernel_stack + KERNEL_STACK_SIZE - 16;
+
+    serial_write("[TASK] syscall_kernel_rsp set to ");
+    serial_write_hex(syscall_kernel_rsp);
+    serial_write("\n");
+
     return task;
 }
 

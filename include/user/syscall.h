@@ -13,12 +13,24 @@
 #define SYS_SYSINFO 7
 #define SYS_FORK    8
 #define SYS_EXEC    9
+#define SYS_FB_PUTPIXEL 10
+#define SYS_FB_CLEAR    11
+#define SYS_FB_RECT     12
+#define SYS_FB_INFO     13
+#define SYS_FB_PUTCHAR  14
+#define SYS_FB_PUTCHAR_PSF 15
 
 struct sysinfo {
     uint64_t uptime;
     uint64_t total_memory;
     uint64_t free_memory;
     uint32_t nr_processes;
+};
+
+struct fb_info {
+    uint32_t width;
+    uint32_t height;
+    uint32_t bpp;
 };
 
 long syscall0(long n);
@@ -35,5 +47,12 @@ void sys_sleep(long ms);
 void sys_clear(void);
 long sys_sysinfo(struct sysinfo* info);
 long sys_fork(void);
+long sys_fb_putpixel(uint32_t x, uint32_t y, uint32_t color);
+long sys_fb_clear(uint32_t color);
+long sys_fb_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color);
+long sys_fb_info(struct fb_info* info);
+long sys_fb_putchar(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg);
+long sys_fb_putchar_psf(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg);
+
 
 #endif

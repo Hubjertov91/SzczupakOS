@@ -1,12 +1,4 @@
-v1:
-    -moduły
-    -obsluga bledow
-    -standaryzacja nazewnictwa
-    -usunac powtarzajacy sie kod (glownie IO)
-    -zamienic int 0x80 -> syscall
-    -wyczyscic kod kernela
-    elfy ls, mkdir itd
-v2:
-    -dodac nowe rodzaje syscalle
-    -komunikacja miedzyprocesowa
-    -
+KRYTCZNE:
+
+    PROBLEM Z POWROTAMI!
+    EXCEPTION GENERAL PROTECTION

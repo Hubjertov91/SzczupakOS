@@ -83,16 +83,33 @@ page_directory_t* vmm_get_kernel_directory(void) {
 
 page_directory_t* vmm_create_address_space(void) {
 	page_directory_t* dir = (page_directory_t*)kmalloc(sizeof(page_directory_t));
-	if (!dir) return NULL;
+	if (!dir) {
+		serial_write("[VMM] Failed to allocate dir struct\n");
+		return NULL;
+	}
 
 	uint64_t pml4_phys = pmm_alloc_page();
 	if (!pml4_phys) {
+		serial_write("[VMM] Failed to allocate PML4 page\n");
 		kfree(dir);
 		return NULL;
 	}
 
-	uint64_t* pml4        = PHYS_TO_VIRT(pml4_phys);
-	uint64_t* kernel_pml4 = PHYS_TO_VIRT(kernel_directory->pml4_phys);
+	uint64_t* pml4 = vmm_temp_map(pml4_phys);
+	if (!pml4) {
+		serial_write("[VMM] Failed to temp map PML4\n");
+		pmm_free_page(pml4_phys);
+		kfree(dir);
+		return NULL;
+	}
+
+	uint64_t* kernel_pml4 = vmm_temp_map(kernel_directory->pml4_phys);
+	if (!kernel_pml4) {
+		serial_write("[VMM] Failed to temp map kernel PML4\n");
+		pmm_free_page(pml4_phys);
+		kfree(dir);
+		return NULL;
+	}
 
 	dir->pml4      = pml4;
 	dir->pml4_phys = pml4_phys;
@@ -102,6 +119,7 @@ page_directory_t* vmm_create_address_space(void) {
 	pml4[0] = kernel_pml4[0];
 	for (int i = 256; i < 512; i++) pml4[i] = kernel_pml4[i];
 
+	serial_write("[VMM] Created address space successfully\n");
 	return dir;
 }
 

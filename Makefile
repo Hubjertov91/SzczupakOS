@@ -27,6 +27,8 @@ KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
               $(OBJ_DIR)/kernel/drivers/pit.o \
               $(OBJ_DIR)/kernel/drivers/keyboard.o \
               $(OBJ_DIR)/kernel/drivers/ata.o \
+              $(OBJ_DIR)/kernel/drivers/framebuffer.o \
+              $(OBJ_DIR)/kernel/drivers/psf.o \
               $(OBJ_DIR)/kernel/multiboot/multiboot2.o \
               $(OBJ_DIR)/kernel/mm/pmm.o \
               $(OBJ_DIR)/kernel/mm/heap.o \
@@ -104,6 +106,7 @@ $(DISK_IMG): $(BUILD_DIR)/user/shell.elf
 	dd if=/dev/zero of=$(DISK_IMG) bs=1M count=32 2>/dev/null
 	mkfs.fat -F 16 $(DISK_IMG) 2>/dev/null
 	mcopy -i $(DISK_IMG) $(BUILD_DIR)/user/shell.elf ::/SHELL.ELF 2>/dev/null
+	mcopy -i $(DISK_IMG) assets/fonts/8x16.psf ::/FONT.PSF 2>/dev/null
 
 $(BUILD_DIR)/os.iso: $(BUILD_DIR)/kernel.bin $(BUILD_DIR)/user/shell.elf
 	@mkdir -p $(ISO_DIR)/boot/grub
@@ -121,7 +124,7 @@ clean-disk:
 setup-disk: $(DISK_IMG)
 
 run: $(BUILD_DIR)/os.iso $(DISK_IMG)
-	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 256M -serial stdio
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M -serial stdio
 
 run2: $(BUILD_DIR)/os.iso $(DISK_IMG)
 	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 256M -serial stdio -d int,cpu_reset -D qemu.log

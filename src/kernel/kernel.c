@@ -8,6 +8,7 @@
 #include <task/task.h>
 #include <task/scheduler.h>
 #include <arch/gdt.h>
+#include <fs/vfs.h>
 #include <fs/fat16.h>
 #include <kernel/elf.h>
 #include <drivers/pic.h>
@@ -16,15 +17,22 @@
 #include <task/syscall.h>
 #include <mm/pagefault.h>
 #include <task/tss.h>
+#include <drivers/framebuffer.h>
+#include <drivers/psf.h>
 
 void kernel_main(uint64_t multiboot_addr) {
     vga_init();
     serial_init();
-    vga_write("OstrowekOS\n");
     
     multiboot_parse(multiboot_addr);
     heap_init();
     vmm_init();
+    
+    struct multiboot_tag_framebuffer* fb_tag = multiboot_get_framebuffer_tag();
+    if (fb_tag) {
+        framebuffer_init(fb_tag);
+    }
+    
     pagefault_init();
     idt_init();
     gdt_init();
@@ -36,10 +44,17 @@ void kernel_main(uint64_t multiboot_addr) {
     scheduler_init();
     vfs_init();
 
+    if (framebuffer_available()) {
+        fb_color_t blue = {0, 100, 255, 255};
+        fb_clear(blue);
+    }
+
     if (!fat16_mount(0)) while(1);
     vfs_filesystem_t* fat = fat16_create();
     if (!fat) while(1);
     if (!vfs_mount(fat, "/")) while(1);
+
+    psf_load("/FONT.PSF");
 
     vfs_node_t* shell_file = vfs_open("/SHELL.ELF", 0);
     if (!shell_file) while(1);
@@ -56,8 +71,6 @@ void kernel_main(uint64_t multiboot_addr) {
     vfs_close(shell_file);
 
     tss_set_kernel_stack((uint64_t)task->kernel_stack + 8192);
-
-    serial_write("[KERNEL] Starting scheduler\n");
 
     scheduler_enable();
     __asm__ volatile("sti");

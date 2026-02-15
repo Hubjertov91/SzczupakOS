@@ -16,7 +16,6 @@ usermode_entry:
     xor rcx, rcx
     xor rdx, rdx
     xor rsi, rsi
-    xor rdi, rdi
     xor rbp, rbp
     xor r8, r8
     xor r9, r9
@@ -26,6 +25,8 @@ usermode_entry:
     xor r13, r13
     xor r14, r14
     xor r15, r15
+    
+    mov rdi, 0
     
     iretq
 

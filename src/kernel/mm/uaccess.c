@@ -143,41 +143,59 @@ int copy_from_user(void* kernel_dst, const void* user_src, size_t size) {
 }
 
 int copy_to_user(void* user_dst, const void* kernel_src, size_t size) {
-    if (!user_dst || !kernel_src || size == 0) return -EINVAL;
+    if (!user_dst || !kernel_src || size == 0) {
+        serial_write("[UACCESS] copy_to_user: invalid params\n");
+        return -EINVAL;
+    }
     
     uint64_t dst_addr = (uint64_t)user_dst;
     int ret = validate_user_range(dst_addr, size);
-    if (ret) return ret;
+    if (ret) {
+        serial_write("[UACCESS] copy_to_user: invalid user range ");
+        serial_write_hex(dst_addr);
+        serial_write("\n");
+        return ret;
+    }
     
     page_directory_t* dir = get_current_user_dir();
-    if (!dir) return -EFAULT;
+    if (!dir) {
+        serial_write("[UACCESS] copy_to_user: no user dir\n");
+        return -EFAULT;
+    }
     
-    uint64_t start_page = dst_addr & ~PAGE_MASK;
-    uint64_t end_page = ((dst_addr + size - 1) & ~PAGE_MASK);
+    const uint8_t* src = (const uint8_t*)kernel_src;
+    size_t copied = 0;
     
-    for (uint64_t page = start_page; page <= end_page; page += PAGE_SIZE) {
-        if (!check_page_permissions(dir, page, true)) {
+    while (copied < size) {
+        uint64_t vaddr = dst_addr + copied;
+        
+        uint64_t phys = vmm_get_physical(dir, vaddr);
+        if (!phys) {
+            serial_write("[UACCESS] copy_to_user: no mapping at ");
+            serial_write_hex(vaddr);
+            serial_write("\n");
             return -EFAULT;
         }
+        
+        if (!check_page_permissions(dir, vaddr, true)) {
+            serial_write("[UACCESS] copy_to_user: no permissions at ");
+            serial_write_hex(vaddr);
+            serial_write("\n");
+            return -EFAULT;
+        }
+        
+        size_t page_offset = vaddr & 0xFFF;
+        size_t chunk = 4096 - page_offset;
+        if (chunk > size - copied) chunk = size - copied;
+        
+        uint8_t* dst_page = (uint8_t*)((phys & ~0xFFFULL) + 0xFFFF800000000000ULL + page_offset);
+        
+        for (size_t i = 0; i < chunk; i++) {
+            dst_page[i] = src[copied + i];
+        }
+        
+        copied += chunk;
     }
-    
-    uint64_t old_cr3;
-    __asm__ volatile("mov %%cr3, %0" : "=r"(old_cr3));
-    
-    if (smap_enabled) stac();
-    
-    __asm__ volatile("mov %0, %%cr3" : : "r"(dir->pml4_phys) : "memory");
-    
-    uint8_t* dst = (uint8_t*)user_dst;
-    const uint8_t* src = (const uint8_t*)kernel_src;
-    
-    for (size_t i = 0; i < size; i++) {
-        dst[i] = src[i];
-    }
-    
-    __asm__ volatile("mov %0, %%cr3" : : "r"(old_cr3) : "memory");
-    
-    if (smap_enabled) clac();
     
     return 0;
 }

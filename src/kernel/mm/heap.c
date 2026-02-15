@@ -7,8 +7,8 @@
 
 #define HEAP_MAGIC 0xABCD1234
 #define PAGE_SIZE 4096
-#define HEAP_MIN_SIZE 64
-#define HEAP_PAGES 8
+#define HEAP_MIN_SIZE 16
+#define HEAP_PAGES 32
 
 typedef struct heap_block {
     uint32_t magic;

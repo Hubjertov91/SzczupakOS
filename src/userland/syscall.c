@@ -105,3 +105,27 @@ long sys_sysinfo(struct sysinfo* info) {
 long sys_fork(void) {
     return syscall0(SYS_FORK);
 }
+
+long sys_fb_putpixel(uint32_t x, uint32_t y, uint32_t color) {
+    return syscall3(SYS_FB_PUTPIXEL, x, y, color);
+}
+
+long sys_fb_clear(uint32_t color) {
+    return syscall1(SYS_FB_CLEAR, color);
+}
+
+long sys_fb_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color) {
+    return syscall5(SYS_FB_RECT, x, y, w, h, color);
+}
+
+long sys_fb_info(struct fb_info* info) {
+    return syscall1(SYS_FB_INFO, (long)info);
+}
+
+long sys_fb_putchar(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg) {
+    return syscall5(SYS_FB_PUTCHAR, x, y, (long)c, fg, bg);
+}
+
+long sys_fb_putchar_psf(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg) {
+    return syscall5(SYS_FB_PUTCHAR_PSF, x, y, (long)c, fg, bg);
+}

@@ -5,6 +5,8 @@
 
 extern uint8_t kernel_end;
 
+static struct multiboot_tag_framebuffer* saved_fb_tag = NULL;
+
 void multiboot_parse(uint64_t multiboot_addr) {
     struct multiboot_tag* tag;
     uint64_t highest_addr = 0;
@@ -29,7 +31,15 @@ void multiboot_parse(uint64_t multiboot_addr) {
                 }
             }
         }
+        
+        if (tag->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER) {
+            saved_fb_tag = (struct multiboot_tag_framebuffer*)tag;
+        }
     }
     
     pmm_init(0, highest_addr);
+}
+
+struct multiboot_tag_framebuffer* multiboot_get_framebuffer_tag(void) {
+    return saved_fb_tag;
 }
