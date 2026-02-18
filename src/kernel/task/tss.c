@@ -16,7 +16,7 @@ void tss_init(void) {
     uint64_t ist1_top = (uint64_t)ist1_stack + 8192;
 
     tss.rsp0 = 0;
-    tss.ist1 = ist1_top;
+    tss.ist1 = ist1_top - 8;
     tss.iomap_base = sizeof(tss_t);
 
     serial_write("[TSS] init\n");

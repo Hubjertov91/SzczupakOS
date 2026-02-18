@@ -48,10 +48,8 @@ struct multiboot_color {
 #define MULTIBOOT_MEMORY_RESERVED 2
 
 #define MULTIBOOT_FRAMEBUFFER_TYPE_INDEXED  0
-#define MULTIBOOT_FRAMEBUFFER_TYPE_RGB      1
-#define MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT 2
 
-void multiboot_parse(uint64_t multiboot_addr);
+bool multiboot_parse(uint64_t addr);
 struct multiboot_tag_framebuffer* multiboot_get_framebuffer_tag(void);
 
 #endif

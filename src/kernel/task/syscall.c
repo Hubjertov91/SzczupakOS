@@ -4,9 +4,7 @@
 #include <task/task.h>
 #include <mm/uaccess.h>
 #include <kernel/terminal.h>
-#include <task/scheduler.h>
-#include <drivers/pit.h>
-#include <mm/pmm.h>
+#include <fs/vfs.h>
 #include <drivers/framebuffer.h>
 #include <drivers/psf.h>
 
@@ -171,6 +169,11 @@ static uint64_t sys_fb_putchar_psf_syscall(uint64_t x, uint64_t y, uint64_t c, u
 }
 
 void syscall_handler(syscall_regs_t* regs) {
+    task_t* current_task = get_current_task();
+    if (!current_task) {
+        regs->rax = (uint64_t)-1;
+        return;
+    }
     static int call_count = 0;
     call_count++;
     
@@ -209,7 +212,7 @@ void syscall_handler(syscall_regs_t* regs) {
     }
 }
 
-void syscall_init(void) {
+bool syscall_init(void) {
     uint64_t star   = ((uint64_t)0x28 << 48) | ((uint64_t)0x08 << 32);
     uint64_t lstar  = (uint64_t)syscall_handler_asm;
     uint64_t sfmask = (1ULL << 9);
@@ -224,4 +227,5 @@ void syscall_init(void) {
     __asm__ volatile("wrmsr" : : "c"(0xC0000080), "a"((uint32_t)efer), "d"((uint32_t)(efer >> 32)));
 
     serial_write("[SYSCALL] Syscall interface initialized\n");
+    return true;
 }

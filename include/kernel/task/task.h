@@ -41,15 +41,16 @@ typedef struct task {
     uint64_t cr3_phys;
     uint64_t cpu_time;
     uint64_t creation_time;
+    uint64_t syscall_kernel_rsp;
 } task_t;
 
-void task_init(void);
+bool task_init(void);
 task_t* task_create(const char* name, void (*entry_point)(void));
 task_t* task_create_user(const char* name, uint8_t* elf_data, size_t size);
 task_t* task_fork(void);
 void task_exit(void);
+task_t* get_current_task(void);
 void task_yield(void);
-task_t* task_get_current(void);
 uint32_t task_get_pid(void);
 void task_set_current(task_t* task);
 

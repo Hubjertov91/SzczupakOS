@@ -34,6 +34,6 @@ struct fb_info {
     uint32_t bpp;
 };
 
-void syscall_init(void);
+bool syscall_init(void);
 
 #endif

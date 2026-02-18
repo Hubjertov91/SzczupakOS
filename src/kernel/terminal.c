@@ -23,6 +23,7 @@ void terminal_clear(void) {
 void terminal_write(const char* str, size_t len) {
     for (size_t i = 0; i < len; i++) {
         vga_putchar(str[i]);
+        serial_write_char(str[i]);
     }
 }
 

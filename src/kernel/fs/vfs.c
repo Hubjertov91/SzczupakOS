@@ -2,18 +2,9 @@
 #include <mm/heap.h>
 #include <kernel/vga.h>
 #include <drivers/serial.h>
+#include <kernel/string.h>
 
 static vfs_node_t* vfs_root = NULL;
-
-static int strcmp(const char* s1, const char* s2) {
-    if (!s1 || !s2) return -1;
-    
-    while (*s1 && *s1 == *s2) { 
-        s1++; 
-        s2++; 
-    }
-    return *(unsigned char*)s1 - *(unsigned char*)s2;
-}
 
 void vfs_init(void) {
     vfs_root = NULL;
@@ -39,7 +30,10 @@ bool vfs_mount(vfs_filesystem_t* fs, const char* mountpoint) {
 }
 
 bool vfs_mount_at(vfs_filesystem_t* fs, const char* path) {
-    if (!fs || !fs->root) return false;
+    if (!fs || !fs->root || !path) {
+        serial_write("[VFS] ERROR: Invalid mount_at parameters\n");
+        return false;
+    }
     
     if (strcmp(path, "/") == 0) {
         return vfs_mount(fs, "/");
@@ -48,6 +42,11 @@ bool vfs_mount_at(vfs_filesystem_t* fs, const char* path) {
     const char* name = path;
     for (int i = 0; path[i]; i++) {
         if (path[i] == '/') name = &path[i + 1];
+    }
+    
+    if (!name || strlen(name) == 0) {
+        serial_write("[VFS] ERROR: Invalid mount name\n");
+        return false;
     }
     
     vfs_node_t* mount_point = vfs_find_child(vfs_root, name);

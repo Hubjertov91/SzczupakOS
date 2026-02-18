@@ -91,7 +91,6 @@ uint64_t elf_load(task_t* task, uint8_t* elf_data, size_t elf_size) {
                 serial_write("[ELF] Failed to map page at 0x");
                 serial_write_hex(v);
                 serial_write("\n");
-                pmm_free_page(phys);
                 return 0;
             }
         }

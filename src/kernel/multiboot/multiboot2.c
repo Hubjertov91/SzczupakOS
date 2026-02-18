@@ -7,7 +7,12 @@ extern uint8_t kernel_end;
 
 static struct multiboot_tag_framebuffer* saved_fb_tag = NULL;
 
-void multiboot_parse(uint64_t multiboot_addr) {
+bool multiboot_parse(uint64_t multiboot_addr) {
+    if (multiboot_addr == 0) {
+        serial_write("[MULTIBOOT] ERROR: Invalid multiboot address\n");
+        return false;
+    }
+    
     struct multiboot_tag* tag;
     uint64_t highest_addr = 0;
     
@@ -38,6 +43,8 @@ void multiboot_parse(uint64_t multiboot_addr) {
     }
     
     pmm_init(0, highest_addr);
+    serial_write("[MULTIBOOT] Multiboot info parsed successfully\n");
+    return true;
 }
 
 struct multiboot_tag_framebuffer* multiboot_get_framebuffer_tag(void) {

@@ -21,11 +21,11 @@ typedef struct heap_block {
 static heap_block_t* heap_start = NULL;
 static spinlock_t heap_lock = SPINLOCK_INIT;
 
-void heap_init(void) {
+bool heap_init(void) {
     uint64_t phys = pmm_alloc_pages(HEAP_PAGES);
     if (!phys) {
         serial_write("[HEAP] FAIL: No memory\n");
-        return;
+        return false;
     }
     
     heap_start = (heap_block_t*)phys;
@@ -40,6 +40,8 @@ void heap_init(void) {
     serial_write(" (");
     serial_write_dec(HEAP_PAGES * PAGE_SIZE / 1024);
     serial_write(" KB)\n");
+    
+    return true;
 }
 
 void* kmalloc(size_t size) {
@@ -117,11 +119,19 @@ void kfree(void* ptr) {
 }
 
 void* kcalloc(size_t num, size_t size) {
+    if (num == 0 || size == 0) return NULL;
+    
     size_t total = num * size;
+    if (total / num != size) {
+        serial_write("[HEAP] ERROR: Size overflow in kcalloc\n");
+        return NULL;
+    }
+    
     void* ptr = kmalloc(total);
     if (ptr) {
+        char* p = (char*)ptr;
         for (size_t i = 0; i < total; i++) {
-            ((char*)ptr)[i] = 0;
+            p[i] = 0;
         }
     }
     return ptr;

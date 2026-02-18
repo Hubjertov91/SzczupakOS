@@ -1,14 +1,13 @@
 #include <task/scheduler.h>
-#include <task/task.h>
-#include <kernel/vga.h>
-#include <drivers/pic.h>
-#include <drivers/serial.h>
-#include <task/tss.h>
-#include <arch/gdt.h>
+#include <kernel/task/task.h>
+#include <kernel/task/tss.h>
 #include <kernel/spinlock.h>
+#include <kernel/string.h>
+#include <kernel/drivers/serial.h>
+#include <arch/gdt.h>
 #include <mm/vmm.h>
 
-#define KERNEL_STACK_SIZE 8192
+#define KERNEL_STACK_SIZE 16384
 
 static task_t* ready_queue = NULL;
 static task_t* ready_queue_tail = NULL;
@@ -27,6 +26,7 @@ void scheduler_init(void) {
 void scheduler_add_task(task_t* task) {
     if (!task) return;
     if (!task->kernel_stack) return;
+    if (task->state == TASK_RUNNING) return;
 
     irq_state_t state = spinlock_acquire_irqsave(&scheduler_lock);
 
@@ -81,9 +81,11 @@ void scheduler_remove_task(task_t* task) {
 }
 
 void schedule(void) {
-    if (!scheduler_enabled || !ready_queue) return;
+    if (!scheduler_enabled || !ready_queue) {
+        return;
+    }
 
-    task_t* prev = task_get_current();
+    task_t* prev = get_current_task();
     if (!prev) return;
 
     irq_state_t state = spinlock_acquire_irqsave(&scheduler_lock);
@@ -98,6 +100,17 @@ void schedule(void) {
     next->state = TASK_RUNNING;
     spinlock_release_irqrestore(&scheduler_lock, state);
 
+    serial_write("[SCHED] Switching from ");
+    serial_write(prev->name);
+    serial_write(" to ");
+    serial_write(next->name);
+    serial_write("\n");
+
+    if (!prev->is_kernel && strcmp(next->name, "idle") == 0) {
+        scheduler_add_task(next);
+        return;
+    }
+
     if (next == prev) {
         scheduler_add_task(next);
         return;
@@ -105,10 +118,24 @@ void schedule(void) {
 
     tss_set_kernel_stack((uint64_t)next->kernel_stack + KERNEL_STACK_SIZE);
     task_set_current(next);
+    
+    extern uint64_t syscall_kernel_rsp;
+    syscall_kernel_rsp = next->syscall_kernel_rsp;
 
-    if (next->context.kernel_rsp < (uint64_t)next->kernel_stack ||
-        next->context.kernel_rsp > (uint64_t)next->kernel_stack + KERNEL_STACK_SIZE) {
+    if (strcmp(next->name, "idle") == 0) {
+        next->context.kernel_rsp = (uint64_t)next->kernel_stack + KERNEL_STACK_SIZE;
+    }
+    
+    if (next->is_kernel && (next->context.kernel_rsp < (uint64_t)next->kernel_stack ||
+        next->context.kernel_rsp > (uint64_t)next->kernel_stack + KERNEL_STACK_SIZE)) {
         serial_write("[SCHED] PANIC: bad kernel_rsp\n");
+        serial_write("[SCHED] kernel_rsp: 0x");
+        serial_write_hex(next->context.kernel_rsp);
+        serial_write(", kernel_stack: 0x");
+        serial_write_hex((uint64_t)next->kernel_stack);
+        serial_write(", end: 0x");
+        serial_write_hex((uint64_t)next->kernel_stack + KERNEL_STACK_SIZE);
+        serial_write("\n");
         while(1) __asm__ volatile("hlt");
     }
 
@@ -129,6 +156,51 @@ void schedule(void) {
     }
 
     switch_task(&prev->context, &next->context);
+}
+
+uint64_t schedule_from_irq(uint64_t* irq_rsp) {
+    if (!scheduler_enabled || !ready_queue || !irq_rsp) {
+        return 0;
+    }
+
+    task_t* prev = get_current_task();
+    if (!prev) return 0;
+
+    irq_state_t state = spinlock_acquire_irqsave(&scheduler_lock);
+    task_t* next = ready_queue;
+    if (!next) {
+        spinlock_release_irqrestore(&scheduler_lock, state);
+        return 0;
+    }
+    ready_queue = next->next;
+    if (!ready_queue) ready_queue_tail = NULL;
+    next->next = NULL;
+    next->state = TASK_RUNNING;
+    spinlock_release_irqrestore(&scheduler_lock, state);
+
+    if (next == prev) {
+        scheduler_add_task(next);
+        return 0;
+    }
+
+    prev->context.kernel_rsp = (uint64_t)irq_rsp;
+
+    tss_set_kernel_stack((uint64_t)next->kernel_stack + KERNEL_STACK_SIZE);
+    task_set_current(next);
+
+    extern uint64_t syscall_kernel_rsp;
+    syscall_kernel_rsp = next->syscall_kernel_rsp;
+
+    if (!next->is_kernel && next->context.cr3) {
+        __asm__ volatile("mov %0, %%cr3" : : "r"(next->context.cr3) : "memory");
+    }
+
+    if (prev->state == TASK_RUNNING) {
+        prev->state = TASK_READY;
+        scheduler_add_task(prev);
+    }
+
+    return next->context.kernel_rsp;
 }
 
 void scheduler_enable(void) {

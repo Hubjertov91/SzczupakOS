@@ -18,6 +18,10 @@ extern void isr5(void);
 extern void isr6(void);
 extern void isr7(void);
 extern void isr8(void);
+extern void isr9(void);
+extern void isr10(void);
+extern void isr11(void);
+extern void isr12(void);
 extern void isr13(void);
 extern void isr14(void);
 
@@ -61,8 +65,17 @@ void idt_init(void) {
     idt_set_gate(6, (uint64_t)isr6, IDT_TRAP_GATE);
     idt_set_gate(7, (uint64_t)isr7, IDT_TRAP_GATE);
     idt_set_gate(8, (uint64_t)isr8, IDT_TRAP_GATE);
+    idt_set_gate(9, (uint64_t)isr9, IDT_TRAP_GATE);
+    idt_set_gate(10, (uint64_t)isr10, IDT_TRAP_GATE);
+    idt_set_gate(11, (uint64_t)isr11, IDT_TRAP_GATE);
+    idt_set_gate(12, (uint64_t)isr12, IDT_TRAP_GATE);
     idt_set_gate(13, (uint64_t)isr13, IDT_TRAP_GATE);
     idt_set_gate(14, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(16, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(17, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(18, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(19, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(20, (uint64_t)isr14, IDT_TRAP_GATE);
 
     idt_set_gate(32, (uint64_t)irq0, IDT_INTR_GATE);
     idt_set_gate(33, (uint64_t)irq1, IDT_INTR_GATE);
@@ -98,25 +111,41 @@ void exception_handler(uint64_t vector, uint64_t error_code, uint64_t rip) {
     const char* exceptions[] = {
         "Division By Zero",
         "Debug",
-        "NMI",
+        "Non-Maskable Interrupt",
         "Breakpoint",
         "Overflow",
-        "Bound Range",
+        "Bound Range Exceeded",
         "Invalid Opcode",
         "Device Not Available",
         "Double Fault",
-        "Coprocessor Segment",
+        "Coprocessor Segment Overrun",
         "Invalid TSS",
         "Segment Not Present",
-        "Stack Fault",
-        "General Protection",
-        "Page Fault"
+        "Stack-Segment Fault",
+        "General Protection Fault",
+        "Page Fault",
+        "Reserved",
+        "x87 Floating-Point Exception",
+        "Alignment Check",
+        "Machine Check",
+        "SIMD Floating-Point Exception",
+        "Virtualization Exception",
+        "Reserved",
+        "Reserved",
+        "Reserved",
+        "Reserved",
+        "Reserved",
+        "Reserved",
+        "Reserved",
+        "Reserved",
+        "Security Exception",
+        "Reserved"
     };
     
     serial_write("\n========================================\n");
     serial_write("[EXCEPTION] ");
     
-    if (vector < 15) {
+    if (vector < 32) {
         serial_write(exceptions[vector]);
     } else {
         serial_write("Unknown Exception");

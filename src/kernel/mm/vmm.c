@@ -68,13 +68,18 @@ static uint64_t* get_or_create_table(uint64_t* parent, size_t index, uint32_t fl
 	return table;
 }
 
-void vmm_init(void) {
+bool vmm_init(void) {
 	kernel_directory = (page_directory_t*)kmalloc(sizeof(page_directory_t));
-	if (!kernel_directory) while (1) __asm__ volatile("hlt");
+	if (!kernel_directory) {
+		serial_write("[VMM] ERROR: Failed to allocate kernel directory\n");
+		return false;
+	}
 	kernel_directory->pml4 = (uint64_t*)&p4_table;
 	uint64_t cr3;
 	__asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
 	kernel_directory->pml4_phys = cr3;
+	serial_write("[VMM] Virtual memory initialized\n");
+	return true;
 }
 
 page_directory_t* vmm_get_kernel_directory(void) {

@@ -55,7 +55,7 @@ void keyboard_handler(void) {
     if (scancode & 0x80) {                                               pic_send_eoi(1); return; }
 
     char c = 0;
-    if (scancode < sizeof(scancode_to_ascii)) {
+    if (scancode < sizeof(scancode_to_ascii) / sizeof(scancode_to_ascii[0])) {
         c = shift_pressed ? scancode_to_ascii_shift[scancode] : scancode_to_ascii[scancode];
         if (caps_lock) {
             if (c >= 'a' && c <= 'z') c -= 32;

@@ -9,7 +9,7 @@
 #define PF_RESERVED (1 << 3)
 #define PF_FETCH    (1 << 4)
 
-void pagefault_init(void);
+bool pagefault_init(void);
 void pagefault_handler(uint64_t error_code, uint64_t faulting_addr);
 
 #endif

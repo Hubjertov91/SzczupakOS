@@ -68,11 +68,6 @@ void pic_clear_mask(const uint8_t irq) {
     outb(port, value);
     
     serial_write("[PIC] Unmasked IRQ ");
-    if (irq >= 10) {
-        outb(0x3F8, '0' + (irq / 10));
-        outb(0x3F8, '0' + (irq % 10));
-    } else {
-        outb(0x3F8, '0' + irq);
-    }
+    serial_write_dec(irq);
     serial_write("\n");
 }

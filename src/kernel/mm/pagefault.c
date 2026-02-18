@@ -29,7 +29,7 @@ void pagefault_handler(uint64_t error_code, uint64_t faulting_addr) {
     
     if (error_code & 0x10) serial_write("  - Instruction fetch\n");
     
-    task_t* current = task_get_current();
+    task_t* current = get_current_task();
     if (current && current->page_dir) {
         uint64_t* pml4 = (uint64_t*)((uint64_t)(current->page_dir->pml4_phys) + 0xFFFF800000000000ULL);
         size_t pml4_idx = (faulting_addr >> 39) & 0x1FF;
@@ -86,6 +86,7 @@ void pagefault_handler(uint64_t error_code, uint64_t faulting_addr) {
     __asm__ volatile("cli; hlt");
 }
 
-void pagefault_init(void) {
+bool pagefault_init(void) {
     serial_write("[PF] Page Fault Handler initialized\n");
+    return true;
 }

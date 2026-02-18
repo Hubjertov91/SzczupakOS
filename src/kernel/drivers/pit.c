@@ -31,12 +31,10 @@ void pit_init(uint32_t frequency) {
     serial_write(" Hz\n");
 }
 
-void pit_handler(void) {
+uint64_t pit_handler(uint64_t* irq_rsp) {
     system_ticks++;
     pic_send_eoi(0);
-    schedule();
-    
-    
+    return schedule_from_irq(irq_rsp);
 }
 
 uint64_t pit_get_ticks(void) {

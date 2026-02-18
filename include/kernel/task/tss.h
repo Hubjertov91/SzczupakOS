@@ -19,6 +19,9 @@ typedef struct {
     uint64_t reserved2;
     uint16_t reserved3;
     uint16_t iomap_base;
+    uint32_t reserved4;
+    uint32_t reserved5;
+    uint64_t reserved6;
 } __attribute__((packed)) tss_t;
 
 void tss_init(void);

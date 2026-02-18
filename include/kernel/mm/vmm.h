@@ -16,7 +16,7 @@ typedef struct page_directory {
     uint64_t pml4_phys;
 } page_directory_t;
 
-void vmm_init(void);
+bool vmm_init(void);
 page_directory_t* vmm_get_kernel_directory(void);
 page_directory_t* vmm_create_address_space(void);
 void vmm_destroy_address_space(page_directory_t* dir);

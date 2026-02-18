@@ -132,7 +132,11 @@ irq_common:
     jmp .done
     
 .pit:
+    mov rdi, rsp
     call pit_handler
+    test rax, rax
+    jz .done
+    mov rsp, rax
     jmp .done
     
 .keyboard:

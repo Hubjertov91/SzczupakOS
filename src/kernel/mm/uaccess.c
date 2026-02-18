@@ -48,7 +48,7 @@ static inline int validate_user_range(uint64_t addr, size_t size) {
 }
 
 static inline page_directory_t* get_current_user_dir(void) {
-    task_t* current = task_get_current();
+    task_t* current = get_current_task();
     if (!current || current->is_kernel || !current->page_dir) {
         return NULL;
     }

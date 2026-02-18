@@ -6,19 +6,30 @@
 #include <task/scheduler.h>
 #include <drivers/serial.h>
 #include <kernel/elf.h>
+#include <kernel/stdint.h>
 
-#define KERNEL_STACK_SIZE 8192
-#define USER_STACK_SIZE (16 * 4096)
+#define KERNEL_STACK_SIZE 16384
+#define USER_STACK_SIZE (32 * 4096)
 
 static task_t* current_task = NULL;
 static task_t* task_list_head = NULL;
 static uint32_t next_pid = 1;
+
+task_t* get_current_task(void) {
+    return current_task;
+}
 
 extern void scheduler_add_task(task_t* task);
 extern void scheduler_remove_task(task_t* task);
 extern void schedule(void);
 extern uint64_t pit_get_ticks(void);
 extern void usermode_entry(void);
+
+static void idle_task_entry(void) {
+    for (;;) {
+        __asm__ volatile("sti; hlt");
+    }
+}
 
 static void strcpy_safe(char* dst, const char* src, size_t max) {
     if (!dst || !src || max == 0) return;
@@ -30,19 +41,25 @@ static void strcpy_safe(char* dst, const char* src, size_t max) {
     dst[i] = '\0';
 }
 
-void task_init(void) {
+bool task_init(void) {
     current_task = (task_t*)kmalloc(sizeof(task_t));
     if (!current_task) {
         serial_write("[TASK] ERROR: Failed to allocate idle task\n");
-        return;
+        return false;
     }
 
     current_task->pid = 0;
     strcpy_safe(current_task->name, "idle", sizeof(current_task->name));
     current_task->state = TASK_RUNNING;
-    current_task->kernel_stack = NULL;
+    
+    current_task->kernel_stack = vmm_alloc_pages(KERNEL_STACK_SIZE / PAGE_SIZE);
+    if (!current_task->kernel_stack) {
+        serial_write("[TASK] ERROR: Failed to allocate idle task kernel stack\n");
+        kfree(current_task);
+        return false;
+    }
+    current_task->stack_size = KERNEL_STACK_SIZE;
     current_task->user_stack = NULL;
-    current_task->stack_size = 0;
     current_task->next = NULL;
     current_task->time_slice = 10;
     current_task->priority = 0;
@@ -58,15 +75,36 @@ void task_init(void) {
     current_task->context.r12 = 0;
     current_task->context.rbp = 0;
     current_task->context.rbx = 0;
-    current_task->context.kernel_rsp = 0;
+
+    uint64_t* kstack = (uint64_t*)((uint64_t)current_task->kernel_stack + KERNEL_STACK_SIZE);
+
+    *(--kstack) = 0x202;
+    *(--kstack) = 0x08;
+    *(--kstack) = (uint64_t)idle_task_entry;
+
+    *(--kstack) = 0;
+    *(--kstack) = 32;
+
+    for (int i = 0; i < 15; i++) {
+        *(--kstack) = 0;
+    }
+
+    current_task->context.kernel_rsp = (uint64_t)kstack;
     current_task->context.cr3 = 0;
+    current_task->syscall_kernel_rsp = (uint64_t)current_task->kernel_stack + KERNEL_STACK_SIZE - 256;
 
     task_list_head = current_task;
-    serial_write("[TASK] Idle task initialized\n");
+    serial_write("[TASK] Idle task generated\n");
+    return true;
 }
 
 task_t* task_create(const char* name, void (*entry_point)(void)) {
     if (!name || !entry_point) return NULL;
+
+    if (next_pid >= 0xFFFFFFFF) {
+        serial_write("[TASK] ERROR: PID overflow\n");
+        return NULL;
+    }
 
     task_t* task = (task_t*)kmalloc(sizeof(task_t));
     if (!task) return NULL;
@@ -94,7 +132,16 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
 
     uint64_t* kstack = (uint64_t*)((uint64_t)task->kernel_stack + KERNEL_STACK_SIZE);
 
-    *(--kstack) = (uint64_t)entry_point;
+    *(--kstack) = 0x202;                 
+    *(--kstack) = 0x08;                  
+    *(--kstack) = (uint64_t)entry_point; 
+
+    *(--kstack) = 0;  
+    *(--kstack) = 32; 
+
+    for (int i = 0; i < 15; i++) {
+        *(--kstack) = 0;
+    }
 
     task->context.r15 = 0;
     task->context.r14 = 0;
@@ -104,6 +151,7 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     task->context.rbx = 0;
     task->context.kernel_rsp = (uint64_t)kstack;
     task->context.cr3 = 0;
+    task->syscall_kernel_rsp = (uint64_t)task->kernel_stack + KERNEL_STACK_SIZE - 256;
 
     scheduler_add_task(task);
     return task;
@@ -170,27 +218,35 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
 
     uint64_t* kstack = (uint64_t*)((uint64_t)task->kernel_stack + KERNEL_STACK_SIZE);
 
-    *(--kstack) = 0x23;
-    *(--kstack) = stack_top - 16;
-    *(--kstack) = 0x202;
-    *(--kstack) = 0x2B;
-    *(--kstack) = entry;
-    *(--kstack) = (uint64_t)usermode_entry;
+    *(--kstack) = 0x23;                           
+    *(--kstack) = (stack_top - 16) & ~0xF;        
+    *(--kstack) = 0x202;                          
+    *(--kstack) = 0x2B;                           
+    *(--kstack) = entry;                          
 
+    *(--kstack) = 0;  
+    *(--kstack) = 32; 
+
+    for (int i = 0; i < 15; i++) {
+        *(--kstack) = 0;
+    }
+    
     task->context.r15 = 0;
     task->context.r14 = 0;
     task->context.r13 = 0;
     task->context.r12 = 0;
-    task->context.rbp = 0;
+    task->context.rbp = (stack_top - 16) & ~0xF;
     task->context.rbx = 0;
     task->context.kernel_rsp = (uint64_t)kstack;
     task->context.cr3 = task->cr3_phys;
+    
+    task->syscall_kernel_rsp = (uint64_t)task->kernel_stack + KERNEL_STACK_SIZE - 256;
 
     scheduler_add_task(task);
 
     extern uint64_t syscall_kernel_rsp;
-    syscall_kernel_rsp = (uint64_t)task->kernel_stack + KERNEL_STACK_SIZE - 16;
-
+    syscall_kernel_rsp = task->syscall_kernel_rsp;
+    
     return task;
 }
 
