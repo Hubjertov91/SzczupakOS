@@ -1,7 +1,7 @@
 #ifndef _KERNEL_SPINLOCK_H
 #define _KERNEL_SPINLOCK_H
 
-#include "stdint.h"
+#include <stdint.h>
 
 typedef struct {
     volatile uint32_t lock;

@@ -105,15 +105,15 @@ unsigned long rand(void) {
 
 static char* heap_start = (char*)0x10000000;
 static char* heap_end = (char*)0x10000000;
-static const size_t HEAP_SIZE = 0x100000; // 1MB
+static const size_t HEAP_SIZE = 0x100000;
 
 void* malloc(size_t size) {
     if (size == 0) return NULL;
     
-    size = (size + 7) & ~7; // 8-byte alignment
+    size = (size + 7) & ~7;
     
     if (heap_end + size > heap_start + HEAP_SIZE) {
-        return NULL; // Out of memory
+        return NULL;
     }
     
     void* ptr = heap_end;
@@ -122,7 +122,5 @@ void* malloc(size_t size) {
 }
 
 void free(void* ptr) {
-    // Simple implementation - doesn't actually free memory
-    // In a real OS this would be more sophisticated
     (void)ptr;
 }

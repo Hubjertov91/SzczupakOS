@@ -1,15 +1,15 @@
 #ifndef VMM_H
 #define VMM_H
 
-#include "stdint.h"
+#include <stdint.h>
 
 #define PHYS_TO_VIRT(phys) ((void*)((uint64_t)(phys) + 0xFFFF800000000000ULL))
 #define VIRT_TO_PHYS(virt) ((uint64_t)(virt) - 0xFFFF800000000000ULL)
 
-#define PAGE_PRESENT (1 << 0)
-#define PAGE_WRITE   (1 << 1)
-#define PAGE_USER    (1 << 2)
-#define PAGE_SIZE    4096
+#define PAGE_PRESENT    (1 << 0)
+#define PAGE_WRITE      (1 << 1)
+#define PAGE_USER       (1 << 2)
+#define PAGE_SIZE       4096
 
 typedef struct page_directory {
     uint64_t* pml4;

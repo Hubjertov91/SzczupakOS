@@ -1,8 +1,8 @@
-#include "stdint.h"
-#include "stdlib.h"
-#include "syscall.h"
-#include "stdarg.h"
-#include "stdio.h"
+#include <stdint.h>
+#include <stdlib.h>
+#include <syscall.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 FILE _stdin = {0};
 FILE _stdout = {0};
@@ -31,10 +31,7 @@ static int write_hex(unsigned long val, int upper) {
     int i = 0;
     while (val > 0) {
         int d = val & 0xf;
-        if (d < 10)
-            tmp[i++] = '0' + d;
-        else
-            tmp[i++] = (upper ? 'A' : 'a') + (d - 10);
+        tmp[i++] = (d < 10) ? ('0' + d) : ((upper ? 'A' : 'a') + (d - 10));
         val >>= 4;
     }
     int written = i;
@@ -82,10 +79,7 @@ int printf(const char* fmt, ...) {
                     int j = 0;
                     while (val > 0) {
                         int d = val & 0xf;
-                        if (d < 10)
-                            tmp[j++] = '0' + d;
-                        else
-                            tmp[j++] = ((*p == 'X') ? 'A' : 'a') + (d - 10);
+                        tmp[j++] = (d < 10) ? ('0' + d) : ((*p == 'X') ? 'A' : 'a') + (d - 10);
                         val >>= 4;
                     }
                     while (j--) hex[i++] = tmp[j];

@@ -2,6 +2,8 @@ BUILD_DIR = build
 ISO_DIR = $(BUILD_DIR)/iso
 DISK_IMG = disk.img
 
+.PHONY: all clean clean-disk setup-disk run run2 k u
+
 all: $(BUILD_DIR)/os.iso
 
 k: $(BUILD_DIR)/kernel.bin
@@ -42,5 +44,3 @@ run: $(BUILD_DIR)/os.iso $(DISK_IMG)
 
 run2: $(BUILD_DIR)/os.iso $(DISK_IMG)
 	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 256M -serial stdio -d int,cpu_reset -D qemu.log
-
-.PHONY: all clean clean-disk setup-disk run run2 k u

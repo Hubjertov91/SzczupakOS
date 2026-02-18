@@ -3,7 +3,6 @@
 #include <drivers/serial.h>
 #include <task/task.h>
 
-
 static uint64_t pagefault_count = 0;
 
 void pagefault_handler(uint64_t error_code, uint64_t faulting_addr) {

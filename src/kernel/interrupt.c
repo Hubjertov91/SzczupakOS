@@ -1,4 +1,3 @@
-
 #include <drivers/serial.h>
 #include <arch/idt.h>
 #include <mm/pagefault.h>
@@ -76,6 +75,17 @@ void idt_init(void) {
     idt_set_gate(18, (uint64_t)isr14, IDT_TRAP_GATE);
     idt_set_gate(19, (uint64_t)isr14, IDT_TRAP_GATE);
     idt_set_gate(20, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(21, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(22, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(23, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(24, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(25, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(26, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(27, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(28, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(29, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(30, (uint64_t)isr14, IDT_TRAP_GATE);
+    idt_set_gate(31, (uint64_t)isr14, IDT_TRAP_GATE);
 
     idt_set_gate(32, (uint64_t)irq0, IDT_INTR_GATE);
     idt_set_gate(33, (uint64_t)irq1, IDT_INTR_GATE);
@@ -100,7 +110,6 @@ void idt_init(void) {
 }
 
 void exception_handler(uint64_t vector, uint64_t error_code, uint64_t rip) {
-
     if (vector == 14) {
         uint64_t faulting_addr;
         __asm__ volatile("mov %%cr2, %0" : "=r"(faulting_addr));

@@ -410,6 +410,7 @@ bool vmm_map_user_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint
 		if (old_phys != phys) pmm_free_page(old_phys);
 	}
 
+	__sync_synchronize();
 	pt[pt_idx] = phys | flags | PAGE_PRESENT;
 
 	spinlock_release_irqrestore(&vmm_lock, state);

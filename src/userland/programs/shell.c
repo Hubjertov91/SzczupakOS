@@ -9,7 +9,6 @@ int main(void) {
     sys_fb_clear(0x0000FF);
     sys_fb_rect(0, 0, 100, 100, 0x00FF00);
 
-    
     while (1) {
         sys_sleep(1000);
         printf("tick\n");
