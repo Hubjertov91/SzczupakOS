@@ -22,7 +22,6 @@ extern void usermode_entry(void);
 
 static void strcpy_safe(char* dst, const char* src, size_t max) {
     if (!dst || !src || max == 0) return;
-    
     size_t i = 0;
     while (src[i] && i < max - 1) {
         dst[i] = src[i];
@@ -37,7 +36,7 @@ void task_init(void) {
         serial_write("[TASK] ERROR: Failed to allocate idle task\n");
         return;
     }
-    
+
     current_task->pid = 0;
     strcpy_safe(current_task->name, "idle", sizeof(current_task->name));
     current_task->state = TASK_RUNNING;
@@ -67,17 +66,11 @@ void task_init(void) {
 }
 
 task_t* task_create(const char* name, void (*entry_point)(void)) {
-    if (!name || !entry_point) {
-        serial_write("[TASK] ERROR: Invalid parameters to task_create\n");
-        return NULL;
-    }
-    
+    if (!name || !entry_point) return NULL;
+
     task_t* task = (task_t*)kmalloc(sizeof(task_t));
-    if (!task) {
-        serial_write("[TASK] ERROR: Failed to allocate task structure\n");
-        return NULL;
-    }
-    
+    if (!task) return NULL;
+
     task->pid = next_pid++;
     strcpy_safe(task->name, name, sizeof(task->name));
     task->state = TASK_READY;
@@ -88,27 +81,20 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     task->cr3_phys = 0;
     task->cpu_time = 0;
     task->creation_time = pit_get_ticks();
-    
+
     task->kernel_stack = kmalloc(KERNEL_STACK_SIZE);
     if (!task->kernel_stack) {
-        serial_write("[TASK] ERROR: Failed to allocate kernel stack\n");
         kfree(task);
         return NULL;
     }
-    
+
     task->stack_size = KERNEL_STACK_SIZE;
     task->user_stack = NULL;
     task->next = NULL;
 
     uint64_t* kstack = (uint64_t*)((uint64_t)task->kernel_stack + KERNEL_STACK_SIZE);
-    
+
     *(--kstack) = (uint64_t)entry_point;
-    *(--kstack) = 0;
-    *(--kstack) = 0;
-    *(--kstack) = 0;
-    *(--kstack) = 0;
-    *(--kstack) = 0;
-    *(--kstack) = 0;
 
     task->context.r15 = 0;
     task->context.r14 = 0;
@@ -124,16 +110,10 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
 }
 
 task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
-    if (!name || !elf_data || !elf_size) {
-        serial_write("[TASK] ERROR: Invalid parameters\n");
-        return NULL;
-    }
-    
+    if (!name || !elf_data || !elf_size) return NULL;
+
     task_t* task = (task_t*)kmalloc(sizeof(task_t));
-    if (!task) {
-        serial_write("[TASK] ERROR: Failed to allocate task\n");
-        return NULL;
-    }
+    if (!task) return NULL;
 
     task->pid = next_pid++;
     strcpy_safe(task->name, name, sizeof(task->name));
@@ -147,7 +127,6 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
 
     task->kernel_stack = vmm_alloc_pages(KERNEL_STACK_SIZE / PAGE_SIZE);
     if (!task->kernel_stack) {
-        serial_write("[TASK] ERROR: Failed to allocate kernel stack\n");
         kfree(task);
         return NULL;
     }
@@ -155,7 +134,6 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
 
     task->page_dir = vmm_create_address_space();
     if (!task->page_dir) {
-        serial_write("[TASK] ERROR: Failed to create address space\n");
         vmm_free_pages(task->kernel_stack, KERNEL_STACK_SIZE / PAGE_SIZE);
         kfree(task);
         return NULL;
@@ -164,7 +142,6 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
 
     uint64_t entry = elf_load(task, elf_data, elf_size);
     if (!entry) {
-        serial_write("[TASK] ELF loading failed\n");
         vmm_destroy_address_space(task->page_dir);
         vmm_free_pages(task->kernel_stack, KERNEL_STACK_SIZE / PAGE_SIZE);
         kfree(task);
@@ -178,15 +155,12 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
         uint64_t page_vaddr = stack_top - USER_STACK_SIZE + offset;
         uint64_t phys = pmm_alloc_page();
         if (!phys) {
-            serial_write("[TASK] Failed to allocate stack page\n");
             vmm_destroy_address_space(task->page_dir);
             vmm_free_pages(task->kernel_stack, KERNEL_STACK_SIZE / PAGE_SIZE);
             kfree(task);
             return NULL;
         }
-
         if (!vmm_map_user_page(task->page_dir, page_vaddr, phys, PAGE_PRESENT | PAGE_WRITE)) {
-            serial_write("[TASK] Failed to map stack page\n");
             vmm_destroy_address_space(task->page_dir);
             vmm_free_pages(task->kernel_stack, KERNEL_STACK_SIZE / PAGE_SIZE);
             kfree(task);
@@ -195,43 +169,13 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
     }
 
     uint64_t* kstack = (uint64_t*)((uint64_t)task->kernel_stack + KERNEL_STACK_SIZE);
-    
-    serial_write("[TASK] Setting up stack, initial kstack=0x");
-    serial_write_hex((uint64_t)kstack);
-    serial_write("\n");
-    
+
     *(--kstack) = 0x23;
     *(--kstack) = stack_top - 16;
     *(--kstack) = 0x202;
     *(--kstack) = 0x2B;
     *(--kstack) = entry;
-    
-    serial_write("[TASK] IRET frame setup, kstack=0x");
-    serial_write_hex((uint64_t)kstack);
-    serial_write("\n");
-    
-    serial_write("[TASK] usermode_entry addr=0x");
-    serial_write_hex((uint64_t)usermode_entry);
-    serial_write("\n");
-    
     *(--kstack) = (uint64_t)usermode_entry;
-    
-    serial_write("[TASK] After return addr, kstack=0x");
-    serial_write_hex((uint64_t)kstack);
-    serial_write(" value=0x");
-    serial_write_hex(*kstack);
-    serial_write("\n");
-    
-    *(--kstack) = 0;
-    *(--kstack) = 0;
-    *(--kstack) = 0;
-    *(--kstack) = 0;
-    *(--kstack) = 0;
-    *(--kstack) = 0;
-
-    serial_write("[TASK] Final kstack=0x");
-    serial_write_hex((uint64_t)kstack);
-    serial_write("\n");
 
     task->context.r15 = 0;
     task->context.r14 = 0;
@@ -242,45 +186,30 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
     task->context.kernel_rsp = (uint64_t)kstack;
     task->context.cr3 = task->cr3_phys;
 
-    serial_write("[TASK] Context: rsp=0x");
-    serial_write_hex(task->context.kernel_rsp);
-    serial_write(" cr3=0x");
-    serial_write_hex(task->context.cr3);
-    serial_write("\n");
-
     scheduler_add_task(task);
 
     extern uint64_t syscall_kernel_rsp;
     syscall_kernel_rsp = (uint64_t)task->kernel_stack + KERNEL_STACK_SIZE - 16;
-
-    serial_write("[TASK] syscall_kernel_rsp set to ");
-    serial_write_hex(syscall_kernel_rsp);
-    serial_write("\n");
 
     return task;
 }
 
 void task_exit(void) {
     if (!current_task) return;
-    
-    serial_write("[TASK] Task '");
-    serial_write(current_task->name);
-    serial_write("' exited\n");
-    
+
+    serial_write("[TASK] Task exited\n");
+
     current_task->state = TASK_TERMINATED;
     scheduler_remove_task(current_task);
-    
+
     extern page_directory_t* vmm_get_kernel_directory(void);
     page_directory_t* kernel_dir = vmm_get_kernel_directory();
     if (kernel_dir) {
         __asm__ volatile("mov %0, %%cr3" : : "r"(kernel_dir->pml4_phys) : "memory");
     }
-    
-    serial_write("[TASK] No tasks, idle loop\n");
+
     __asm__ volatile("sti");
-    while (1) {
-        __asm__ volatile("hlt");
-    }
+    while (1) __asm__ volatile("hlt");
 }
 
 void task_yield(void) {
@@ -300,17 +229,11 @@ void task_set_current(task_t* task) {
 }
 
 task_t* task_fork(void) {
-    if (!current_task) {
-        serial_write("[TASK] ERROR: No current task to fork\n");
-        return NULL;
-    }
-    
+    if (!current_task) return NULL;
+
     task_t* child = (task_t*)kmalloc(sizeof(task_t));
-    if (!child) {
-        serial_write("[TASK] ERROR: Failed to allocate child task\n");
-        return NULL;
-    }
-    
+    if (!child) return NULL;
+
     child->pid = next_pid++;
     strcpy_safe(child->name, current_task->name, sizeof(child->name));
     child->state = TASK_READY;
@@ -320,15 +243,14 @@ task_t* task_fork(void) {
     child->cpu_time = 0;
     child->creation_time = pit_get_ticks();
     child->next = NULL;
-    
+
     child->kernel_stack = kmalloc(KERNEL_STACK_SIZE);
     if (!child->kernel_stack) {
-        serial_write("[TASK] ERROR: Failed to allocate kernel stack for child\n");
         kfree(child);
         return NULL;
     }
     child->stack_size = KERNEL_STACK_SIZE;
-    
+
     if (current_task->is_kernel) {
         child->user_stack = NULL;
         child->page_dir = NULL;
@@ -337,22 +259,19 @@ task_t* task_fork(void) {
         if (current_task->user_stack) {
             child->user_stack = kmalloc(USER_STACK_SIZE);
             if (!child->user_stack) {
-                serial_write("[TASK] ERROR: Failed to allocate user stack for child\n");
                 kfree(child->kernel_stack);
                 kfree(child);
                 return NULL;
             }
-            for (size_t i = 0; i < USER_STACK_SIZE; i++) {
+            for (size_t i = 0; i < USER_STACK_SIZE; i++)
                 ((char*)child->user_stack)[i] = ((char*)current_task->user_stack)[i];
-            }
         } else {
             child->user_stack = NULL;
         }
-        
         child->page_dir = current_task->page_dir;
         child->cr3_phys = current_task->cr3_phys;
     }
-    
+
     child->context.r15 = 0;
     child->context.r14 = 0;
     child->context.r13 = 0;
@@ -360,14 +279,7 @@ task_t* task_fork(void) {
     child->context.rbp = 0;
     child->context.rbx = 0;
     child->context.kernel_rsp = (uint64_t)child->kernel_stack + KERNEL_STACK_SIZE;
-    
+
     scheduler_add_task(child);
-    
-    serial_write("[TASK] Forked task ");
-    serial_write_dec(child->pid);
-    serial_write(" from task ");
-    serial_write_dec(current_task->pid);
-    serial_write("\n");
-    
     return child;
 }
