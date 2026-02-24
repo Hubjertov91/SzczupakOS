@@ -62,7 +62,7 @@ hostping-up:
 	./scripts/tap-up.sh $(HOSTPING_TAP) $(HOSTPING_HOST_CIDR)
 
 hostping-down:
-	./scripts/tap-down.sh $(HOSTPING_TAP)
+	./scripts/tap-down.sh $(HOSTPING_TAP) $(HOSTPING_HOST_CIDR)
 
 run-hostping: run
 

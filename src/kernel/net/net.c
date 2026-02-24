@@ -50,8 +50,10 @@
 
 #define ICMP_TYPE_ECHO_REPLY   0u
 #define ICMP_TYPE_ECHO_REQUEST 8u
+#define ICMP_TYPE_TIME_EXCEEDED 11u
 
 #define NET_DEFAULT_PING_TIMEOUT_MS 1200u
+#define NET_DEFAULT_TCP_TIMEOUT_MS 1200u
 #define NET_PING_IDENTIFIER 0x535Au
 
 #define ARP_HTYPE_ETHERNET 1u
@@ -66,6 +68,23 @@
 
 #define DHCP_CLIENT_PORT   68u
 #define DHCP_SERVER_PORT   67u
+
+#define DNS_SERVER_PORT    53u
+#define DNS_PACKET_MAX     512u
+#define DNS_DEFAULT_TIMEOUT_MS 2000u
+#define DNS_DEFAULT_RETRY_MS   500u
+#define DNS_MIN_SRC_PORT   49152u
+#define DNS_MAX_HOSTNAME_LEN 253u
+#define DNS_CACHE_SIZE     16u
+#define DNS_MIN_TTL_S      30u
+#define DNS_MAX_TTL_S      86400u
+
+#define TCP_FLAG_FIN 0x01u
+#define TCP_FLAG_SYN 0x02u
+#define TCP_FLAG_RST 0x04u
+#define TCP_FLAG_PSH 0x08u
+#define TCP_FLAG_ACK 0x10u
+#define TCP_MIN_SRC_PORT 49152u
 
 #define DHCP_MAGIC_COOKIE0 99u
 #define DHCP_MAGIC_COOKIE1 130u
@@ -115,6 +134,18 @@ typedef struct __attribute__((packed)) {
     uint16_t length;
     uint16_t checksum;
 } udp_header_t;
+
+typedef struct __attribute__((packed)) {
+    uint16_t src_port;
+    uint16_t dst_port;
+    uint32_t sequence_number;
+    uint32_t ack_number;
+    uint8_t data_offset_reserved;
+    uint8_t flags;
+    uint16_t window_size;
+    uint16_t checksum;
+    uint16_t urgent_pointer;
+} tcp_header_t;
 
 typedef struct __attribute__((packed)) {
     uint16_t hardware_type;
@@ -192,27 +223,78 @@ typedef struct {
 typedef struct {
     bool waiting;
     bool received;
+    bool accept_time_exceeded;
     uint16_t identifier;
     uint16_t sequence;
     uint32_t expected_src_ip;
+    uint32_t reply_src_ip;
+    uint8_t reply_icmp_type;
     uint64_t sent_tick;
     uint64_t received_tick;
 } ping_state_t;
+
+typedef struct {
+    bool waiting;
+    bool received;
+    uint16_t txid;
+    uint16_t src_port;
+    uint32_t expected_server_ip;
+    uint8_t resolved_ip[4];
+    uint32_t ttl_seconds;
+    uint64_t sent_tick;
+    uint64_t received_tick;
+} dns_query_state_t;
+
+typedef struct {
+    bool waiting;
+    bool received;
+    bool open;
+    uint16_t src_port;
+    uint16_t dst_port;
+    uint32_t expected_src_ip;
+    uint32_t sequence;
+    uint64_t sent_tick;
+    uint64_t received_tick;
+} tcp_probe_state_t;
+
+typedef struct {
+    bool valid;
+    char hostname[DNS_MAX_HOSTNAME_LEN + 1];
+    uint8_t ip[4];
+    uint64_t expires_at_ticks;
+    uint64_t updated_at_ticks;
+} dns_cache_entry_t;
 
 static rtl8139_state_t g_rtl8139;
 static net_config_t g_net_config;
 static dhcp_client_t g_dhcp;
 static arp_cache_entry_t g_arp_cache[ARP_CACHE_SIZE];
 static ping_state_t g_ping_state;
+static dns_query_state_t g_dns_state;
+static tcp_probe_state_t g_tcp_probe_state;
+static dns_cache_entry_t g_dns_cache[DNS_CACHE_SIZE];
+static net_stats_t g_net_stats;
 static uint32_t g_next_dhcp_xid = 0x535A0001u;
 static uint16_t g_ip_identification = 0x1200u;
 static uint16_t g_ping_sequence = 1;
+static uint16_t g_dns_txid = 1;
+static uint16_t g_dns_src_port = DNS_MIN_SRC_PORT;
+static uint16_t g_tcp_src_port = TCP_MIN_SRC_PORT;
+static uint32_t g_tcp_probe_seq_seed = 0x535A7001u;
 static bool g_tcp_notice_printed = false;
 static volatile uint32_t g_net_poll_active = 0;
 
 static uint8_t g_rtl8139_rx_buffer[RTL_RX_BUFFER_SIZE + RTL_RX_TAIL_PAD] __attribute__((aligned(16)));
 static uint8_t g_rtl8139_tx_buffers[RTL_TX_BUFFER_COUNT][RTL_TX_BUFFER_SIZE] __attribute__((aligned(16)));
 static uint8_t g_rx_frame[ETH_HEADER_SIZE + ETH_MTU + 64u];
+static uint8_t g_tx_eth_frame[ETH_HEADER_SIZE + ETH_MTU];
+static uint8_t g_tx_ipv4_packet[ETH_MTU];
+static uint8_t g_tx_udp_packet[sizeof(udp_header_t) + ETH_MTU];
+static uint8_t g_udp_verify_packet[sizeof(udp_header_t) + ETH_MTU];
+static uint8_t g_tx_tcp_packet[sizeof(tcp_header_t) + ETH_MTU];
+static uint8_t g_icmp_reply[ETH_MTU - sizeof(ipv4_header_t)];
+static uint8_t g_icmp_ipv4_packet[ETH_MTU];
+static uint8_t g_dns_query_packet[DNS_PACKET_MAX];
 
 static const uint8_t IP_BROADCAST[4] = {255, 255, 255, 255};
 static const uint8_t IP_ZERO[4] = {0, 0, 0, 0};
@@ -242,6 +324,10 @@ static uint32_t net_htonl(uint32_t value) {
 
 static uint32_t net_ntohl(uint32_t value) {
     return bswap32(value);
+}
+
+static uint16_t read_be16(const uint8_t* data) {
+    return (uint16_t)(((uint16_t)data[0] << 8) | (uint16_t)data[1]);
 }
 
 static uint32_t read_be32(const uint8_t* data) {
@@ -314,6 +400,41 @@ static bool ip_equal(const uint8_t a[4], const uint8_t b[4]) {
     return memcmp(a, b, 4) == 0;
 }
 
+static char dns_ascii_lower(char c) {
+    if (c >= 'A' && c <= 'Z') {
+        return (char)(c + ('a' - 'A'));
+    }
+    return c;
+}
+
+static bool dns_hostname_equal_ci(const char* a, const char* b) {
+    if (!a || !b) {
+        return false;
+    }
+
+    size_t i = 0;
+    while (a[i] && b[i]) {
+        if (dns_ascii_lower(a[i]) != dns_ascii_lower(b[i])) {
+            return false;
+        }
+        i++;
+    }
+    return a[i] == '\0' && b[i] == '\0';
+}
+
+static void dns_hostname_copy_lower(char* dst, size_t dst_size, const char* src) {
+    if (!dst || !src || dst_size == 0) {
+        return;
+    }
+
+    size_t i = 0;
+    while (src[i] && i + 1 < dst_size) {
+        dst[i] = dns_ascii_lower(src[i]);
+        i++;
+    }
+    dst[i] = '\0';
+}
+
 static bool mac_is_broadcast(const uint8_t mac[6]) {
     for (uint8_t i = 0; i < 6; i++) {
         if (mac[i] != 0xFF) {
@@ -383,10 +504,12 @@ static bool arp_cache_lookup(const uint8_t ip[4], uint8_t out_mac[6]) {
         }
         if (memcmp(g_arp_cache[i].ip, ip, 4) == 0) {
             memcpy(out_mac, g_arp_cache[i].mac, 6);
+            g_net_stats.arp_cache_hits++;
             return true;
         }
     }
 
+    g_net_stats.arp_cache_misses++;
     return false;
 }
 
@@ -422,6 +545,101 @@ static void arp_cache_update(const uint8_t ip[4], const uint8_t mac[6]) {
     memcpy(g_arp_cache[slot].ip, ip, 4);
     memcpy(g_arp_cache[slot].mac, mac, 6);
     g_arp_cache[slot].updated_at_ticks = now;
+}
+
+static uint64_t dns_ttl_to_ticks(uint32_t ttl_seconds) {
+    uint32_t frequency = pit_get_frequency();
+    if (frequency == 0 || ttl_seconds == 0) {
+        return 0;
+    }
+    return (uint64_t)ttl_seconds * frequency;
+}
+
+static uint32_t dns_normalize_ttl(uint32_t ttl_seconds) {
+    if (ttl_seconds < DNS_MIN_TTL_S) {
+        return DNS_MIN_TTL_S;
+    }
+    if (ttl_seconds > DNS_MAX_TTL_S) {
+        return DNS_MAX_TTL_S;
+    }
+    return ttl_seconds;
+}
+
+static void dns_cache_expire_stale(void) {
+    uint64_t now = pit_get_ticks();
+    for (uint8_t i = 0; i < DNS_CACHE_SIZE; i++) {
+        if (!g_dns_cache[i].valid) {
+            continue;
+        }
+        if (g_dns_cache[i].expires_at_ticks != 0 && now >= g_dns_cache[i].expires_at_ticks) {
+            g_dns_cache[i].valid = false;
+        }
+    }
+}
+
+static void dns_cache_clear(void) {
+    memset(g_dns_cache, 0, sizeof(g_dns_cache));
+}
+
+static bool dns_cache_lookup(const char* hostname, uint8_t out_ip[4]) {
+    if (!hostname || !out_ip) {
+        return false;
+    }
+
+    dns_cache_expire_stale();
+
+    for (uint8_t i = 0; i < DNS_CACHE_SIZE; i++) {
+        if (!g_dns_cache[i].valid) {
+            continue;
+        }
+        if (dns_hostname_equal_ci(g_dns_cache[i].hostname, hostname)) {
+            memcpy(out_ip, g_dns_cache[i].ip, 4);
+            g_net_stats.dns_cache_hits++;
+            return true;
+        }
+    }
+
+    g_net_stats.dns_cache_misses++;
+    return false;
+}
+
+static void dns_cache_update(const char* hostname, const uint8_t ip[4], uint32_t ttl_seconds) {
+    if (!hostname || !ip || ip_is_zero(ip) || ip_is_broadcast(ip)) {
+        return;
+    }
+
+    uint64_t now = pit_get_ticks();
+    uint64_t ttl_ticks = dns_ttl_to_ticks(dns_normalize_ttl(ttl_seconds));
+    uint64_t expires_at = (ttl_ticks == 0) ? 0 : (now + ttl_ticks);
+
+    int free_slot = -1;
+    int replace_slot = 0;
+    uint64_t oldest_tick = ~(uint64_t)0;
+
+    for (uint8_t i = 0; i < DNS_CACHE_SIZE; i++) {
+        if (g_dns_cache[i].valid && dns_hostname_equal_ci(g_dns_cache[i].hostname, hostname)) {
+            memcpy(g_dns_cache[i].ip, ip, 4);
+            g_dns_cache[i].updated_at_ticks = now;
+            g_dns_cache[i].expires_at_ticks = expires_at;
+            return;
+        }
+
+        if (!g_dns_cache[i].valid && free_slot < 0) {
+            free_slot = (int)i;
+        }
+
+        if (g_dns_cache[i].valid && g_dns_cache[i].updated_at_ticks < oldest_tick) {
+            oldest_tick = g_dns_cache[i].updated_at_ticks;
+            replace_slot = (int)i;
+        }
+    }
+
+    int slot = (free_slot >= 0) ? free_slot : replace_slot;
+    g_dns_cache[slot].valid = true;
+    dns_hostname_copy_lower(g_dns_cache[slot].hostname, sizeof(g_dns_cache[slot].hostname), hostname);
+    memcpy(g_dns_cache[slot].ip, ip, 4);
+    g_dns_cache[slot].updated_at_ticks = now;
+    g_dns_cache[slot].expires_at_ticks = expires_at;
 }
 
 static uint32_t checksum_add_bytes(uint32_t sum, const uint8_t* data, size_t length) {
@@ -463,6 +681,21 @@ static uint16_t udp_checksum(uint32_t src_ip, uint32_t dst_ip, const uint8_t* ud
 
     uint16_t result = checksum_finalize(sum);
     return (result == 0) ? 0xFFFFu : result;
+}
+
+static uint16_t tcp_checksum(uint32_t src_ip, uint32_t dst_ip, const uint8_t* tcp_packet, uint16_t tcp_length) {
+    uint32_t sum = 0;
+
+    sum += (src_ip >> 16) & 0xFFFFu;
+    sum += src_ip & 0xFFFFu;
+    sum += (dst_ip >> 16) & 0xFFFFu;
+    sum += dst_ip & 0xFFFFu;
+    sum += (uint32_t)IP_PROTO_TCP;
+    sum += tcp_length;
+
+    sum = checksum_add_bytes(sum, tcp_packet, tcp_length);
+
+    return checksum_finalize(sum);
 }
 
 static uint32_t pci_read32(uint8_t bus, uint8_t slot, uint8_t function, uint8_t offset) {
@@ -702,17 +935,25 @@ static bool net_send_ethernet_frame(const uint8_t dst_mac[6], uint16_t ethertype
         return false;
     }
 
-    uint8_t frame[ETH_HEADER_SIZE + ETH_MTU];
-    eth_header_t* eth = (eth_header_t*)frame;
+    eth_header_t* eth = (eth_header_t*)g_tx_eth_frame;
     memcpy(eth->dst_mac, dst_mac, 6);
     memcpy(eth->src_mac, g_rtl8139.mac, 6);
     eth->ethertype = net_htons(ethertype);
 
     if (payload_length > 0) {
-        memcpy(frame + ETH_HEADER_SIZE, payload, payload_length);
+        memcpy(g_tx_eth_frame + ETH_HEADER_SIZE, payload, payload_length);
     }
 
-    return rtl8139_send_frame(frame, ETH_HEADER_SIZE + payload_length);
+    bool ok = rtl8139_send_frame(g_tx_eth_frame, ETH_HEADER_SIZE + payload_length);
+    if (ok) {
+        g_net_stats.tx_frames++;
+        if (ethertype == ETH_TYPE_IPV4) {
+            g_net_stats.tx_ipv4++;
+        } else if (ethertype == ETH_TYPE_ARP) {
+            g_net_stats.tx_arp++;
+        }
+    }
+    return ok;
 }
 
 static bool arp_send_packet(uint16_t opcode, const uint8_t target_mac[6], const uint8_t target_ip[4]) {
@@ -887,7 +1128,7 @@ static bool net_resolve_dest_mac(const uint8_t dst_ip[4], bool force_broadcast_e
 }
 
 static bool net_send_ipv4_payload(const uint8_t src_ip[4], const uint8_t dst_ip[4],
-                                  uint8_t protocol, const uint8_t* payload,
+                                  uint8_t protocol, uint8_t ttl, const uint8_t* payload,
                                   size_t payload_length, bool force_broadcast_eth) {
     if (!src_ip || !dst_ip || !payload) {
         return false;
@@ -902,26 +1143,25 @@ static bool net_send_ipv4_payload(const uint8_t src_ip[4], const uint8_t dst_ip[
         return false;
     }
 
-    uint8_t packet[ETH_MTU];
-    memset(packet, 0, sizeof(packet));
+    memset(g_tx_ipv4_packet, 0, sizeof(g_tx_ipv4_packet));
 
-    ipv4_header_t* ip = (ipv4_header_t*)packet;
+    ipv4_header_t* ip = (ipv4_header_t*)g_tx_ipv4_packet;
     ip->version_ihl = 0x45;
     ip->dscp_ecn = 0;
     uint16_t ip_total_length = (uint16_t)(sizeof(ipv4_header_t) + payload_length);
     ip->total_length = net_htons(ip_total_length);
     ip->identification = net_htons(g_ip_identification++);
     ip->flags_fragment = net_htons(0x4000u);
-    ip->ttl = 64;
+    ip->ttl = (ttl == 0) ? 64 : ttl;
     ip->protocol = protocol;
     ip->header_checksum = 0;
     ip->src_ip = net_htonl(ip_to_u32(src_ip));
     ip->dst_ip = net_htonl(ip_to_u32(dst_ip));
     ip->header_checksum = net_htons(ipv4_checksum((const uint8_t*)ip, sizeof(ipv4_header_t)));
 
-    memcpy(packet + sizeof(ipv4_header_t), payload, payload_length);
+    memcpy(g_tx_ipv4_packet + sizeof(ipv4_header_t), payload, payload_length);
 
-    return net_send_ethernet_frame(dst_mac, ETH_TYPE_IPV4, packet, ip_total_length);
+    return net_send_ethernet_frame(dst_mac, ETH_TYPE_IPV4, g_tx_ipv4_packet, ip_total_length);
 }
 
 static bool net_send_udp_ipv4(const uint8_t src_ip[4], const uint8_t dst_ip[4],
@@ -936,20 +1176,51 @@ static bool net_send_udp_ipv4(const uint8_t src_ip[4], const uint8_t dst_ip[4],
         return false;
     }
 
-    uint8_t udp_packet[sizeof(udp_header_t) + ETH_MTU];
-    udp_header_t* udp = (udp_header_t*)udp_packet;
+    udp_header_t* udp = (udp_header_t*)g_tx_udp_packet;
     udp->src_port = net_htons(src_port);
     udp->dst_port = net_htons(dst_port);
     uint16_t udp_length = (uint16_t)(sizeof(udp_header_t) + payload_length);
     udp->length = net_htons(udp_length);
     udp->checksum = 0;
 
-    uint8_t* udp_payload = udp_packet + sizeof(udp_header_t);
+    uint8_t* udp_payload = g_tx_udp_packet + sizeof(udp_header_t);
     memcpy(udp_payload, payload, payload_length);
 
-    udp->checksum = net_htons(udp_checksum(ip_to_u32(src_ip), ip_to_u32(dst_ip), udp_packet, udp_length));
+    udp->checksum = net_htons(udp_checksum(ip_to_u32(src_ip), ip_to_u32(dst_ip), g_tx_udp_packet, udp_length));
 
-    return net_send_ipv4_payload(src_ip, dst_ip, IP_PROTO_UDP, udp_packet, udp_length, force_broadcast_eth);
+    bool ok = net_send_ipv4_payload(src_ip, dst_ip, IP_PROTO_UDP, 64, g_tx_udp_packet, udp_length, force_broadcast_eth);
+    if (ok) {
+        g_net_stats.tx_udp++;
+    }
+    return ok;
+}
+
+static bool net_send_tcp_ipv4(const uint8_t src_ip[4], const uint8_t dst_ip[4],
+                              uint16_t src_port, uint16_t dst_port,
+                              uint32_t sequence, uint32_t ack_number,
+                              uint8_t flags, uint8_t ttl) {
+    if (!g_rtl8139.initialized || !src_ip || !dst_ip || src_port == 0 || dst_port == 0) {
+        return false;
+    }
+
+    tcp_header_t* tcp = (tcp_header_t*)g_tx_tcp_packet;
+    memset(tcp, 0, sizeof(*tcp));
+    tcp->src_port = net_htons(src_port);
+    tcp->dst_port = net_htons(dst_port);
+    tcp->sequence_number = net_htonl(sequence);
+    tcp->ack_number = net_htonl(ack_number);
+    tcp->data_offset_reserved = (uint8_t)(5u << 4);
+    tcp->flags = flags;
+    tcp->window_size = net_htons(0xFFFFu);
+    tcp->checksum = 0;
+    tcp->urgent_pointer = 0;
+
+    uint16_t tcp_length = (uint16_t)sizeof(tcp_header_t);
+    tcp->checksum = net_htons(tcp_checksum(ip_to_u32(src_ip), ip_to_u32(dst_ip),
+                                           (const uint8_t*)tcp, tcp_length));
+
+    return net_send_ipv4_payload(src_ip, dst_ip, IP_PROTO_TCP, ttl,
+                                 (const uint8_t*)tcp, tcp_length, false);
 }
 
 static void dhcp_options_clear(dhcp_options_t* options) {
@@ -1255,6 +1526,47 @@ static uint16_t icmp_checksum(const uint8_t* packet, size_t length) {
     return checksum_finalize(checksum_add_bytes(0, packet, length));
 }
 
+static bool icmp_match_embedded_probe(const uint8_t* payload, size_t payload_length,
+                                      uint16_t identifier, uint16_t sequence,
+                                      uint32_t expected_dst_ip, uint32_t expected_src_ip) {
+    if (!payload || payload_length < 8u + sizeof(ipv4_header_t)) {
+        return false;
+    }
+
+    const uint8_t* embedded_packet = payload + 8u;
+    size_t embedded_length = payload_length - 8u;
+    const ipv4_header_t* embedded_ip = (const ipv4_header_t*)embedded_packet;
+
+    uint8_t version = (uint8_t)(embedded_ip->version_ihl >> 4);
+    uint8_t ihl_words = (uint8_t)(embedded_ip->version_ihl & 0x0Fu);
+    size_t ihl = (size_t)ihl_words * 4u;
+    if (version != 4 || ihl < sizeof(ipv4_header_t) || ihl > embedded_length) {
+        return false;
+    }
+
+    if (embedded_ip->protocol != IP_PROTO_ICMP) {
+        return false;
+    }
+
+    if (embedded_length < ihl + sizeof(icmp_echo_header_t)) {
+        return false;
+    }
+
+    uint32_t embedded_src_ip = net_ntohl(embedded_ip->src_ip);
+    uint32_t embedded_dst_ip = net_ntohl(embedded_ip->dst_ip);
+    if (embedded_src_ip != expected_src_ip || embedded_dst_ip != expected_dst_ip) {
+        return false;
+    }
+
+    const icmp_echo_header_t* embedded_icmp = (const icmp_echo_header_t*)(embedded_packet + ihl);
+    if (embedded_icmp->type != ICMP_TYPE_ECHO_REQUEST || embedded_icmp->code != 0) {
+        return false;
+    }
+
+    return net_ntohs(embedded_icmp->identifier) == identifier &&
+           net_ntohs(embedded_icmp->sequence) == sequence;
+}
+
 static void net_handle_icmp(const uint8_t* payload, size_t payload_length, uint32_t src_ip, uint32_t dst_ip,
                             const uint8_t src_mac[6]) {
     if (!payload || payload_length < sizeof(icmp_echo_header_t)) {
@@ -1265,11 +1577,13 @@ static void net_handle_icmp(const uint8_t* payload, size_t payload_length, uint3
         return;
     }
 
-    const icmp_echo_header_t* icmp = (const icmp_echo_header_t*)payload;
-    uint16_t identifier = net_ntohs(icmp->identifier);
-    uint16_t sequence = net_ntohs(icmp->sequence);
+    g_net_stats.rx_icmp++;
 
-    if (icmp->type == ICMP_TYPE_ECHO_REQUEST && icmp->code == 0) {
+    const icmp_echo_header_t* icmp = (const icmp_echo_header_t*)payload;
+    uint8_t icmp_type = icmp->type;
+    uint8_t icmp_code = icmp->code;
+
+    if (icmp_type == ICMP_TYPE_ECHO_REQUEST && icmp_code == 0) {
         if (!g_net_config.configured || ip_is_zero(g_net_config.ip)) {
             return;
         }
@@ -1288,17 +1602,15 @@ static void net_handle_icmp(const uint8_t* payload, size_t payload_length, uint3
             return;
         }
 
-        uint8_t reply[ETH_MTU - sizeof(ipv4_header_t)];
-        memcpy(reply, payload, payload_length);
+        memcpy(g_icmp_reply, payload, payload_length);
 
-        icmp_echo_header_t* reply_hdr = (icmp_echo_header_t*)reply;
+        icmp_echo_header_t* reply_hdr = (icmp_echo_header_t*)g_icmp_reply;
         reply_hdr->type = ICMP_TYPE_ECHO_REPLY;
         reply_hdr->code = 0;
         reply_hdr->checksum = 0;
-        reply_hdr->checksum = net_htons(icmp_checksum(reply, payload_length));
+        reply_hdr->checksum = net_htons(icmp_checksum(g_icmp_reply, payload_length));
 
-        uint8_t ipv4_packet[ETH_MTU];
-        ipv4_header_t* ip = (ipv4_header_t*)ipv4_packet;
+        ipv4_header_t* ip = (ipv4_header_t*)g_icmp_ipv4_packet;
         memset(ip, 0, sizeof(*ip));
         ip->version_ihl = 0x45;
         uint16_t ip_total_length = (uint16_t)(sizeof(ipv4_header_t) + payload_length);
@@ -1310,16 +1622,21 @@ static void net_handle_icmp(const uint8_t* payload, size_t payload_length, uint3
         ip->src_ip = net_htonl(ip_to_u32(g_net_config.ip));
         ip->dst_ip = net_htonl(src_ip);
         ip->header_checksum = net_htons(ipv4_checksum((const uint8_t*)ip, sizeof(ipv4_header_t)));
-        memcpy(ipv4_packet + sizeof(ipv4_header_t), reply, payload_length);
+        memcpy(g_icmp_ipv4_packet + sizeof(ipv4_header_t), g_icmp_reply, payload_length);
 
         uint8_t src_ip_bytes[4];
         ip_from_u32(src_ip, src_ip_bytes);
         arp_cache_update(src_ip_bytes, src_mac);
-        net_send_ethernet_frame(src_mac, ETH_TYPE_IPV4, ipv4_packet, ip_total_length);
+        if (net_send_ethernet_frame(src_mac, ETH_TYPE_IPV4, g_icmp_ipv4_packet, ip_total_length)) {
+            g_net_stats.tx_icmp++;
+        }
         return;
     }
 
-    if (icmp->type == ICMP_TYPE_ECHO_REPLY && icmp->code == 0) {
+    if (icmp_type == ICMP_TYPE_ECHO_REPLY && icmp_code == 0) {
+        uint16_t identifier = net_ntohs(icmp->identifier);
+        uint16_t sequence = net_ntohs(icmp->sequence);
+
         if (g_ping_state.waiting &&
             !g_ping_state.received &&
             identifier == g_ping_state.identifier &&
@@ -1327,6 +1644,22 @@ static void net_handle_icmp(const uint8_t* payload, size_t payload_length, uint3
             src_ip == g_ping_state.expected_src_ip) {
             g_ping_state.received = true;
             g_ping_state.received_tick = pit_get_ticks();
+            g_ping_state.reply_src_ip = src_ip;
+            g_ping_state.reply_icmp_type = ICMP_TYPE_ECHO_REPLY;
+        }
+        return;
+    }
+
+    if (icmp_type == ICMP_TYPE_TIME_EXCEEDED && g_ping_state.waiting &&
+        !g_ping_state.received && g_ping_state.accept_time_exceeded) {
+        uint32_t expected_src_ip = ip_to_u32(g_net_config.ip);
+        if (icmp_match_embedded_probe(payload, payload_length,
+                                      g_ping_state.identifier, g_ping_state.sequence,
+                                      g_ping_state.expected_src_ip, expected_src_ip)) {
+            g_ping_state.received = true;
+            g_ping_state.received_tick = pit_get_ticks();
+            g_ping_state.reply_src_ip = src_ip;
+            g_ping_state.reply_icmp_type = ICMP_TYPE_TIME_EXCEEDED;
         }
     }
 }
@@ -1370,6 +1703,229 @@ static void net_handle_arp(const uint8_t* packet, size_t length) {
     }
 }
 
+static bool dns_validate_hostname(const char* hostname) {
+    if (!hostname) {
+        return false;
+    }
+
+    size_t total_len = 0;
+    size_t label_len = 0;
+
+    for (size_t i = 0;; i++) {
+        char c = hostname[i];
+
+        if (c == '\0') {
+            if (total_len == 0 || label_len == 0) {
+                return false;
+            }
+            if (label_len > 63) {
+                return false;
+            }
+            return total_len <= DNS_MAX_HOSTNAME_LEN;
+        }
+
+        if (c == '.') {
+            if (label_len == 0 || label_len > 63) {
+                return false;
+            }
+            label_len = 0;
+        } else {
+            bool alpha = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+            bool digit = (c >= '0' && c <= '9');
+            if (!(alpha || digit || c == '-')) {
+                return false;
+            }
+            label_len++;
+            if (label_len > 63) {
+                return false;
+            }
+        }
+
+        total_len++;
+        if (total_len > DNS_MAX_HOSTNAME_LEN) {
+            return false;
+        }
+    }
+}
+
+static bool dns_encode_qname(const char* hostname, uint8_t* out, size_t out_capacity, size_t* out_length) {
+    if (!hostname || !out || !out_length) {
+        return false;
+    }
+    if (!dns_validate_hostname(hostname)) {
+        return false;
+    }
+
+    size_t out_pos = 0;
+    size_t label_start = 0;
+    size_t host_len = strlen(hostname);
+
+    for (size_t i = 0; i <= host_len; i++) {
+        bool at_separator = (hostname[i] == '.') || (hostname[i] == '\0');
+        if (!at_separator) {
+            continue;
+        }
+
+        size_t label_len = i - label_start;
+        if (label_len == 0 || label_len > 63) {
+            return false;
+        }
+        if (out_pos + 1 + label_len >= out_capacity) {
+            return false;
+        }
+
+        out[out_pos++] = (uint8_t)label_len;
+        memcpy(&out[out_pos], &hostname[label_start], label_len);
+        out_pos += label_len;
+
+        label_start = i + 1;
+    }
+
+    if (out_pos >= out_capacity) {
+        return false;
+    }
+    out[out_pos++] = 0;
+    *out_length = out_pos;
+    return true;
+}
+
+static bool dns_skip_name(const uint8_t* packet, size_t packet_length, size_t* inout_offset) {
+    if (!packet || !inout_offset) {
+        return false;
+    }
+
+    size_t offset = *inout_offset;
+    size_t labels = 0;
+
+    while (offset < packet_length) {
+        uint8_t len = packet[offset];
+        if (len == 0) {
+            offset++;
+            *inout_offset = offset;
+            return true;
+        }
+
+        if ((len & 0xC0u) == 0xC0u) {
+            if (offset + 1 >= packet_length) {
+                return false;
+            }
+            offset += 2;
+            *inout_offset = offset;
+            return true;
+        }
+
+        if ((len & 0xC0u) != 0 || len > 63u) {
+            return false;
+        }
+
+        offset++;
+        if (offset + len > packet_length) {
+            return false;
+        }
+        offset += len;
+
+        labels++;
+        if (labels > 128u) {
+            return false;
+        }
+    }
+
+    return false;
+}
+
+static bool dns_parse_response_a(const uint8_t* packet, size_t packet_length, uint16_t expected_txid,
+                                 uint8_t out_ip[4], uint32_t* out_ttl_seconds) {
+    if (!packet || !out_ip || packet_length < 12u) {
+        return false;
+    }
+
+    uint16_t txid = read_be16(&packet[0]);
+    uint16_t flags = read_be16(&packet[2]);
+    uint16_t qdcount = read_be16(&packet[4]);
+    uint16_t ancount = read_be16(&packet[6]);
+
+    if (txid != expected_txid) {
+        return false;
+    }
+
+    if ((flags & 0x8000u) == 0) {
+        return false;
+    }
+
+    if ((flags & 0x000Fu) != 0) {
+        return false;
+    }
+
+    size_t offset = 12u;
+
+    for (uint16_t i = 0; i < qdcount; i++) {
+        if (!dns_skip_name(packet, packet_length, &offset)) {
+            return false;
+        }
+        if (offset + 4u > packet_length) {
+            return false;
+        }
+        offset += 4u;
+    }
+
+    for (uint16_t i = 0; i < ancount; i++) {
+        if (!dns_skip_name(packet, packet_length, &offset)) {
+            return false;
+        }
+        if (offset + 10u > packet_length) {
+            return false;
+        }
+
+        uint16_t type = read_be16(&packet[offset + 0]);
+        uint16_t class_code = read_be16(&packet[offset + 2]);
+        uint32_t ttl = read_be32(&packet[offset + 4]);
+        uint16_t rdlength = read_be16(&packet[offset + 8]);
+        offset += 10u;
+
+        if (offset + rdlength > packet_length) {
+            return false;
+        }
+
+        if (type == 1u && class_code == 1u && rdlength == 4u) {
+            memcpy(out_ip, &packet[offset], 4u);
+            if (out_ttl_seconds) {
+                *out_ttl_seconds = ttl;
+            }
+            return true;
+        }
+
+        offset += rdlength;
+    }
+
+    return false;
+}
+
+static void dns_handle_udp_packet(const uint8_t* payload, size_t length,
+                                  uint32_t src_ip, uint16_t src_port, uint16_t dst_port) {
+    if (!payload || !g_dns_state.waiting || g_dns_state.received) {
+        return;
+    }
+
+    if (src_port != DNS_SERVER_PORT || dst_port != g_dns_state.src_port) {
+        return;
+    }
+
+    if (src_ip != g_dns_state.expected_server_ip) {
+        return;
+    }
+
+    uint8_t resolved_ip[4];
+    uint32_t ttl_seconds = DNS_MIN_TTL_S;
+    if (!dns_parse_response_a(payload, length, g_dns_state.txid, resolved_ip, &ttl_seconds)) {
+        return;
+    }
+
+    memcpy(g_dns_state.resolved_ip, resolved_ip, 4);
+    g_dns_state.ttl_seconds = dns_normalize_ttl(ttl_seconds);
+    g_dns_state.received = true;
+    g_dns_state.received_tick = pit_get_ticks();
+}
+
 static void net_handle_udp(const uint8_t* payload, size_t length, uint32_t src_ip, uint32_t dst_ip) {
     if (!payload || length < sizeof(udp_header_t)) {
         return;
@@ -1388,19 +1944,86 @@ static void net_handle_udp(const uint8_t* payload, size_t length, uint32_t src_i
     size_t udp_payload_length = (size_t)udp_length - sizeof(udp_header_t);
 
     if (udp->checksum != 0) {
-        uint8_t udp_copy[sizeof(udp_header_t) + ETH_MTU];
-        if (udp_length <= sizeof(udp_copy)) {
-            memcpy(udp_copy, payload, udp_length);
-            ((udp_header_t*)udp_copy)->checksum = udp->checksum;
-            uint16_t verify = udp_checksum(src_ip, dst_ip, udp_copy, udp_length);
+        if (udp_length <= sizeof(g_udp_verify_packet)) {
+            memcpy(g_udp_verify_packet, payload, udp_length);
+            ((udp_header_t*)g_udp_verify_packet)->checksum = udp->checksum;
+            uint16_t verify = udp_checksum(src_ip, dst_ip, g_udp_verify_packet, udp_length);
             if (verify != 0xFFFFu && verify != 0u) {
                 return;
             }
         }
     }
 
+    g_net_stats.rx_udp++;
+
     if (src_port == DHCP_SERVER_PORT && dst_port == DHCP_CLIENT_PORT) {
+        g_net_stats.rx_dhcp++;
         dhcp_handle_packet(udp_payload, udp_payload_length, src_ip);
+        return;
+    }
+
+    if (src_port == DNS_SERVER_PORT) {
+        g_net_stats.rx_dns++;
+    }
+    dns_handle_udp_packet(udp_payload, udp_payload_length, src_ip, src_port, dst_port);
+}
+
+static void net_handle_tcp(const uint8_t* payload, size_t length, uint32_t src_ip, uint32_t dst_ip) {
+    if (!payload || length < sizeof(tcp_header_t) || length > 0xFFFFu) {
+        return;
+    }
+
+    const tcp_header_t* tcp = (const tcp_header_t*)payload;
+    uint8_t data_offset_words = (uint8_t)(tcp->data_offset_reserved >> 4);
+    size_t header_length = (size_t)data_offset_words * 4u;
+    if (header_length < sizeof(tcp_header_t) || header_length > length) {
+        return;
+    }
+
+    uint16_t verify = tcp_checksum(src_ip, dst_ip, payload, (uint16_t)length);
+    if (verify != 0u && verify != 0xFFFFu) {
+        return;
+    }
+
+    g_net_stats.rx_tcp++;
+
+    uint16_t src_port = net_ntohs(tcp->src_port);
+    uint16_t dst_port = net_ntohs(tcp->dst_port);
+    uint8_t flags = tcp->flags;
+    uint32_t sequence = net_ntohl(tcp->sequence_number);
+    uint32_t ack_number = net_ntohl(tcp->ack_number);
+
+    if (g_tcp_probe_state.waiting &&
+        !g_tcp_probe_state.received &&
+        src_ip == g_tcp_probe_state.expected_src_ip &&
+        src_port == g_tcp_probe_state.dst_port &&
+        dst_port == g_tcp_probe_state.src_port) {
+        if ((flags & TCP_FLAG_RST) != 0) {
+            g_tcp_probe_state.received = true;
+            g_tcp_probe_state.open = false;
+            g_tcp_probe_state.received_tick = pit_get_ticks();
+            return;
+        }
+
+        if ((flags & (TCP_FLAG_SYN | TCP_FLAG_ACK)) == (TCP_FLAG_SYN | TCP_FLAG_ACK) &&
+            ack_number == (g_tcp_probe_state.sequence + 1u)) {
+            g_tcp_probe_state.received = true;
+            g_tcp_probe_state.open = true;
+            g_tcp_probe_state.received_tick = pit_get_ticks();
+
+            uint8_t src_ip_bytes[4];
+            ip_from_u32(src_ip, src_ip_bytes);
+            (void)net_send_tcp_ipv4(g_net_config.ip, src_ip_bytes,
+                                    g_tcp_probe_state.src_port, g_tcp_probe_state.dst_port,
+                                    g_tcp_probe_state.sequence + 1u, sequence + 1u,
+                                    (uint8_t)(TCP_FLAG_RST | TCP_FLAG_ACK), 64u);
+            return;
+        }
+    }
+
+    if (!g_tcp_notice_printed) {
+        serial_write("[NET] TCP segment received (TCP engine not implemented yet)\n");
+        g_tcp_notice_printed = true;
     }
 }
 
@@ -1459,10 +2082,7 @@ static void net_handle_ipv4(const uint8_t* packet, size_t length, const uint8_t 
     } else if (ip->protocol == IP_PROTO_UDP) {
         net_handle_udp(payload, payload_length, src_ip, dst_ip);
     } else if (ip->protocol == IP_PROTO_TCP) {
-        if (!g_tcp_notice_printed) {
-            serial_write("[NET] TCP segment received (TCP engine not implemented yet)\n");
-            g_tcp_notice_printed = true;
-        }
+        net_handle_tcp(payload, payload_length, src_ip, dst_ip);
     }
 }
 
@@ -1481,8 +2101,10 @@ static void net_handle_ethernet(const uint8_t* frame, size_t length) {
     size_t payload_length = length - sizeof(eth_header_t);
 
     if (ethertype == ETH_TYPE_IPV4) {
+        g_net_stats.rx_ipv4++;
         net_handle_ipv4(payload, payload_length, eth->src_mac);
     } else if (ethertype == ETH_TYPE_ARP) {
+        g_net_stats.rx_arp++;
         net_handle_arp(payload, payload_length);
     }
 }
@@ -1491,8 +2113,16 @@ bool net_init(void) {
     memset(&g_net_config, 0, sizeof(g_net_config));
     memset(&g_dhcp, 0, sizeof(g_dhcp));
     memset(&g_ping_state, 0, sizeof(g_ping_state));
+    memset(&g_dns_state, 0, sizeof(g_dns_state));
+    memset(&g_tcp_probe_state, 0, sizeof(g_tcp_probe_state));
+    memset(&g_net_stats, 0, sizeof(g_net_stats));
     arp_cache_clear();
+    dns_cache_clear();
     g_ping_sequence = 1;
+    g_dns_txid = 1;
+    g_dns_src_port = DNS_MIN_SRC_PORT;
+    g_tcp_src_port = TCP_MIN_SRC_PORT;
+    g_tcp_probe_seq_seed = 0x535A7001u;
     g_tcp_notice_printed = false;
 
     if (!rtl8139_init()) {
@@ -1519,6 +2149,7 @@ void net_poll(void) {
             break;
         }
         if (frame_length >= sizeof(eth_header_t)) {
+            g_net_stats.rx_frames++;
             net_handle_ethernet(g_rx_frame, frame_length);
         }
     }
@@ -1542,6 +2173,8 @@ bool net_configure_dhcp(uint32_t timeout_ms) {
     }
 
     memset(&g_dhcp, 0, sizeof(g_dhcp));
+    dns_cache_clear();
+    memset(&g_tcp_probe_state, 0, sizeof(g_tcp_probe_state));
     g_dhcp.state = DHCP_STATE_WAIT_OFFER;
     g_dhcp.xid = g_next_dhcp_xid++;
 
@@ -1629,6 +2262,8 @@ bool net_configure_static(const uint8_t ip[4], const uint8_t netmask[4],
     memset(&g_dhcp, 0, sizeof(g_dhcp));
     g_dhcp.state = DHCP_STATE_IDLE;
     arp_cache_clear();
+    dns_cache_clear();
+    memset(&g_tcp_probe_state, 0, sizeof(g_tcp_probe_state));
 
     serial_write("[NET] Static IPv4 configured: ");
     serial_write_ip(g_net_config.ip);
@@ -1663,20 +2298,42 @@ bool net_get_info(net_info_t* out_info) {
     return true;
 }
 
-bool net_ping_ipv4(const uint8_t dst_ip[4], uint32_t timeout_ms, uint32_t* out_rtt_ms) {
+bool net_get_stats(net_stats_t* out_stats) {
+    if (!out_stats) {
+        return false;
+    }
+
+    arp_cache_expire_stale();
+    dns_cache_expire_stale();
+
+    *out_stats = g_net_stats;
+    out_stats->arp_cache_entries = 0;
+    out_stats->dns_cache_entries = 0;
+
+    for (uint8_t i = 0; i < ARP_CACHE_SIZE; i++) {
+        if (g_arp_cache[i].valid) {
+            out_stats->arp_cache_entries++;
+        }
+    }
+
+    for (uint8_t i = 0; i < DNS_CACHE_SIZE; i++) {
+        if (g_dns_cache[i].valid) {
+            out_stats->dns_cache_entries++;
+        }
+    }
+
+    return true;
+}
+
+static bool net_icmp_probe_ipv4(const uint8_t dst_ip[4], uint8_t ttl, bool accept_time_exceeded,
+                                uint32_t timeout_ms, uint32_t* out_rtt_ms, uint8_t out_reply_ip[4],
+                                uint8_t* out_reply_icmp_type, bool* out_reached_dst) {
     if (!dst_ip || !g_rtl8139.initialized || !g_net_config.configured) {
         return false;
     }
 
     if (ip_is_zero(dst_ip) || ip_is_broadcast(dst_ip) || ip_is_zero(g_net_config.ip)) {
         return false;
-    }
-
-    if (ip_equal(dst_ip, g_net_config.ip)) {
-        if (out_rtt_ms) {
-            *out_rtt_ms = 0;
-        }
-        return true;
     }
 
     uint32_t frequency = pit_get_frequency();
@@ -1686,6 +2343,36 @@ bool net_ping_ipv4(const uint8_t dst_ip[4], uint32_t timeout_ms, uint32_t* out_r
 
     if (timeout_ms == 0) {
         timeout_ms = NET_DEFAULT_PING_TIMEOUT_MS;
+    }
+
+    if (ttl == 0) {
+        ttl = 64;
+    }
+
+    if (out_rtt_ms) {
+        *out_rtt_ms = 0;
+    }
+    if (out_reply_ip) {
+        memset(out_reply_ip, 0, 4);
+    }
+    if (out_reply_icmp_type) {
+        *out_reply_icmp_type = 0;
+    }
+    if (out_reached_dst) {
+        *out_reached_dst = false;
+    }
+
+    if (ip_equal(dst_ip, g_net_config.ip)) {
+        if (out_reply_ip) {
+            memcpy(out_reply_ip, dst_ip, 4);
+        }
+        if (out_reply_icmp_type) {
+            *out_reply_icmp_type = ICMP_TYPE_ECHO_REPLY;
+        }
+        if (out_reached_dst) {
+            *out_reached_dst = true;
+        }
+        return true;
     }
 
     size_t icmp_length = sizeof(icmp_echo_header_t) + sizeof(uint64_t);
@@ -1714,12 +2401,16 @@ bool net_ping_ipv4(const uint8_t dst_ip[4], uint32_t timeout_ms, uint32_t* out_r
     g_ping_state.identifier = NET_PING_IDENTIFIER;
     g_ping_state.sequence = sequence;
     g_ping_state.expected_src_ip = ip_to_u32(dst_ip);
+    g_ping_state.accept_time_exceeded = accept_time_exceeded;
+    g_ping_state.reply_src_ip = 0;
+    g_ping_state.reply_icmp_type = 0;
     g_ping_state.sent_tick = send_tick;
 
-    if (!net_send_ipv4_payload(g_net_config.ip, dst_ip, IP_PROTO_ICMP, icmp_packet, icmp_length, false)) {
+    if (!net_send_ipv4_payload(g_net_config.ip, dst_ip, IP_PROTO_ICMP, ttl, icmp_packet, icmp_length, false)) {
         g_ping_state.waiting = false;
         return false;
     }
+    g_net_stats.tx_icmp++;
 
     uint64_t timeout_ticks = ((uint64_t)timeout_ms * frequency + 999u) / 1000u;
     if (timeout_ticks == 0) {
@@ -1735,6 +2426,24 @@ bool net_ping_ipv4(const uint8_t dst_ip[4], uint32_t timeout_ms, uint32_t* out_r
             if (out_rtt_ms) {
                 *out_rtt_ms = rtt_ms;
             }
+
+            uint8_t reply_ip[4];
+            if (g_ping_state.reply_src_ip != 0) {
+                ip_from_u32(g_ping_state.reply_src_ip, reply_ip);
+            } else {
+                memcpy(reply_ip, dst_ip, 4);
+            }
+            if (out_reply_ip) {
+                memcpy(out_reply_ip, reply_ip, 4);
+            }
+            if (out_reply_icmp_type) {
+                *out_reply_icmp_type = g_ping_state.reply_icmp_type;
+            }
+            if (out_reached_dst) {
+                *out_reached_dst = (g_ping_state.reply_icmp_type == ICMP_TYPE_ECHO_REPLY &&
+                                    g_ping_state.reply_src_ip == g_ping_state.expected_src_ip);
+            }
+
             g_ping_state.waiting = false;
             return true;
         }
@@ -1742,5 +2451,220 @@ bool net_ping_ipv4(const uint8_t dst_ip[4], uint32_t timeout_ms, uint32_t* out_r
     }
 
     g_ping_state.waiting = false;
+    return false;
+}
+
+bool net_ping_ipv4(const uint8_t dst_ip[4], uint32_t timeout_ms, uint32_t* out_rtt_ms) {
+    return net_icmp_probe_ipv4(dst_ip, 64, false, timeout_ms, out_rtt_ms, NULL, NULL, NULL);
+}
+
+bool net_trace_probe_ipv4(const uint8_t dst_ip[4], uint8_t ttl, uint32_t timeout_ms,
+                          uint32_t* out_rtt_ms, uint8_t out_hop_ip[4], bool* out_reached_dst) {
+    uint8_t reply_ip[4] = {0, 0, 0, 0};
+    bool reached_dst = false;
+    uint8_t probe_ttl = (ttl == 0) ? 1u : ttl;
+
+    bool ok = net_icmp_probe_ipv4(dst_ip, probe_ttl, true, timeout_ms, out_rtt_ms,
+                                  reply_ip, NULL, &reached_dst);
+    if (out_hop_ip) {
+        if (ok) {
+            memcpy(out_hop_ip, reply_ip, 4);
+        } else {
+            memset(out_hop_ip, 0, 4);
+        }
+    }
+    if (out_reached_dst) {
+        *out_reached_dst = ok && reached_dst;
+    }
+    return ok;
+}
+
+bool net_tcp_probe_ipv4(const uint8_t dst_ip[4], uint16_t dst_port, uint32_t timeout_ms,
+                        bool* out_open, uint32_t* out_rtt_ms) {
+    if (!dst_ip || dst_port == 0 || !g_rtl8139.initialized || !g_net_config.configured) {
+        return false;
+    }
+
+    if (ip_is_zero(dst_ip) || ip_is_broadcast(dst_ip) || ip_is_zero(g_net_config.ip)) {
+        return false;
+    }
+
+    uint32_t frequency = pit_get_frequency();
+    if (frequency == 0) {
+        return false;
+    }
+
+    if (timeout_ms == 0) {
+        timeout_ms = NET_DEFAULT_TCP_TIMEOUT_MS;
+    }
+
+    if (out_open) {
+        *out_open = false;
+    }
+    if (out_rtt_ms) {
+        *out_rtt_ms = 0;
+    }
+
+    uint16_t src_port = g_tcp_src_port++;
+    if (g_tcp_src_port < TCP_MIN_SRC_PORT) {
+        g_tcp_src_port = TCP_MIN_SRC_PORT;
+    }
+    if (src_port == 0) {
+        src_port = TCP_MIN_SRC_PORT;
+    }
+
+    uint32_t send_tick32 = (uint32_t)pit_get_ticks();
+    uint32_t sequence = g_tcp_probe_seq_seed ^ (send_tick32 << 5) ^ ((uint32_t)src_port << 16) ^ (uint32_t)dst_port;
+    g_tcp_probe_seq_seed += 0x01010101u;
+
+    memset(&g_tcp_probe_state, 0, sizeof(g_tcp_probe_state));
+    g_tcp_probe_state.waiting = true;
+    g_tcp_probe_state.src_port = src_port;
+    g_tcp_probe_state.dst_port = dst_port;
+    g_tcp_probe_state.expected_src_ip = ip_to_u32(dst_ip);
+    g_tcp_probe_state.sequence = sequence;
+    g_tcp_probe_state.sent_tick = pit_get_ticks();
+
+    if (!net_send_tcp_ipv4(g_net_config.ip, dst_ip, src_port, dst_port, sequence, 0u, TCP_FLAG_SYN, 64u)) {
+        g_tcp_probe_state.waiting = false;
+        return false;
+    }
+
+    uint64_t timeout_ticks = ((uint64_t)timeout_ms * frequency + 999u) / 1000u;
+    if (timeout_ticks == 0) {
+        timeout_ticks = 1;
+    }
+    uint64_t deadline = g_tcp_probe_state.sent_tick + timeout_ticks;
+
+    while (pit_get_ticks() <= deadline) {
+        net_poll();
+        if (g_tcp_probe_state.received) {
+            uint64_t delta_ticks = g_tcp_probe_state.received_tick - g_tcp_probe_state.sent_tick;
+            uint32_t rtt_ms = (uint32_t)((delta_ticks * 1000u) / frequency);
+            if (out_rtt_ms) {
+                *out_rtt_ms = rtt_ms;
+            }
+            if (out_open) {
+                *out_open = g_tcp_probe_state.open;
+            }
+            g_tcp_probe_state.waiting = false;
+            return true;
+        }
+        __asm__ volatile("pause");
+    }
+
+    g_tcp_probe_state.waiting = false;
+    return false;
+}
+
+bool net_dns_resolve_ipv4(const char* hostname, uint8_t out_ip[4], uint32_t timeout_ms) {
+    if (!hostname || !out_ip || !g_rtl8139.initialized || !g_net_config.configured) {
+        return false;
+    }
+
+    if (ip_is_zero(g_net_config.ip) || ip_is_zero(g_net_config.dns)) {
+        return false;
+    }
+
+    uint32_t frequency = pit_get_frequency();
+    if (frequency == 0) {
+        return false;
+    }
+
+    if (timeout_ms == 0) {
+        timeout_ms = DNS_DEFAULT_TIMEOUT_MS;
+    }
+
+    if (!dns_validate_hostname(hostname)) {
+        return false;
+    }
+
+    if (dns_cache_lookup(hostname, out_ip)) {
+        return true;
+    }
+
+    memset(g_dns_query_packet, 0, sizeof(g_dns_query_packet));
+
+    uint16_t txid = g_dns_txid++;
+    if (g_dns_txid == 0) {
+        g_dns_txid = 1;
+    }
+
+    uint16_t src_port = g_dns_src_port++;
+    if (g_dns_src_port < DNS_MIN_SRC_PORT) {
+        g_dns_src_port = DNS_MIN_SRC_PORT;
+    }
+
+    write_be16(&g_dns_query_packet[0], txid);
+    write_be16(&g_dns_query_packet[2], 0x0100u);
+    write_be16(&g_dns_query_packet[4], 1u);
+    write_be16(&g_dns_query_packet[6], 0u);
+    write_be16(&g_dns_query_packet[8], 0u);
+    write_be16(&g_dns_query_packet[10], 0u);
+
+    size_t query_offset = 12u;
+    size_t qname_len = 0;
+    if (!dns_encode_qname(hostname, &g_dns_query_packet[query_offset], sizeof(g_dns_query_packet) - query_offset, &qname_len)) {
+        return false;
+    }
+    query_offset += qname_len;
+
+    if (query_offset + 4u > sizeof(g_dns_query_packet)) {
+        return false;
+    }
+    write_be16(&g_dns_query_packet[query_offset], 1u);
+    query_offset += 2u;
+    write_be16(&g_dns_query_packet[query_offset], 1u);
+    query_offset += 2u;
+
+    memset(&g_dns_state, 0, sizeof(g_dns_state));
+    g_dns_state.waiting = true;
+    g_dns_state.txid = txid;
+    g_dns_state.src_port = src_port;
+    g_dns_state.expected_server_ip = ip_to_u32(g_net_config.dns);
+    g_dns_state.ttl_seconds = DNS_MIN_TTL_S;
+    g_dns_state.sent_tick = pit_get_ticks();
+    g_net_stats.dns_queries++;
+
+    if (!net_send_udp_ipv4(g_net_config.ip, g_net_config.dns, src_port, DNS_SERVER_PORT,
+                           g_dns_query_packet, query_offset, false)) {
+        g_dns_state.waiting = false;
+        return false;
+    }
+
+    uint64_t timeout_ticks = ((uint64_t)timeout_ms * frequency + 999u) / 1000u;
+    if (timeout_ticks == 0) {
+        timeout_ticks = 1;
+    }
+    uint64_t retry_ticks = ((uint64_t)DNS_DEFAULT_RETRY_MS * frequency + 999u) / 1000u;
+    if (retry_ticks == 0) {
+        retry_ticks = 1;
+    }
+
+    uint64_t deadline = g_dns_state.sent_tick + timeout_ticks;
+    uint64_t retry_at = g_dns_state.sent_tick + retry_ticks;
+
+    while (pit_get_ticks() <= deadline) {
+        net_poll();
+
+        if (g_dns_state.received) {
+            memcpy(out_ip, g_dns_state.resolved_ip, 4);
+            dns_cache_update(hostname, g_dns_state.resolved_ip, g_dns_state.ttl_seconds);
+            g_dns_state.waiting = false;
+            return true;
+        }
+
+        uint64_t now = pit_get_ticks();
+        if (now >= retry_at) {
+            net_send_udp_ipv4(g_net_config.ip, g_net_config.dns, src_port, DNS_SERVER_PORT,
+                              g_dns_query_packet, query_offset, false);
+            retry_at = now + retry_ticks;
+        }
+
+        __asm__ volatile("pause");
+    }
+
+    g_dns_state.waiting = false;
+    g_net_stats.dns_timeouts++;
     return false;
 }

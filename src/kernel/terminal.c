@@ -14,9 +14,19 @@ static fb_color_t fg_color = {.r = 0xAA, .g = 0xAA, .b = 0xAA, .a = 255};
 static fb_color_t bg_color = {.r = 0x00, .g = 0x00, .b = 0x00, .a = 255};
 
 __attribute__((noinline)) void terminal_wait_input(void) {
+    task_t* task = get_current_task();
+    bool allow_preempt = (task && !task->is_kernel);
+    if (allow_preempt) {
+        task->kernel_preempt_ok = true;
+    }
+
     while (!keyboard_has_input() && !serial_has_data()) {
         __asm__ volatile("sti; hlt; cli");
         net_poll();
+    }
+
+    if (allow_preempt) {
+        task->kernel_preempt_ok = false;
     }
 }
 

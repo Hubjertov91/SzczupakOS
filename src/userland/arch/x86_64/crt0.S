@@ -5,6 +5,11 @@ global _start
 
 _start:
     xor rbp, rbp
+
+    ; Initial user stack layout: [argc][argv0][argv1]...[NULL]
+    mov rdi, [rsp]
+    lea rsi, [rsp + 8]
+    and rsp, -16
     
     extern main
     call main

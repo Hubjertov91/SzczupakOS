@@ -20,15 +20,11 @@ typedef struct heap_block {
 
 static heap_block_t* heap_start = NULL;
 static spinlock_t heap_lock = SPINLOCK_INIT;
+static uint8_t heap_storage[HEAP_PAGES * PAGE_SIZE]
+    __attribute__((aligned(PAGE_SIZE), section(".bss.heap")));
 
 bool heap_init(void) {
-    uint64_t phys = pmm_alloc_pages(HEAP_PAGES);
-    if (!phys) {
-        serial_write("[HEAP] FAIL: No memory\n");
-        return false;
-    }
-    
-    heap_start = (heap_block_t*)phys;
+    heap_start = (heap_block_t*)heap_storage;
     heap_start->magic = HEAP_MAGIC;
     heap_start->size = (HEAP_PAGES * PAGE_SIZE) - sizeof(heap_block_t);
     heap_start->free = true;
@@ -36,7 +32,7 @@ bool heap_init(void) {
     heap_start->prev = NULL;
     
     serial_write("[HEAP] Ready at 0x");
-    serial_write_hex(phys);
+    serial_write_hex((uint64_t)heap_start);
     serial_write(" (");
     serial_write_dec(HEAP_PAGES * PAGE_SIZE / 1024);
     serial_write(" KB)\n");

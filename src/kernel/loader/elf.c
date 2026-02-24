@@ -39,6 +39,54 @@ typedef struct {
     uint64_t align;
 } __attribute__((packed)) elf64_program_header_t;
 
+static bool elf_copy_to_user(page_directory_t* dir, uint64_t dst_vaddr, const uint8_t* src, uint64_t len) {
+    if (!dir || !src || len == 0) return false;
+
+    uint64_t copied = 0;
+    while (copied < len) {
+        uint64_t vaddr = dst_vaddr + copied;
+        uint64_t phys = vmm_get_physical(dir, vaddr);
+        if (!phys) return false;
+
+        uint64_t page_off = vaddr & 0xFFFULL;
+        uint64_t chunk = 4096ULL - page_off;
+        if (chunk > (len - copied)) chunk = len - copied;
+
+        uint8_t* dst = (uint8_t*)PHYS_TO_VIRT(phys & ~0xFFFULL) + page_off;
+        for (uint64_t i = 0; i < chunk; i++) {
+            dst[i] = src[copied + i];
+        }
+
+        copied += chunk;
+    }
+
+    return true;
+}
+
+static bool elf_zero_user(page_directory_t* dir, uint64_t dst_vaddr, uint64_t len) {
+    if (!dir || len == 0) return false;
+
+    uint64_t zeroed = 0;
+    while (zeroed < len) {
+        uint64_t vaddr = dst_vaddr + zeroed;
+        uint64_t phys = vmm_get_physical(dir, vaddr);
+        if (!phys) return false;
+
+        uint64_t page_off = vaddr & 0xFFFULL;
+        uint64_t chunk = 4096ULL - page_off;
+        if (chunk > (len - zeroed)) chunk = len - zeroed;
+
+        uint8_t* dst = (uint8_t*)PHYS_TO_VIRT(phys & ~0xFFFULL) + page_off;
+        for (uint64_t i = 0; i < chunk; i++) {
+            dst[i] = 0;
+        }
+
+        zeroed += chunk;
+    }
+
+    return true;
+}
+
 uint64_t elf_load(task_t* task, uint8_t* elf_data, size_t elf_size) {
     if (!task || !task->page_dir || !elf_data || elf_size < sizeof(elf64_header_t)) {
         serial_write("[ELF] Invalid load parameters\n");
@@ -92,8 +140,7 @@ uint64_t elf_load(task_t* task, uint8_t* elf_data, size_t elf_size) {
         uint64_t vstart = ph->vaddr & ~0xFFF;
         uint64_t vend   = (ph->vaddr + ph->memsz + 0xFFF) & ~0xFFF;
 
-        uint32_t flags = PAGE_PRESENT | PAGE_USER;
-        if (ph->flags & 0x2) flags |= PAGE_WRITE;
+        uint32_t map_flags = PAGE_PRESENT | PAGE_USER | PAGE_WRITE;
 
         for (uint64_t v = vstart; v < vend; v += 4096) {
             uint64_t phys = vmm_get_physical(task->page_dir, v);
@@ -108,7 +155,7 @@ uint64_t elf_load(task_t* task, uint8_t* elf_data, size_t elf_size) {
                 for (int j = 0; j < 4096; j++) page[j] = 0;
             }
 
-            if (!vmm_map_user_page(task->page_dir, v, phys, flags)) {
+            if (!vmm_map_user_page(task->page_dir, v, phys, map_flags)) {
                 serial_write("[ELF] Failed to map page at 0x");
                 serial_write_hex(v);
                 serial_write("\n");
@@ -116,30 +163,29 @@ uint64_t elf_load(task_t* task, uint8_t* elf_data, size_t elf_size) {
             }
         }
 
-        for (uint64_t off = 0; off < ph->filesz; off++) {
-            uint64_t vaddr = ph->vaddr + off;
-            uint64_t phys = vmm_get_physical(task->page_dir, vaddr);
-            if (!phys) {
-                serial_write("[ELF] Cannot get physical for vaddr 0x");
-                serial_write_hex(vaddr);
-                serial_write("\n");
+        if (ph->filesz > 0) {
+            if (!elf_copy_to_user(task->page_dir, ph->vaddr, elf_data + ph->offset, ph->filesz)) {
+                serial_write("[ELF] Cannot copy segment bytes\n");
                 return 0;
             }
-            
-            *(uint8_t*)PHYS_TO_VIRT(phys) = elf_data[ph->offset + off];
         }
 
-        for (uint64_t off = ph->filesz; off < ph->memsz; off++) {
-            uint64_t vaddr = ph->vaddr + off;
-            uint64_t phys = vmm_get_physical(task->page_dir, vaddr);
-            if (!phys) {
-                serial_write("[ELF] Cannot get physical for bss vaddr 0x");
-                serial_write_hex(vaddr);
-                serial_write("\n");
+        if (ph->memsz > ph->filesz) {
+            if (!elf_zero_user(task->page_dir, ph->vaddr + ph->filesz, ph->memsz - ph->filesz)) {
+                serial_write("[ELF] Cannot zero bss\n");
                 return 0;
             }
+        }
 
-            *(uint8_t*)PHYS_TO_VIRT(phys) = 0;
+        if (!(ph->flags & 0x2)) {
+            for (uint64_t v = vstart; v < vend; v += 4096) {
+                if (!vmm_change_flags(task->page_dir, v, PAGE_PRESENT | PAGE_USER)) {
+                    serial_write("[ELF] Failed to tighten RX perms at 0x");
+                    serial_write_hex(v);
+                    serial_write("\n");
+                    return 0;
+                }
+            }
         }
     }
 

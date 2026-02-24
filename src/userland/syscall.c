@@ -106,8 +106,8 @@ long sys_fork(void) {
     return syscall0(SYS_FORK);
 }
 
-long sys_exec(const char* path) {
-    return syscall1(SYS_EXEC, (long)path);
+long sys_exec(const char* cmdline) {
+    return syscall1(SYS_EXEC, (long)cmdline);
 }
 
 long sys_fb_putpixel(uint32_t x, uint32_t y, uint32_t color) {
@@ -144,4 +144,20 @@ long sys_net_info(struct net_info* info) {
 
 long sys_net_ping(const uint8_t ip[4], uint32_t timeout_ms, uint32_t* out_rtt_ms) {
     return syscall3(SYS_NET_PING, (long)ip, (long)timeout_ms, (long)out_rtt_ms);
+}
+
+long sys_net_resolve(const char* hostname, uint32_t timeout_ms, uint8_t out_ip[4]) {
+    return syscall3(SYS_NET_RESOLVE, (long)hostname, (long)timeout_ms, (long)out_ip);
+}
+
+long sys_net_stats(struct net_stats* stats) {
+    return syscall1(SYS_NET_STATS, (long)stats);
+}
+
+long sys_net_trace_probe(const struct net_trace_probe_req* req, struct net_trace_probe_rsp* rsp) {
+    return syscall2(SYS_NET_TRACE_PROBE, (long)req, (long)rsp);
+}
+
+long sys_net_tcp_probe(const struct net_tcp_probe_req* req, struct net_tcp_probe_rsp* rsp) {
+    return syscall2(SYS_NET_TCP_PROBE, (long)req, (long)rsp);
 }

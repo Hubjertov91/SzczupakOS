@@ -47,7 +47,7 @@ typedef struct task {
 
 bool task_init(void);
 task_t* task_create(const char* name, void (*entry_point)(void));
-task_t* task_create_user(const char* name, uint8_t* elf_data, size_t size);
+task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_data, size_t size);
 task_t* task_fork(void);
 void task_exit(void);
 task_t* get_current_task(void);

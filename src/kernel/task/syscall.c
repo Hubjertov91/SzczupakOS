@@ -4,6 +4,7 @@
 #include <task/task.h>
 #include <mm/uaccess.h>
 #include <mm/heap.h>
+#include <mm/vmm.h>
 #include <kernel/terminal.h>
 #include <fs/vfs.h>
 #include <drivers/framebuffer.h>
@@ -36,8 +37,14 @@ extern uint64_t pmm_get_total_memory(void);
 extern uint64_t pmm_get_used_memory(void);
 
 #define EXEC_PATH_MAX 256
+#define EXEC_CMDLINE_MAX 512
 #define EXEC_FILE_MAX (2 * 1024 * 1024)
 #define LISTDIR_BUF_MAX 4096
+#define NET_HOSTNAME_MAX 256
+
+static bool is_space(char c) {
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
 
 static uint64_t sys_write(uint64_t str_addr, uint64_t size) {
     if (!str_addr || size == 0) return 0;
@@ -118,22 +125,33 @@ static uint64_t sys_fork(void) {
     return (uint64_t)child->pid;
 }
 
-static uint64_t sys_exec(uint64_t path_addr) {
-    if (!path_addr) return (uint64_t)-1;
+static uint64_t sys_exec(uint64_t cmdline_addr) {
+    if (!cmdline_addr) return (uint64_t)-1;
 
-    char path[EXEC_PATH_MAX];
+    char cmdline[EXEC_CMDLINE_MAX];
     size_t i = 0;
-    for (; i < EXEC_PATH_MAX; i++) {
-        if (copy_from_user(&path[i], (const void*)(path_addr + i), 1) != 0) {
+    for (; i < EXEC_CMDLINE_MAX; i++) {
+        if (copy_from_user(&cmdline[i], (const void*)(cmdline_addr + i), 1) != 0) {
             return (uint64_t)-1;
         }
-        if (path[i] == '\0') break;
+        if (cmdline[i] == '\0') break;
     }
 
-    if (i == 0 || i == EXEC_PATH_MAX || path[0] != '/') {
-        return (uint64_t)-1;
-    }
+    if (i == 0 || i == EXEC_CMDLINE_MAX) return (uint64_t)-1;
 
+    size_t p = 0;
+    while (is_space(cmdline[p])) p++;
+    if (cmdline[p] == '\0') return (uint64_t)-1;
+
+    char path[EXEC_PATH_MAX];
+    size_t path_len = 0;
+    while (cmdline[p] != '\0' && !is_space(cmdline[p])) {
+        if (path_len + 1 >= EXEC_PATH_MAX) return (uint64_t)-1;
+        path[path_len++] = cmdline[p++];
+    }
+    path[path_len] = '\0';
+
+    if (path[0] != '/') return (uint64_t)-1;
     vfs_node_t* file = vfs_open(path, 0);
     if (!file || file->type != VFS_FILE || file->size == 0 || file->size > EXEC_FILE_MAX) {
         if (file) vfs_close(file);
@@ -152,13 +170,30 @@ static uint64_t sys_exec(uint64_t path_addr) {
         return (uint64_t)-1;
     }
 
-    task_t* task = task_create_user(path, elf_data, file->size);
+    task_t* task = task_create_user(path, cmdline, elf_data, file->size);
     kfree(elf_data);
     vfs_close(file);
 
     if (!task) {
         return (uint64_t)-1;
     }
+
+    task_t* current = get_current_task();
+    bool preempt_enabled = false;
+    if (current && !current->is_kernel) {
+        current->kernel_preempt_ok = true;
+        preempt_enabled = true;
+    }
+
+    while (task->state != TASK_TERMINATED) {
+        __asm__ volatile("sti; hlt; cli");
+        net_poll();
+    }
+
+    if (preempt_enabled && current) {
+        current->kernel_preempt_ok = false;
+    }
+
     return task->pid;
 }
 
@@ -357,11 +392,135 @@ static uint64_t sys_net_ping(uint64_t ip_addr, uint64_t timeout_ms, uint64_t rtt
     return 0;
 }
 
+static uint64_t sys_net_resolve(uint64_t hostname_addr, uint64_t timeout_ms, uint64_t out_ip_addr) {
+    if (!hostname_addr || !out_ip_addr) {
+        return (uint64_t)-1;
+    }
+
+    char hostname[NET_HOSTNAME_MAX];
+    size_t i = 0;
+    for (; i < NET_HOSTNAME_MAX; i++) {
+        if (copy_from_user(&hostname[i], (const void*)(hostname_addr + i), 1) != 0) {
+            return (uint64_t)-1;
+        }
+        if (hostname[i] == '\0') {
+            break;
+        }
+    }
+
+    if (i == 0 || i == NET_HOSTNAME_MAX || hostname[0] == '\0') {
+        return (uint64_t)-1;
+    }
+
+    uint8_t ip[4];
+    if (!net_dns_resolve_ipv4(hostname, ip, (uint32_t)timeout_ms)) {
+        return (uint64_t)-1;
+    }
+
+    if (copy_to_user((void*)out_ip_addr, ip, sizeof(ip)) != 0) {
+        return (uint64_t)-1;
+    }
+
+    return 0;
+}
+
+static uint64_t sys_net_stats(uint64_t stats_addr) {
+    if (!stats_addr) return (uint64_t)-1;
+
+    net_stats_t kstats;
+    if (!net_get_stats(&kstats)) return (uint64_t)-1;
+
+    struct net_stats ustats;
+    memset(&ustats, 0, sizeof(ustats));
+    ustats.rx_frames = kstats.rx_frames;
+    ustats.tx_frames = kstats.tx_frames;
+    ustats.rx_ipv4 = kstats.rx_ipv4;
+    ustats.rx_arp = kstats.rx_arp;
+    ustats.rx_icmp = kstats.rx_icmp;
+    ustats.rx_udp = kstats.rx_udp;
+    ustats.rx_tcp = kstats.rx_tcp;
+    ustats.rx_dhcp = kstats.rx_dhcp;
+    ustats.rx_dns = kstats.rx_dns;
+    ustats.tx_ipv4 = kstats.tx_ipv4;
+    ustats.tx_arp = kstats.tx_arp;
+    ustats.tx_icmp = kstats.tx_icmp;
+    ustats.tx_udp = kstats.tx_udp;
+    ustats.arp_cache_hits = kstats.arp_cache_hits;
+    ustats.arp_cache_misses = kstats.arp_cache_misses;
+    ustats.dns_cache_hits = kstats.dns_cache_hits;
+    ustats.dns_cache_misses = kstats.dns_cache_misses;
+    ustats.dns_queries = kstats.dns_queries;
+    ustats.dns_timeouts = kstats.dns_timeouts;
+    ustats.arp_cache_entries = kstats.arp_cache_entries;
+    ustats.dns_cache_entries = kstats.dns_cache_entries;
+
+    if (copy_to_user((void*)stats_addr, &ustats, sizeof(ustats)) != 0) return (uint64_t)-1;
+    return 0;
+}
+
+static uint64_t sys_net_trace_probe(uint64_t req_addr, uint64_t rsp_addr) {
+    if (!req_addr || !rsp_addr) return (uint64_t)-1;
+
+    struct net_trace_probe_req req;
+    if (copy_from_user(&req, (const void*)req_addr, sizeof(req)) != 0) {
+        return (uint64_t)-1;
+    }
+
+    struct net_trace_probe_rsp rsp;
+    memset(&rsp, 0, sizeof(rsp));
+
+    uint8_t hop_ip[4] = {0, 0, 0, 0};
+    uint32_t rtt_ms = 0;
+    bool reached_dst = false;
+    uint8_t ttl = (req.ttl == 0) ? 1u : req.ttl;
+
+    bool ok = net_trace_probe_ipv4(req.dst_ip, ttl, req.timeout_ms, &rtt_ms, hop_ip, &reached_dst);
+    rsp.ok = ok ? 1u : 0u;
+    rsp.reached_dst = reached_dst ? 1u : 0u;
+    memcpy(rsp.hop_ip, hop_ip, sizeof(rsp.hop_ip));
+    rsp.rtt_ms = rtt_ms;
+
+    if (copy_to_user((void*)rsp_addr, &rsp, sizeof(rsp)) != 0) {
+        return (uint64_t)-1;
+    }
+
+    return 0;
+}
+
+static uint64_t sys_net_tcp_probe(uint64_t req_addr, uint64_t rsp_addr) {
+    if (!req_addr || !rsp_addr) return (uint64_t)-1;
+
+    struct net_tcp_probe_req req;
+    if (copy_from_user(&req, (const void*)req_addr, sizeof(req)) != 0) {
+        return (uint64_t)-1;
+    }
+
+    struct net_tcp_probe_rsp rsp;
+    memset(&rsp, 0, sizeof(rsp));
+
+    bool open = false;
+    uint32_t rtt_ms = 0;
+    bool ok = net_tcp_probe_ipv4(req.dst_ip, req.dst_port, req.timeout_ms, &open, &rtt_ms);
+    rsp.ok = ok ? 1u : 0u;
+    rsp.open = open ? 1u : 0u;
+    rsp.rtt_ms = rtt_ms;
+
+    if (copy_to_user((void*)rsp_addr, &rsp, sizeof(rsp)) != 0) {
+        return (uint64_t)-1;
+    }
+
+    return 0;
+}
+
 void syscall_handler(syscall_regs_t* regs) {
     task_t* current_task = get_current_task();
     if (!current_task) {
         regs->rax = (uint64_t)-1;
         return;
+    }
+
+    if (!current_task->is_kernel && current_task->page_dir) {
+        vmm_sync_kernel_mappings(current_task->page_dir);
     }
     
     switch (regs->rax) {
@@ -384,6 +543,10 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_LISTDIR: regs->rax = sys_listdir(regs->rdi, regs->rsi, regs->rdx); break;
         case SYSCALL_NET_INFO: regs->rax = sys_net_info(regs->rdi); break;
         case SYSCALL_NET_PING: regs->rax = sys_net_ping(regs->rdi, regs->rsi, regs->rdx); break;
+        case SYSCALL_NET_RESOLVE: regs->rax = sys_net_resolve(regs->rdi, regs->rsi, regs->rdx); break;
+        case SYSCALL_NET_STATS: regs->rax = sys_net_stats(regs->rdi); break;
+        case SYSCALL_NET_TRACE_PROBE: regs->rax = sys_net_trace_probe(regs->rdi, regs->rsi); break;
+        case SYSCALL_NET_TCP_PROBE: regs->rax = sys_net_tcp_probe(regs->rdi, regs->rsi); break;
         default:
             serial_write("[SYSCALL] Unknown syscall: ");
             serial_write_dec(regs->rax);

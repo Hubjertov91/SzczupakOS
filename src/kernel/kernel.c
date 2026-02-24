@@ -24,7 +24,7 @@
 static const uint8_t FALLBACK_STATIC_IP[4] = {192, 168, 76, 2};
 static const uint8_t FALLBACK_STATIC_MASK[4] = {255, 255, 255, 0};
 static const uint8_t FALLBACK_STATIC_GW[4] = {192, 168, 76, 1};
-static const uint8_t FALLBACK_STATIC_DNS[4] = {192, 168, 76, 1};
+static const uint8_t FALLBACK_STATIC_DNS[4] = {1, 1, 1, 1};
 
 void kernel_main(uint64_t multiboot_addr) {
     vga_init();
@@ -146,7 +146,7 @@ void kernel_main(uint64_t multiboot_addr) {
         while(1) __asm__ volatile("hlt");
     }
 
-    task_t* task = task_create_user("shell", elf_data, shell_file->size);
+    task_t* task = task_create_user("shell", "/SHELL.ELF", elf_data, shell_file->size);
     if (!task) {
         serial_write("[KERNEL] ERROR: Failed to create shell task\n");
         kfree(elf_data);

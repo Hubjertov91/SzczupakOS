@@ -22,6 +22,10 @@
 #define SYS_LISTDIR     16
 #define SYS_NET_INFO    17
 #define SYS_NET_PING    18
+#define SYS_NET_RESOLVE 19
+#define SYS_NET_STATS   20
+#define SYS_NET_TRACE_PROBE 21
+#define SYS_NET_TCP_PROBE 22
 
 struct sysinfo {
     uint64_t uptime;
@@ -47,6 +51,59 @@ struct net_info {
     uint32_t lease_time_seconds;
 };
 
+struct net_stats {
+    uint64_t rx_frames;
+    uint64_t tx_frames;
+    uint64_t rx_ipv4;
+    uint64_t rx_arp;
+    uint64_t rx_icmp;
+    uint64_t rx_udp;
+    uint64_t rx_tcp;
+    uint64_t rx_dhcp;
+    uint64_t rx_dns;
+    uint64_t tx_ipv4;
+    uint64_t tx_arp;
+    uint64_t tx_icmp;
+    uint64_t tx_udp;
+    uint64_t arp_cache_hits;
+    uint64_t arp_cache_misses;
+    uint64_t dns_cache_hits;
+    uint64_t dns_cache_misses;
+    uint64_t dns_queries;
+    uint64_t dns_timeouts;
+    uint32_t arp_cache_entries;
+    uint32_t dns_cache_entries;
+};
+
+struct net_trace_probe_req {
+    uint8_t dst_ip[4];
+    uint8_t ttl;
+    uint8_t _reserved[3];
+    uint32_t timeout_ms;
+};
+
+struct net_trace_probe_rsp {
+    uint8_t ok;
+    uint8_t reached_dst;
+    uint8_t _reserved[2];
+    uint8_t hop_ip[4];
+    uint32_t rtt_ms;
+};
+
+struct net_tcp_probe_req {
+    uint8_t dst_ip[4];
+    uint16_t dst_port;
+    uint16_t _reserved0;
+    uint32_t timeout_ms;
+};
+
+struct net_tcp_probe_rsp {
+    uint8_t ok;
+    uint8_t open;
+    uint8_t _reserved[2];
+    uint32_t rtt_ms;
+};
+
 long syscall0(long n);
 long syscall1(long n, long a1);
 long syscall2(long n, long a1, long a2);
@@ -63,7 +120,7 @@ void sys_sleep(long ms);
 void sys_clear(void);
 long sys_sysinfo(struct sysinfo* info);
 long sys_fork(void);
-long sys_exec(const char* path);
+long sys_exec(const char* cmdline);
 long sys_fb_putpixel(uint32_t x, uint32_t y, uint32_t color);
 long sys_fb_clear(uint32_t color);
 long sys_fb_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color);
@@ -73,5 +130,9 @@ long sys_fb_putchar_psf(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg
 long sys_listdir(const char* path, char* buf, long len);
 long sys_net_info(struct net_info* info);
 long sys_net_ping(const uint8_t ip[4], uint32_t timeout_ms, uint32_t* out_rtt_ms);
+long sys_net_resolve(const char* hostname, uint32_t timeout_ms, uint8_t out_ip[4]);
+long sys_net_stats(struct net_stats* stats);
+long sys_net_trace_probe(const struct net_trace_probe_req* req, struct net_trace_probe_rsp* rsp);
+long sys_net_tcp_probe(const struct net_tcp_probe_req* req, struct net_tcp_probe_rsp* rsp);
 
 #endif

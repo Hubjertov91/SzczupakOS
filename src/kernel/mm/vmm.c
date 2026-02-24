@@ -179,10 +179,6 @@ page_directory_t* vmm_create_address_space(void) {
 		return NULL;
 	}
 
-	/*
-	 * Keep higher canonical kernel mappings shared. Low half (PML4[0]) is
-	 * cloned per-process above so user mappings are private.
-	 */
 	for (int i = 256; i < 512; i++) pml4[i] = kernel_pml4[i];
 
 	serial_write("[VMM] Created address space successfully\n");
@@ -201,6 +197,7 @@ void vmm_destroy_address_space(page_directory_t* dir) {
 
 		for (int pdp_idx = 0; pdp_idx < 512; pdp_idx++) {
 			if (!(pdp[pdp_idx] & PAGE_PRESENT)) continue;
+			if (pdp[pdp_idx] & (1ULL << 7)) continue;
 			uint64_t* pd = PHYS_TO_VIRT(pdp[pdp_idx] & ~0xFFFULL);
 
 			for (int pd_idx = 0; pd_idx < 512; pd_idx++) {
@@ -376,13 +373,17 @@ void* vmm_alloc_pages(size_t count) {
 }
 
 void vmm_free_pages(void* virt, size_t count) {
-	if (!virt) return;
+	if (!virt || count == 0) return;
 
 	uint64_t addr = (uint64_t)virt;
+	uint64_t phys_base = vmm_get_physical(kernel_directory, addr);
+
 	for (size_t i = 0; i < count; i++) {
-		uint64_t phys = vmm_get_physical(kernel_directory, addr + i * PAGE_SIZE);
-		if (phys) pmm_free_page(phys);
 		vmm_unmap_page(kernel_directory, addr + i * PAGE_SIZE);
+	}
+
+	if (phys_base) {
+		pmm_free_pages(phys_base & ~0xFFFULL, (uint32_t)count);
 	}
 }
 
@@ -467,4 +468,15 @@ bool vmm_map_user_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint
 	spinlock_release_irqrestore(&vmm_lock, state);
 	invlpg(virt);
 	return true;
+}
+
+void vmm_sync_kernel_mappings(page_directory_t* dir) {
+	if (!dir || !kernel_directory || dir == kernel_directory) return;
+
+	uint64_t* dst_pml4 = dir->pml4;
+	uint64_t* src_pml4 = kernel_directory->pml4;
+	for (size_t i = 256; i < 512; i++) {
+		dst_pml4[i] = src_pml4[i];
+	}
+	__sync_synchronize();
 }

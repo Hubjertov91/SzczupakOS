@@ -134,6 +134,7 @@ void schedule(void) {
     }
 
     if (!next->is_kernel && next->context.cr3) {
+        vmm_sync_kernel_mappings(next->page_dir);
         uint64_t* new_pml4 = (uint64_t*)(next->page_dir->pml4_phys + 0xFFFF800000000000ULL);
         uint64_t rip;
         __asm__ volatile("lea (%%rip), %0" : "=r"(rip));
@@ -196,6 +197,7 @@ uint64_t schedule_from_irq(uint64_t* irq_rsp) {
     syscall_kernel_rsp = next->syscall_kernel_rsp;
 
     if (!next->is_kernel && next->context.cr3) {
+        vmm_sync_kernel_mappings(next->page_dir);
         __asm__ volatile("mov %0, %%cr3" : : "r"(next->context.cr3) : "memory");
     }
 

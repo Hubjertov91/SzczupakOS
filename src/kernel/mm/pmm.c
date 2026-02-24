@@ -19,6 +19,8 @@ extern uint64_t p2_table;
 #define MAX_MEMORY_PAGES (1024 * 1024 * 1024 / 4096)
 #define BITMAP_SIZE ((MAX_MEMORY_PAGES + 63) / 64)
 #define BUDDY_MAX_ORDER 11
+#define PMM_PHYS_TO_VIRT(phys) ((uint64_t*)((uint64_t)(phys) + 0xFFFF800000000000ULL))
+#define PMM_VIRT_TO_PHYS(virt) ((uint64_t)(virt) - 0xFFFF800000000000ULL)
 
 typedef struct free_area {
     uint64_t* free_list;
@@ -56,6 +58,17 @@ static inline bool bitmap_test_bit(uint64_t bit) {
     return (pmm_bitmap[bit / 64] & (1ULL << (bit % 64))) != 0;
 }
 
+static inline bool bitmap_range_is_clear(uint64_t start_page, uint64_t count) {
+    if (count == 0) return false;
+    if (start_page >= pmm_total_pages) return false;
+    if (start_page + count > pmm_total_pages) return false;
+
+    for (uint64_t i = 0; i < count; i++) {
+        if (bitmap_test_bit(start_page + i)) return false;
+    }
+    return true;
+}
+
 static inline uint32_t get_order(uint64_t size) {
     uint32_t order = 0;
     size = (size + PAGE_SIZE - 1) / PAGE_SIZE;
@@ -71,7 +84,8 @@ static inline uint64_t get_buddy(uint64_t page, uint32_t order) {
 static void buddy_add_block(uint64_t page, uint32_t order) {
     if (order >= BUDDY_MAX_ORDER) return;
     
-    uint64_t* block = (uint64_t*)(pmm_start + page * PAGE_SIZE);
+    uint64_t phys = pmm_start + page * PAGE_SIZE;
+    uint64_t* block = PMM_PHYS_TO_VIRT(phys);
     *block = (uint64_t)free_area[order].free_list;
     free_area[order].free_list = block;
     free_area[order].nr_free++;
@@ -84,8 +98,8 @@ static uint64_t buddy_remove_block(uint32_t order) {
     free_area[order].free_list = (uint64_t*)(*block);
     free_area[order].nr_free--;
     
-    uint64_t addr = (uint64_t)block;
-    return (addr - pmm_start) / PAGE_SIZE;
+    uint64_t phys = PMM_VIRT_TO_PHYS((uint64_t)block);
+    return (phys - pmm_start) / PAGE_SIZE;
 }
 
 static void buddy_init(void) {
@@ -94,7 +108,7 @@ static void buddy_init(void) {
         free_area[i].nr_free = 0;
     }
     
-    page_orders = (uint32_t*)(pmm_start + BITMAP_SIZE * 8);
+    page_orders = (uint32_t*)PMM_PHYS_TO_VIRT(pmm_start + BITMAP_SIZE * 8);
     memset_pmm(page_orders, 0, pmm_total_pages * sizeof(uint32_t));
     
     uint64_t free_start = 2 * 1024 * 1024;
@@ -133,6 +147,10 @@ static void pmm_mark_used(uint64_t start, uint64_t end) {
     spinlock_release_irqrestore(&pmm_lock, state);
 }
 
+void pmm_reserve_range(uint64_t start, uint64_t end) {
+    pmm_mark_used(start, end);
+}
+
 void pmm_init(uint64_t mem_start, uint64_t mem_end) {
     if (mem_start >= mem_end) {
         serial_write("[PMM] ERROR: Invalid memory range\n");
@@ -160,6 +178,10 @@ void pmm_init(uint64_t mem_start, uint64_t mem_end) {
     pmm_used_pages = 0;
     
     buddy_init();
+
+    if (pmm_start < (2ULL * 1024 * 1024)) {
+        pmm_mark_used(pmm_start, 2ULL * 1024 * 1024);
+    }
     
     uint64_t kernel_end_addr = ALIGN_UP((uint64_t)&kernel_end, PAGE_SIZE);
     pmm_mark_used(0x100000, kernel_end_addr);
@@ -167,7 +189,8 @@ void pmm_init(uint64_t mem_start, uint64_t mem_end) {
     pmm_mark_used((uint64_t)&p3_table, (uint64_t)&p3_table + PAGE_SIZE);
     pmm_mark_used((uint64_t)&p2_table, (uint64_t)&p2_table + PAGE_SIZE);
     pmm_mark_used((uint64_t)pmm_bitmap, (uint64_t)pmm_bitmap + BITMAP_SIZE * 8);
-    pmm_mark_used((uint64_t)page_orders, (uint64_t)page_orders + pmm_total_pages * sizeof(uint32_t));
+    uint64_t page_orders_phys = PMM_VIRT_TO_PHYS((uint64_t)page_orders);
+    pmm_mark_used(page_orders_phys, page_orders_phys + pmm_total_pages * sizeof(uint32_t));
     
     serial_write("[PMM] Buddy allocator initialized\n");
     serial_write("[PMM] Managing ");
@@ -192,12 +215,31 @@ uint64_t pmm_alloc_pages(uint32_t count) {
     
     irq_state_t state = spinlock_acquire_irqsave(&pmm_lock);
     
+    uint64_t page = 0;
     uint32_t current_order = order;
-    while (current_order < BUDDY_MAX_ORDER && !free_area[current_order].free_list) {
-        current_order++;
+    bool have_buddy_block = false;
+
+    for (; current_order < BUDDY_MAX_ORDER; current_order++) {
+        while (free_area[current_order].free_list) {
+            uint64_t candidate = buddy_remove_block(current_order);
+            uint64_t candidate_pages = 1ULL << current_order;
+
+            if (candidate >= pmm_total_pages || candidate + candidate_pages > pmm_total_pages) {
+                continue;
+            }
+
+            if (bitmap_range_is_clear(candidate, candidate_pages)) {
+                page = candidate;
+                have_buddy_block = true;
+                goto buddy_found;
+            }
+
+            page_orders[candidate] = 0;
+        }
     }
-    
-    if (current_order >= BUDDY_MAX_ORDER) {
+
+buddy_found:
+    if (!have_buddy_block) {
         uint64_t hint = last_alloc_hint;
         for (uint64_t i = 0; i < pmm_total_pages; i++) {
             uint64_t idx = (hint + i) % pmm_total_pages;
@@ -217,7 +259,7 @@ uint64_t pmm_alloc_pages(uint32_t count) {
                     last_alloc_hint = idx + count;
                     uint64_t result = pmm_start + idx * PAGE_SIZE;
                     spinlock_release_irqrestore(&pmm_lock, state);
-                    memset_pmm((void*)result, 0, count * PAGE_SIZE);
+                    memset_pmm((void*)PMM_PHYS_TO_VIRT(result), 0, count * PAGE_SIZE);
                     return result;
                 }
             }
@@ -229,17 +271,15 @@ uint64_t pmm_alloc_pages(uint32_t count) {
     }
     
     while (current_order > order) {
-        uint64_t page = buddy_remove_block(current_order);
         current_order--;
-        
-        buddy_add_block(page, current_order);
-        buddy_add_block(page + (1ULL << current_order), current_order);
-        
+
+        uint64_t buddy = page + (1ULL << current_order);
+        buddy_add_block(buddy, current_order);
+
         page_orders[page] = current_order;
-        page_orders[page + (1ULL << current_order)] = current_order;
+        page_orders[buddy] = current_order;
     }
     
-    uint64_t page = buddy_remove_block(order);
     page_orders[page] = order;
     
     uint64_t num_pages = 1ULL << order;
@@ -253,7 +293,7 @@ uint64_t pmm_alloc_pages(uint32_t count) {
     
     spinlock_release_irqrestore(&pmm_lock, state);
     
-    memset_pmm((void*)result, 0, num_pages * PAGE_SIZE);
+    memset_pmm((void*)PMM_PHYS_TO_VIRT(result), 0, num_pages * PAGE_SIZE);
     
     return result;
 }
@@ -316,7 +356,7 @@ void pmm_free_pages(uint64_t addr, uint32_t count) {
         uint64_t* prev = NULL;
         uint64_t* curr = free_area[order].free_list;
         while (curr) {
-            uint64_t curr_page = ((uint64_t)curr - pmm_start) / PAGE_SIZE;
+            uint64_t curr_page = (PMM_VIRT_TO_PHYS((uint64_t)curr) - pmm_start) / PAGE_SIZE;
             if (curr_page == buddy) {
                 if (prev) {
                     *prev = *curr;

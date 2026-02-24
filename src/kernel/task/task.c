@@ -3,6 +3,7 @@
 #include <mm/pmm.h>
 #include <mm/vmm.h>
 #include <kernel/vga.h>
+#include <kernel/string.h>
 #include <task/scheduler.h>
 #include <drivers/serial.h>
 #include <kernel/elf.h>
@@ -12,6 +13,9 @@
 #define KERNEL_STACK_SIZE 16384
 #define USER_STACK_SIZE (32 * 4096)
 #define USER_STACK_TOP  0x0000008002000000ULL
+#define USER_ARG_MAX 32
+#define USER_CMDLINE_MAX 512
+#define USER_ARG_REGION_GAP 4096
 
 static task_t* current_task = NULL;
 static task_t* task_list_head = NULL;
@@ -42,6 +46,123 @@ static void strcpy_safe(char* dst, const char* src, size_t max) {
         i++;
     }
     dst[i] = '\0';
+}
+
+static bool is_space(char c) {
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
+
+static bool task_write_user(page_directory_t* dir, uint64_t user_addr, const void* src, size_t len) {
+    if (!dir || !src || len == 0) return false;
+
+    const uint8_t* in = (const uint8_t*)src;
+    size_t remaining = len;
+    uint64_t cur = user_addr;
+
+    while (remaining > 0) {
+        uint64_t phys = vmm_get_physical(dir, cur);
+        if (!phys) return false;
+
+        size_t page_off = (size_t)(cur & 0xFFFULL);
+        size_t chunk = 4096 - page_off;
+        if (chunk > remaining) chunk = remaining;
+
+        uint8_t* dst = (uint8_t*)PHYS_TO_VIRT(phys & ~0xFFFULL) + page_off;
+        memcpy(dst, in, chunk);
+
+        in += chunk;
+        cur += chunk;
+        remaining -= chunk;
+    }
+
+    return true;
+}
+
+static bool task_write_user_u64(page_directory_t* dir, uint64_t user_addr, uint64_t value) {
+    return task_write_user(dir, user_addr, &value, sizeof(value));
+}
+
+static bool task_build_user_args(task_t* task,
+                                 const char* fallback_name,
+                                 const char* cmdline,
+                                 uint64_t stack_top,
+                                 uint64_t* out_rsp,
+                                 uint64_t* out_argc,
+                                 uint64_t* out_argv) {
+    if (!task || !task->page_dir || !fallback_name || !out_rsp || !out_argc || !out_argv) {
+        return false;
+    }
+
+    const char* source = (cmdline && cmdline[0]) ? cmdline : fallback_name;
+
+    char cmd_buf[USER_CMDLINE_MAX];
+    size_t src_len = strlen(source);
+    if (src_len >= sizeof(cmd_buf)) src_len = sizeof(cmd_buf) - 1;
+    memcpy(cmd_buf, source, src_len);
+    cmd_buf[src_len] = '\0';
+
+    char* args[USER_ARG_MAX];
+    size_t argc = 0;
+    char* p = cmd_buf;
+    while (*p != '\0' && argc < USER_ARG_MAX) {
+        while (is_space(*p)) p++;
+        if (*p == '\0') break;
+
+        args[argc++] = p;
+        while (*p != '\0' && !is_space(*p)) p++;
+        if (*p != '\0') {
+            *p = '\0';
+            p++;
+        }
+    }
+
+    if (argc == 0) {
+        size_t fallback_len = strlen(fallback_name);
+        if (fallback_len >= sizeof(cmd_buf)) fallback_len = sizeof(cmd_buf) - 1;
+        memcpy(cmd_buf, fallback_name, fallback_len);
+        cmd_buf[fallback_len] = '\0';
+        args[0] = cmd_buf;
+        argc = 1;
+    }
+
+    uint64_t stack_bottom = stack_top - USER_STACK_SIZE;
+    uint64_t sp = (stack_top - USER_ARG_REGION_GAP) & ~0xFULL;
+    if (sp <= stack_bottom) return false;
+    uint64_t user_arg_ptrs[USER_ARG_MAX];
+
+    for (size_t i = argc; i > 0; i--) {
+        const char* arg = args[i - 1];
+        size_t arg_len = strlen(arg) + 1;
+        if (sp < stack_bottom + arg_len) return false;
+
+        sp -= arg_len;
+        if (!task_write_user(task->page_dir, sp, arg, arg_len)) return false;
+        user_arg_ptrs[i - 1] = sp;
+    }
+
+    sp &= ~0x7ULL;
+
+    uint64_t table_size = (uint64_t)(argc + 2) * sizeof(uint64_t);
+    if (((sp - table_size) & 0xFULL) != 0) {
+        if (sp < stack_bottom + sizeof(uint64_t)) return false;
+        sp -= sizeof(uint64_t);
+    }
+
+    if (sp < stack_bottom + table_size) return false;
+    uint64_t table_base = sp - table_size;
+
+    if (!task_write_user_u64(task->page_dir, table_base, (uint64_t)argc)) return false;
+    for (size_t i = 0; i < argc; i++) {
+        if (!task_write_user_u64(task->page_dir, table_base + sizeof(uint64_t) * (i + 1), user_arg_ptrs[i])) {
+            return false;
+        }
+    }
+    if (!task_write_user_u64(task->page_dir, table_base + sizeof(uint64_t) * (argc + 1), 0)) return false;
+
+    *out_rsp = table_base;
+    *out_argc = (uint64_t)argc;
+    *out_argv = table_base + sizeof(uint64_t);
+    return true;
 }
 
 bool task_init(void) {
@@ -162,7 +283,7 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     return task;
 }
 
-task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
+task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_data, size_t elf_size) {
     if (!name || !elf_data || !elf_size) return NULL;
 
     task_t* task = (task_t*)kmalloc(sizeof(task_t));
@@ -222,13 +343,23 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
         }
     }
 
+    uint64_t user_rsp = 0;
+    uint64_t user_argc = 0;
+    uint64_t user_argv = 0;
+    if (!task_build_user_args(task, name, cmdline, stack_top, &user_rsp, &user_argc, &user_argv)) {
+        vmm_destroy_address_space(task->page_dir);
+        vmm_free_pages(task->kernel_stack, KERNEL_STACK_SIZE / PAGE_SIZE);
+        kfree(task);
+        return NULL;
+    }
+
     uint64_t* kstack = (uint64_t*)((uint64_t)task->kernel_stack + KERNEL_STACK_SIZE);
 
-    *(--kstack) = 0x23;                           
-    *(--kstack) = (stack_top - 16) & ~0xF;        
-    *(--kstack) = 0x202;                          
-    *(--kstack) = 0x2B;                           
-    *(--kstack) = entry;                          
+    *(--kstack) = 0x23;
+    *(--kstack) = user_rsp;
+    *(--kstack) = 0x202;
+    *(--kstack) = 0x2B;
+    *(--kstack) = entry;
 
     *(--kstack) = 0;  
     *(--kstack) = 32; 
@@ -236,12 +367,16 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
     for (int i = 0; i < 15; i++) {
         *(--kstack) = 0;
     }
+
+    /* Initial user regs restored by irq epilogue: rdi=argc, rsi=argv */
+    kstack[9] = user_argc;
+    kstack[10] = user_argv;
     
     task->context.r15 = 0;
     task->context.r14 = 0;
     task->context.r13 = 0;
     task->context.r12 = 0;
-    task->context.rbp = (stack_top - 16) & ~0xF;
+    task->context.rbp = 0;
     task->context.rbx = 0;
     task->context.kernel_rsp = (uint64_t)kstack;
     task->context.cr3 = task->cr3_phys;

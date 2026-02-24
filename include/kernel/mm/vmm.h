@@ -29,5 +29,6 @@ void* vmm_alloc_pages(size_t count);
 void vmm_free_pages(void* virt, size_t count);
 bool vmm_change_flags(page_directory_t* dir, uint64_t virt, uint32_t flags);
 bool vmm_map_user_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint32_t flags);
+void vmm_sync_kernel_mappings(page_directory_t* dir);
 
 #endif
