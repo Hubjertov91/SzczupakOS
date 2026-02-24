@@ -7,6 +7,7 @@
 #include <drivers/serial.h>
 #include <kernel/elf.h>
 #include <kernel/stdint.h>
+#include <net/net.h>
 
 #define KERNEL_STACK_SIZE 16384
 #define USER_STACK_SIZE (32 * 4096)
@@ -28,7 +29,8 @@ extern void usermode_entry(void);
 
 static void idle_task_entry(void) {
     for (;;) {
-        __asm__ volatile("sti; hlt");
+        __asm__ volatile("sti; hlt; cli");
+        net_poll();
     }
 }
 

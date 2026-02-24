@@ -8,6 +8,10 @@ static int is_transmit_empty(void) {
     return inb(COM1 + 5) & 0x20;
 }
 
+static int is_receive_ready(void) {
+    return inb(COM1 + 5) & 0x01;
+}
+
 void serial_init(void) {
     outb(COM1 + 1, 0x00);
     outb(COM1 + 3, 0x80);
@@ -60,4 +64,15 @@ void serial_write_dec(uint32_t val) {
     while (i > 0) {
         serial_write_char(buf[--i]);
     }
+}
+
+bool serial_has_data(void) {
+    return is_receive_ready() ? true : false;
+}
+
+char serial_read_char(void) {
+    while (!is_receive_ready()) {
+        __asm__ volatile("pause");
+    }
+    return (char)inb(COM1);
 }

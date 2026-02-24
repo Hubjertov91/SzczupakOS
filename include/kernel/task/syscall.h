@@ -20,6 +20,8 @@
 #define SYSCALL_FB_PUTCHAR  14
 #define SYSCALL_FB_PUTCHAR_PSF 15   
 #define SYSCALL_LISTDIR     16
+#define SYSCALL_NET_INFO    17
+#define SYSCALL_NET_PING    18
 
 
 struct sysinfo {
@@ -33,6 +35,17 @@ struct fb_info {
     uint32_t width;
     uint32_t height;
     uint32_t bpp;
+};
+
+struct net_info {
+    uint8_t link_up;
+    uint8_t configured;
+    uint8_t mac[6];
+    uint8_t ip[4];
+    uint8_t netmask[4];
+    uint8_t gateway[4];
+    uint8_t dns[4];
+    uint32_t lease_time_seconds;
 };
 
 bool syscall_init(void);

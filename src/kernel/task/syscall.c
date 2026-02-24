@@ -8,6 +8,8 @@
 #include <fs/vfs.h>
 #include <drivers/framebuffer.h>
 #include <drivers/psf.h>
+#include <net/net.h>
+#include <kernel/string.h>
 
 extern void syscall_handler_asm(void);
 
@@ -94,6 +96,7 @@ static uint64_t sys_sleep(uint64_t ms) {
     uint64_t target = start + ms / 10;
     while (pit_get_ticks() < target) {
         __asm__ volatile("sti; hlt; cli");
+        net_poll();
     }
     return 0;
 }
@@ -318,6 +321,42 @@ static uint64_t sys_fb_putchar_psf_syscall(uint64_t x, uint64_t y, uint64_t c, u
     return 0;
 }
 
+static uint64_t sys_net_info(uint64_t info_addr) {
+    if (!info_addr) return (uint64_t)-1;
+
+    net_info_t kinfo;
+    if (!net_get_info(&kinfo)) return (uint64_t)-1;
+
+    struct net_info uinfo;
+    memset(&uinfo, 0, sizeof(uinfo));
+    uinfo.link_up = kinfo.link_up ? 1 : 0;
+    uinfo.configured = kinfo.configured ? 1 : 0;
+    memcpy(uinfo.mac, kinfo.mac, 6);
+    memcpy(uinfo.ip, kinfo.ip, 4);
+    memcpy(uinfo.netmask, kinfo.netmask, 4);
+    memcpy(uinfo.gateway, kinfo.gateway, 4);
+    memcpy(uinfo.dns, kinfo.dns, 4);
+    uinfo.lease_time_seconds = kinfo.lease_time_seconds;
+
+    if (copy_to_user((void*)info_addr, &uinfo, sizeof(uinfo)) != 0) return (uint64_t)-1;
+    return 0;
+}
+
+static uint64_t sys_net_ping(uint64_t ip_addr, uint64_t timeout_ms, uint64_t rtt_addr) {
+    if (!ip_addr) return (uint64_t)-1;
+
+    uint8_t ip[4];
+    if (copy_from_user(ip, (const void*)ip_addr, sizeof(ip)) != 0) return (uint64_t)-1;
+
+    uint32_t rtt_ms = 0;
+    if (!net_ping_ipv4(ip, (uint32_t)timeout_ms, &rtt_ms)) return (uint64_t)-1;
+
+    if (rtt_addr) {
+        if (copy_to_user((void*)rtt_addr, &rtt_ms, sizeof(rtt_ms)) != 0) return (uint64_t)-1;
+    }
+    return 0;
+}
+
 void syscall_handler(syscall_regs_t* regs) {
     task_t* current_task = get_current_task();
     if (!current_task) {
@@ -343,6 +382,8 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_FB_PUTCHAR:  regs->rax = sys_fb_putchar_syscall(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8); break;
         case SYSCALL_FB_PUTCHAR_PSF: regs->rax = sys_fb_putchar_psf_syscall(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8); break;
         case SYSCALL_LISTDIR: regs->rax = sys_listdir(regs->rdi, regs->rsi, regs->rdx); break;
+        case SYSCALL_NET_INFO: regs->rax = sys_net_info(regs->rdi); break;
+        case SYSCALL_NET_PING: regs->rax = sys_net_ping(regs->rdi, regs->rsi, regs->rdx); break;
         default:
             serial_write("[SYSCALL] Unknown syscall: ");
             serial_write_dec(regs->rax);

@@ -20,6 +20,8 @@
 #define SYS_FB_PUTCHAR  14
 #define SYS_FB_PUTCHAR_PSF 15
 #define SYS_LISTDIR     16
+#define SYS_NET_INFO    17
+#define SYS_NET_PING    18
 
 struct sysinfo {
     uint64_t uptime;
@@ -32,6 +34,17 @@ struct fb_info {
     uint32_t width;
     uint32_t height;
     uint32_t bpp;
+};
+
+struct net_info {
+    uint8_t link_up;
+    uint8_t configured;
+    uint8_t mac[6];
+    uint8_t ip[4];
+    uint8_t netmask[4];
+    uint8_t gateway[4];
+    uint8_t dns[4];
+    uint32_t lease_time_seconds;
 };
 
 long syscall0(long n);
@@ -58,5 +71,7 @@ long sys_fb_info(struct fb_info* info);
 long sys_fb_putchar(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg);
 long sys_fb_putchar_psf(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg);
 long sys_listdir(const char* path, char* buf, long len);
+long sys_net_info(struct net_info* info);
+long sys_net_ping(const uint8_t ip[4], uint32_t timeout_ms, uint32_t* out_rtt_ms);
 
 #endif

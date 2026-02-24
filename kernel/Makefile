@@ -39,6 +39,7 @@ KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
               $(OBJ_DIR)/kernel/task/gdt.o \
               $(OBJ_DIR)/kernel/task/tss.o \
               $(OBJ_DIR)/kernel/task/syscall.o \
+              $(OBJ_DIR)/kernel/net/net.o \
               $(OBJ_DIR)/kernel/loader/elf.o \
               $(OBJ_DIR)/kernel/terminal.o \
               $(OBJ_DIR)/kernel/string.o
@@ -70,6 +71,10 @@ $(OBJ_DIR)/kernel/mm/%.o: ../src/kernel/mm/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/kernel/task/%.o: ../src/kernel/task/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/kernel/net/%.o: ../src/kernel/net/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 

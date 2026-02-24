@@ -18,8 +18,13 @@
 #include <kernel/elf.h>
 #include <kernel/drivers/framebuffer.h>
 #include <kernel/drivers/psf.h>
+#include <net/net.h>
 
 #define KERNEL_STACK_SIZE 16384
+static const uint8_t FALLBACK_STATIC_IP[4] = {192, 168, 76, 2};
+static const uint8_t FALLBACK_STATIC_MASK[4] = {255, 255, 255, 0};
+static const uint8_t FALLBACK_STATIC_GW[4] = {192, 168, 76, 1};
+static const uint8_t FALLBACK_STATIC_DNS[4] = {192, 168, 76, 1};
 
 void kernel_main(uint64_t multiboot_addr) {
     vga_init();
@@ -65,6 +70,22 @@ void kernel_main(uint64_t multiboot_addr) {
     pic_init();
     pit_init(100);
     keyboard_init();
+
+    bool net_ready = false;
+    if (net_init()) {
+        __asm__ volatile("sti");
+        if (!net_configure_dhcp(8000)) {
+            serial_write("[KERNEL] WARNING: DHCP configuration failed, switching to static 192.168.76.2\n");
+            if (!net_configure_static(FALLBACK_STATIC_IP, FALLBACK_STATIC_MASK,
+                                      FALLBACK_STATIC_GW, FALLBACK_STATIC_DNS)) {
+                serial_write("[KERNEL] WARNING: Static network fallback failed\n");
+            }
+        }
+        __asm__ volatile("cli");
+        net_ready = net_is_ready();
+    } else {
+        serial_write("[KERNEL] WARNING: Network initialization failed\n");
+    }
     
     if (!task_init()) {
         serial_write("[KERNEL] ERROR: Task initialization failed\n");
@@ -149,6 +170,9 @@ void kernel_main(uint64_t multiboot_addr) {
     serial_write("[KERNEL] System ready, entering idle loop\n");
     
     while (1) {
+        if (net_ready) {
+            net_poll();
+        }
         __asm__ volatile("hlt");
     }
 }

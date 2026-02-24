@@ -137,3 +137,11 @@ long sys_fb_putchar_psf(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg
 long sys_listdir(const char* path, char* buf, long len) {
     return syscall3(SYS_LISTDIR, (long)path, (long)buf, len);
 }
+
+long sys_net_info(struct net_info* info) {
+    return syscall1(SYS_NET_INFO, (long)info);
+}
+
+long sys_net_ping(const uint8_t ip[4], uint32_t timeout_ms, uint32_t* out_rtt_ms) {
+    return syscall3(SYS_NET_PING, (long)ip, (long)timeout_ms, (long)out_rtt_ms);
+}

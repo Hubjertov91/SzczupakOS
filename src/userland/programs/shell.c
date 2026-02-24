@@ -33,6 +33,8 @@ int cmd_help(int argc, char** argv) {
     printf("  run         - Run external program\n");
     printf("  clear       - Clear screen\n");
     printf("  sysinfo     - Show system info\n");
+    printf("  net         - Show network configuration\n");
+    printf("  ping        - Send ICMP ping (ping <ip> [count])\n");
     printf("  exit        - Exit shell\n");
     printf("  quit        - Exit shell (alias)\n");
     printf("\n");
@@ -229,6 +231,130 @@ int cmd_sysinfo(int argc, char** argv) {
     return 0;
 }
 
+static char hex_nibble(uint8_t value) {
+    return (value < 10) ? (char)('0' + value) : (char)('A' + (value - 10));
+}
+
+static void print_hex_byte(uint8_t value) {
+    putchar(hex_nibble((uint8_t)(value >> 4)));
+    putchar(hex_nibble((uint8_t)(value & 0x0F)));
+}
+
+static void print_mac(const uint8_t mac[6]) {
+    for (int i = 0; i < 6; i++) {
+        print_hex_byte(mac[i]);
+        if (i != 5) putchar(':');
+    }
+}
+
+static void print_ip4(const uint8_t ip[4]) {
+    printf("%u.%u.%u.%u", (unsigned)ip[0], (unsigned)ip[1], (unsigned)ip[2], (unsigned)ip[3]);
+}
+
+static int parse_ipv4(const char* s, uint8_t out[4]) {
+    if (!s || !out) return -1;
+
+    const char* p = s;
+    for (int part = 0; part < 4; part++) {
+        if (*p < '0' || *p > '9') return -1;
+        unsigned value = 0;
+        int digits = 0;
+
+        while (*p >= '0' && *p <= '9') {
+            value = value * 10 + (unsigned)(*p - '0');
+            if (value > 255) return -1;
+            p++;
+            digits++;
+        }
+
+        if (digits == 0) return -1;
+        out[part] = (uint8_t)value;
+
+        if (part < 3) {
+            if (*p != '.') return -1;
+            p++;
+        }
+    }
+
+    return (*p == '\0') ? 0 : -1;
+}
+
+int cmd_net(int argc, char** argv) {
+    (void)argc;
+    (void)argv;
+
+    struct net_info info;
+    if (sys_net_info(&info) < 0) {
+        printf("net: unavailable\n");
+        return 1;
+    }
+
+    printf("=== Network ===\n");
+    printf("Link: %s\n", info.link_up ? "up" : "down");
+    printf("DHCP: %s\n", info.configured ? "configured" : "not configured");
+    printf("MAC: ");
+    print_mac(info.mac);
+    printf("\n");
+    printf("IP: ");
+    print_ip4(info.ip);
+    printf("\n");
+    printf("MASK: ");
+    print_ip4(info.netmask);
+    printf("\n");
+    printf("GW: ");
+    print_ip4(info.gateway);
+    printf("\n");
+    printf("DNS: ");
+    print_ip4(info.dns);
+    printf("\n");
+    printf("Lease: %u s\n", (unsigned)info.lease_time_seconds);
+    return 0;
+}
+
+int cmd_ping(int argc, char** argv) {
+    if (argc < 2) {
+        printf("Usage: ping <ip> [count]\n");
+        return 1;
+    }
+
+    uint8_t ip[4];
+    if (parse_ipv4(argv[1], ip) != 0) {
+        printf("ping: invalid IPv4 address\n");
+        return 1;
+    }
+
+    int count = 4;
+    if (argc >= 3) {
+        long v = atoi(argv[2]);
+        if (v <= 0 || v > 20) {
+            printf("ping: count must be 1..20\n");
+            return 1;
+        }
+        count = (int)v;
+    }
+
+    printf("PING ");
+    print_ip4(ip);
+    printf(":\n");
+
+    int success = 0;
+    for (int i = 0; i < count; i++) {
+        uint32_t rtt_ms = 0;
+        if (sys_net_ping(ip, 1000, &rtt_ms) == 0) {
+            printf("  reply from ");
+            print_ip4(ip);
+            printf(": time=%u ms\n", (unsigned)rtt_ms);
+            success++;
+        } else {
+            printf("  request timeout\n");
+        }
+        if (i + 1 < count) sys_sleep(250);
+    }
+
+    printf("Ping statistics: %d/%d replies\n", success, count);
+    return (success > 0) ? 0 : 1;
+}
+
 int cmd_exit(int argc, char** argv) {
     (void)argc; (void)argv;
     printf("Goodbye!\n");
@@ -365,6 +491,9 @@ int execute_command(char* line) {
     if (strcmp(cmd, "run") == 0) return cmd_run(argc, argv);
     if (strcmp(cmd, "clear") == 0) return cmd_clear(argc, argv);
     if (strcmp(cmd, "sysinfo") == 0) return cmd_sysinfo(argc, argv);
+    if (strcmp(cmd, "net") == 0) return cmd_net(argc, argv);
+    if (strcmp(cmd, "ifconfig") == 0) return cmd_net(argc, argv);
+    if (strcmp(cmd, "ping") == 0) return cmd_ping(argc, argv);
     if (strcmp(cmd, "exit") == 0) return cmd_exit(argc, argv);
     if (strcmp(cmd, "quit") == 0) return cmd_exit(argc, argv);
 

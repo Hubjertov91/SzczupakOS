@@ -45,3 +45,7 @@ uint64_t pit_get_uptime_seconds(void) {
     if (pit_frequency == 0) return 0;
     return system_ticks / pit_frequency;
 }
+
+uint32_t pit_get_frequency(void) {
+    return pit_frequency;
+}

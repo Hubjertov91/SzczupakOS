@@ -5,6 +5,7 @@
 #include <drivers/framebuffer.h>
 #include <drivers/psf.h>
 #include <task/task.h>
+#include <net/net.h>
 
 #define LINE_BUF_SIZE 256
 static uint32_t term_x = 0;
@@ -13,14 +14,10 @@ static fb_color_t fg_color = {.r = 0xAA, .g = 0xAA, .b = 0xAA, .a = 255};
 static fb_color_t bg_color = {.r = 0x00, .g = 0x00, .b = 0x00, .a = 255};
 
 __attribute__((noinline)) void terminal_wait_input(void) {
-    task_t* current = get_current_task();
-    if (current) current->kernel_preempt_ok = true;
-
-    while (!keyboard_has_input()) {
+    while (!keyboard_has_input() && !serial_has_data()) {
         __asm__ volatile("sti; hlt; cli");
+        net_poll();
     }
-
-    if (current) current->kernel_preempt_ok = false;
 }
 
 __attribute__((noinline)) void terminal_wait_input_end_marker(void) {
@@ -102,9 +99,15 @@ size_t terminal_read(char* buf, size_t size) {
 
     terminal_wait_input();
 
-    __asm__ volatile("sti");
-
-    char c = keyboard_getchar();
+    char c = 0;
+    if (keyboard_has_input()) {
+        c = keyboard_getchar();
+    } else if (serial_has_data()) {
+        c = serial_read_char();
+    } else {
+        return 0;
+    }
+    if (c == '\r') c = '\n';
     buf[0] = c;
     return 1;
 }
