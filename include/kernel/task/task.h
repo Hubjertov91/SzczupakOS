@@ -42,6 +42,7 @@ typedef struct task {
     uint64_t cpu_time;
     uint64_t creation_time;
     uint64_t syscall_kernel_rsp;
+    bool kernel_preempt_ok;
 } task_t;
 
 bool task_init(void);

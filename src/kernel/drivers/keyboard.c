@@ -45,9 +45,6 @@ static void key_buffer_push(char c) {
 
 void keyboard_handler(void) {
     uint8_t scancode = inb(KEYBOARD_DATA_PORT);
-    serial_write("[KB] scancode=");
-    serial_write_hex(scancode);
-    serial_write("\n");
 
     if (scancode == 0x2A || scancode == 0x36) { shift_pressed = true;  pic_send_eoi(1); return; }
     if (scancode == 0xAA || scancode == 0xB6) { shift_pressed = false; pic_send_eoi(1); return; }
@@ -65,7 +62,6 @@ void keyboard_handler(void) {
 
     if (c != 0) {
         key_buffer_push(c);
-        serial_write("[KB] pushed char\n");
     }
 
     pic_send_eoi(1);

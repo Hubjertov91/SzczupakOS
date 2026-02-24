@@ -3,6 +3,7 @@
 #include <drivers/serial.h>
 #include <task/task.h>
 #include <mm/uaccess.h>
+#include <mm/heap.h>
 #include <kernel/terminal.h>
 #include <fs/vfs.h>
 #include <drivers/framebuffer.h>
@@ -32,6 +33,10 @@ extern uint64_t pit_get_ticks(void);
 extern uint64_t pmm_get_total_memory(void);
 extern uint64_t pmm_get_used_memory(void);
 
+#define EXEC_PATH_MAX 256
+#define EXEC_FILE_MAX (2 * 1024 * 1024)
+#define LISTDIR_BUF_MAX 4096
+
 static uint64_t sys_write(uint64_t str_addr, uint64_t size) {
     if (!str_addr || size == 0) return 0;
     if (size > 4096) return -1;
@@ -43,10 +48,42 @@ static uint64_t sys_write(uint64_t str_addr, uint64_t size) {
 
 static uint64_t sys_read(uint64_t buf_addr, uint64_t size) {
     if (!buf_addr || size == 0) return 0;
-    char c;
-    size_t n = terminal_read(&c, 1);
-    if (copy_to_user((void*)buf_addr, &c, 1) != 0) return -1;
-    return n;
+    char buffer[4096];
+    size_t pos = 0;
+    
+    while (pos < size - 1 && pos < 4096 - 1) {
+        char c;
+        size_t n = terminal_read(&c, 1);
+        if (n <= 0) break;
+
+        if (c == '\b') {
+            if (pos > 0) {
+                pos--;
+                terminal_write("\b \b", 3);
+            }
+            continue;
+        }
+
+        if (c == '\r') c = '\n';
+
+        if (c == '\n') {
+            buffer[pos++] = c;
+            terminal_write(&c, 1);
+            break;
+        }
+
+        if ((unsigned char)c < 32 || (unsigned char)c > 126) {
+            continue;
+        }
+
+        buffer[pos++] = c;
+        terminal_write(&c, 1);
+    }
+    
+    buffer[pos] = '\0';
+    
+    if (copy_to_user((void*)buf_addr, buffer, pos + 1) != 0) return -1;
+    return pos;
 }
 
 static uint64_t sys_getpid(void) { return task_get_pid(); }
@@ -76,6 +113,119 @@ static uint64_t sys_fork(void) {
     task_t* child = task_fork();
     if (!child) return -1;
     return (uint64_t)child->pid;
+}
+
+static uint64_t sys_exec(uint64_t path_addr) {
+    if (!path_addr) return (uint64_t)-1;
+
+    char path[EXEC_PATH_MAX];
+    size_t i = 0;
+    for (; i < EXEC_PATH_MAX; i++) {
+        if (copy_from_user(&path[i], (const void*)(path_addr + i), 1) != 0) {
+            return (uint64_t)-1;
+        }
+        if (path[i] == '\0') break;
+    }
+
+    if (i == 0 || i == EXEC_PATH_MAX || path[0] != '/') {
+        return (uint64_t)-1;
+    }
+
+    vfs_node_t* file = vfs_open(path, 0);
+    if (!file || file->type != VFS_FILE || file->size == 0 || file->size > EXEC_FILE_MAX) {
+        if (file) vfs_close(file);
+        return (uint64_t)-1;
+    }
+
+    uint8_t* elf_data = (uint8_t*)kmalloc(file->size);
+    if (!elf_data) {
+        vfs_close(file);
+        return (uint64_t)-1;
+    }
+
+    if (!vfs_read(file, elf_data, 0, file->size)) {
+        kfree(elf_data);
+        vfs_close(file);
+        return (uint64_t)-1;
+    }
+
+    task_t* task = task_create_user(path, elf_data, file->size);
+    kfree(elf_data);
+    vfs_close(file);
+
+    if (!task) {
+        return (uint64_t)-1;
+    }
+    return task->pid;
+}
+
+static uint64_t sys_listdir(uint64_t path_addr, uint64_t buf_addr, uint64_t buf_size) {
+    if (!path_addr || !buf_addr || buf_size < 2 || buf_size > LISTDIR_BUF_MAX) {
+        return (uint64_t)-1;
+    }
+
+    char path[EXEC_PATH_MAX];
+    size_t i = 0;
+    for (; i < EXEC_PATH_MAX; i++) {
+        if (copy_from_user(&path[i], (const void*)(path_addr + i), 1) != 0) {
+            return (uint64_t)-1;
+        }
+        if (path[i] == '\0') break;
+    }
+
+    if (i == 0 || i == EXEC_PATH_MAX || path[0] != '/') {
+        return (uint64_t)-1;
+    }
+
+    vfs_node_t* dir = vfs_open(path, 0);
+    if (!dir || dir->type != VFS_DIRECTORY) {
+        if (dir) vfs_close(dir);
+        return (uint64_t)-1;
+    }
+
+    char out[LISTDIR_BUF_MAX];
+    size_t out_pos = 0;
+
+    for (vfs_node_t* child = dir->first_child; child; child = child->next_sibling) {
+        for (size_t j = 0; child->name[j] != '\0'; j++) {
+            if (out_pos + 2 >= buf_size || out_pos + 2 >= LISTDIR_BUF_MAX) {
+                goto done;
+            }
+            out[out_pos++] = child->name[j];
+        }
+
+        if (child->type == VFS_DIRECTORY) {
+            if (out_pos + 2 >= buf_size || out_pos + 2 >= LISTDIR_BUF_MAX) {
+                goto done;
+            }
+            out[out_pos++] = '/';
+        }
+
+        if (out_pos + 1 >= buf_size || out_pos + 1 >= LISTDIR_BUF_MAX) {
+            goto done;
+        }
+        out[out_pos++] = '\n';
+    }
+
+    if (out_pos == 0 && buf_size >= 9) {
+        out[out_pos++] = '(';
+        out[out_pos++] = 'e';
+        out[out_pos++] = 'm';
+        out[out_pos++] = 'p';
+        out[out_pos++] = 't';
+        out[out_pos++] = 'y';
+        out[out_pos++] = ')';
+        out[out_pos++] = '\n';
+    }
+
+done:
+    out[out_pos] = '\0';
+    vfs_close(dir);
+
+    if (copy_to_user((void*)buf_addr, out, out_pos + 1) != 0) {
+        return (uint64_t)-1;
+    }
+    return out_pos;
 }
 
 static uint64_t sys_fb_putpixel(uint64_t x, uint64_t y, uint64_t color) {
@@ -174,18 +324,6 @@ void syscall_handler(syscall_regs_t* regs) {
         regs->rax = (uint64_t)-1;
         return;
     }
-    static int call_count = 0;
-    call_count++;
-    
-    if (call_count % 100 == 0) {
-        uint64_t rsp;
-        __asm__ volatile("mov %%rsp, %0" : "=r"(rsp));
-        serial_write("[SYSCALL] Stack at: ");
-        serial_write_hex(rsp);
-        serial_write(" after ");
-        serial_write_dec(call_count);
-        serial_write(" calls\n");
-    }
     
     switch (regs->rax) {
         case SYSCALL_EXIT:   task_exit(); break;
@@ -197,12 +335,14 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_CLEAR:  terminal_clear(); regs->rax = 0; break;
         case SYSCALL_SYSINFO:regs->rax = sys_sysinfo(regs->rdi); break;
         case SYSCALL_FORK:   regs->rax = sys_fork(); break;
+        case SYSCALL_EXEC:   regs->rax = sys_exec(regs->rdi); break;
         case SYSCALL_FB_PUTPIXEL: regs->rax = sys_fb_putpixel(regs->rdi, regs->rsi, regs->rdx); break;
         case SYSCALL_FB_CLEAR:    regs->rax = sys_fb_clear(regs->rdi); break;
         case SYSCALL_FB_RECT:     regs->rax = sys_fb_rect(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8); break;
         case SYSCALL_FB_INFO:     regs->rax = sys_fb_info(regs->rdi); break;
         case SYSCALL_FB_PUTCHAR:  regs->rax = sys_fb_putchar_syscall(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8); break;
         case SYSCALL_FB_PUTCHAR_PSF: regs->rax = sys_fb_putchar_psf_syscall(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8); break;
+        case SYSCALL_LISTDIR: regs->rax = sys_listdir(regs->rdi, regs->rsi, regs->rdx); break;
         default:
             serial_write("[SYSCALL] Unknown syscall: ");
             serial_write_dec(regs->rax);
@@ -213,7 +353,7 @@ void syscall_handler(syscall_regs_t* regs) {
 }
 
 bool syscall_init(void) {
-    uint64_t star   = ((uint64_t)0x28 << 48) | ((uint64_t)0x08 << 32);
+    uint64_t star   = ((uint64_t)0x1B << 48) | ((uint64_t)0x08 << 32);
     uint64_t lstar  = (uint64_t)syscall_handler_asm;
     uint64_t sfmask = (1ULL << 9);
 

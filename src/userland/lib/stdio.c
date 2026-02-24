@@ -15,30 +15,6 @@ int putchar(char c) {
     return c;
 }
 
-static int write_str(const char* s) {
-    int len = 0;
-    while (s[len]) len++;
-    sys_write(s, len);
-    return len;
-}
-
-static int write_hex(unsigned long val, int upper) {
-    if (val == 0) {
-        sys_write("0", 1);
-        return 1;
-    }
-    char tmp[32];
-    int i = 0;
-    while (val > 0) {
-        int d = val & 0xf;
-        tmp[i++] = (d < 10) ? ('0' + d) : ((upper ? 'A' : 'a') + (d - 10));
-        val >>= 4;
-    }
-    int written = i;
-    while (i--) sys_write(&tmp[i], 1);
-    return written;
-}
-
 int printf(const char* fmt, ...) {
     static char buffer[1024];
     int buf_pos = 0;
@@ -92,6 +68,9 @@ int printf(const char* fmt, ...) {
                 if (buf_pos < 1023) buffer[buf_pos++] = c;
             } else if (*p == 's') {
                 char* s = va_arg(ap, char*);
+                if (!s || (uintptr_t)s < 0x400000ULL || (uintptr_t)s >= 0x800000000000ULL) {
+                    s = "(null)";
+                }
                 while (*s) {
                     if (buf_pos < 1023) buffer[buf_pos++] = *s++;
                 }

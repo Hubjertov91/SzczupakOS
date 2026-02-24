@@ -10,6 +10,6 @@
 #define PF_FETCH    (1 << 4)
 
 bool pagefault_init(void);
-void pagefault_handler(uint64_t error_code, uint64_t faulting_addr);
+void pagefault_handler(uint64_t error_code, uint64_t faulting_addr, uint64_t rip);
 
 #endif

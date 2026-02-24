@@ -10,6 +10,7 @@
 
 #define KERNEL_STACK_SIZE 16384
 #define USER_STACK_SIZE (32 * 4096)
+#define USER_STACK_TOP  0x0000008002000000ULL
 
 static task_t* current_task = NULL;
 static task_t* task_list_head = NULL;
@@ -62,12 +63,13 @@ bool task_init(void) {
     current_task->user_stack = NULL;
     current_task->next = NULL;
     current_task->time_slice = 10;
-    current_task->priority = 0;
+    current_task->priority = 255;
     current_task->is_kernel = true;
     current_task->page_dir = NULL;
     current_task->cr3_phys = 0;
     current_task->cpu_time = 0;
     current_task->creation_time = 0;
+    current_task->kernel_preempt_ok = false;
 
     current_task->context.r15 = 0;
     current_task->context.r14 = 0;
@@ -119,6 +121,7 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     task->cr3_phys = 0;
     task->cpu_time = 0;
     task->creation_time = pit_get_ticks();
+    task->kernel_preempt_ok = false;
 
     task->kernel_stack = kmalloc(KERNEL_STACK_SIZE);
     if (!task->kernel_stack) {
@@ -172,6 +175,7 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
     task->priority = 10;
     task->cpu_time = 0;
     task->creation_time = pit_get_ticks();
+    task->kernel_preempt_ok = false;
 
     task->kernel_stack = vmm_alloc_pages(KERNEL_STACK_SIZE / PAGE_SIZE);
     if (!task->kernel_stack) {
@@ -196,7 +200,7 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
         return NULL;
     }
 
-    uint64_t stack_top = 0x20000000;
+    uint64_t stack_top = USER_STACK_TOP;
     task->user_stack = (void*)stack_top;
 
     for (uint64_t offset = 0; offset < USER_STACK_SIZE; offset += 4096) {
@@ -244,16 +248,11 @@ task_t* task_create_user(const char* name, uint8_t* elf_data, size_t elf_size) {
 
     scheduler_add_task(task);
 
-    extern uint64_t syscall_kernel_rsp;
-    syscall_kernel_rsp = task->syscall_kernel_rsp;
-    
     return task;
 }
 
 void task_exit(void) {
     if (!current_task) return;
-
-    serial_write("[TASK] Task exited\n");
 
     current_task->state = TASK_TERMINATED;
     scheduler_remove_task(current_task);
@@ -298,6 +297,7 @@ task_t* task_fork(void) {
     child->is_kernel = current_task->is_kernel;
     child->cpu_time = 0;
     child->creation_time = pit_get_ticks();
+    child->kernel_preempt_ok = false;
     child->next = NULL;
 
     child->kernel_stack = kmalloc(KERNEL_STACK_SIZE);

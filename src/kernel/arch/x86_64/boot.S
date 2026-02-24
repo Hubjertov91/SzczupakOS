@@ -215,7 +215,3 @@ long_mode_start:
 .hang:
     hlt
     jmp .hang
-
-section .bss_end
-global kernel_end
-kernel_end:

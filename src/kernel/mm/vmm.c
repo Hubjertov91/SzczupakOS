@@ -26,6 +26,12 @@ static void memset(void* dest, int c, size_t n) {
 	while (n--) *d++ = (char)c;
 }
 
+static void memcpy(void* dest, const void* src, size_t n) {
+	char* d = (char*)dest;
+	const char* s = (const char*)src;
+	while (n--) *d++ = *s++;
+}
+
 static inline bool is_canonical(uint64_t addr) {
 	return (addr <= 0x00007FFFFFFFFFFFULL) || (addr >= 0xFFFF800000000000ULL);
 }
@@ -66,6 +72,52 @@ static uint64_t* get_or_create_table(uint64_t* parent, size_t index, uint32_t fl
 	parent[index] = table_phys | table_flags;
 
 	return table;
+}
+
+static bool clone_low_half_kernel_mapping(uint64_t* dst_pml4, uint64_t* src_pml4) {
+	if (!dst_pml4 || !src_pml4) return false;
+	if (!(src_pml4[0] & PAGE_PRESENT)) return true;
+
+	uint64_t src_pdp_phys = src_pml4[0] & ~0xFFFULL;
+	uint64_t* src_pdp = PHYS_TO_VIRT(src_pdp_phys);
+
+	uint64_t dst_pdp_phys = pmm_alloc_page();
+	if (!dst_pdp_phys) return false;
+
+	uint64_t* dst_pdp = PHYS_TO_VIRT(dst_pdp_phys);
+	memset(dst_pdp, 0, PAGE_SIZE);
+
+	uint64_t allocated_pd[512];
+	size_t allocated_count = 0;
+
+	for (int i = 0; i < 512; i++) {
+		uint64_t src_pdp_entry = src_pdp[i];
+		if (!(src_pdp_entry & PAGE_PRESENT)) continue;
+
+		/* 1GiB pages are copied as-is. */
+		if (src_pdp_entry & (1ULL << 7)) {
+			dst_pdp[i] = src_pdp_entry;
+			continue;
+		}
+
+		uint64_t src_pd_phys = src_pdp_entry & ~0xFFFULL;
+		uint64_t dst_pd_phys = pmm_alloc_page();
+		if (!dst_pd_phys) {
+			for (size_t j = 0; j < allocated_count; j++) pmm_free_page(allocated_pd[j]);
+			pmm_free_page(dst_pdp_phys);
+			return false;
+		}
+
+		uint64_t* src_pd = PHYS_TO_VIRT(src_pd_phys);
+		uint64_t* dst_pd = PHYS_TO_VIRT(dst_pd_phys);
+		memcpy(dst_pd, src_pd, PAGE_SIZE);
+
+		dst_pdp[i] = dst_pd_phys | (src_pdp_entry & 0xFFFULL);
+		allocated_pd[allocated_count++] = dst_pd_phys;
+	}
+
+	dst_pml4[0] = dst_pdp_phys | (src_pml4[0] & 0xFFFULL);
+	return true;
 }
 
 bool vmm_init(void) {
@@ -120,8 +172,17 @@ page_directory_t* vmm_create_address_space(void) {
 	dir->pml4_phys = pml4_phys;
 
 	for (int i = 0; i < 512; i++) pml4[i] = 0;
+	if (!clone_low_half_kernel_mapping(pml4, kernel_pml4)) {
+		serial_write("[VMM] Failed to clone low-half kernel mapping\n");
+		pmm_free_page(pml4_phys);
+		kfree(dir);
+		return NULL;
+	}
 
-	pml4[0] = kernel_pml4[0];
+	/*
+	 * Keep higher canonical kernel mappings shared. Low half (PML4[0]) is
+	 * cloned per-process above so user mappings are private.
+	 */
 	for (int i = 256; i < 512; i++) pml4[i] = kernel_pml4[i];
 
 	serial_write("[VMM] Created address space successfully\n");
@@ -210,11 +271,6 @@ bool vmm_map_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint32_t 
 
 	uint64_t* pt = get_or_create_table(pd, pd_idx, flags);
 	if (!pt)  { spinlock_release_irqrestore(&vmm_lock, state); return false; }
-
-	if (pt[pt_idx] & PAGE_PRESENT) {
-		uint64_t old_phys = pt[pt_idx] & ~0xFFFULL;
-		if (old_phys != phys) pmm_free_page(old_phys);
-	}
 
 	__sync_synchronize();
 	pt[pt_idx] = (phys & 0x000FFFFFFFFFF000ULL) | (flags & 0xFFF) | PAGE_PRESENT;
@@ -404,11 +460,6 @@ bool vmm_map_user_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint
 	uint64_t* pt = get_or_create_table(pd, pd_idx, flags);
 	if (!pt)  { spinlock_release_irqrestore(&vmm_lock, state); return false; }
 	pd[pd_idx] |= PAGE_USER;
-
-	if (pt[pt_idx] & PAGE_PRESENT) {
-		uint64_t old_phys = pt[pt_idx] & ~0xFFFULL;
-		if (old_phys != phys) pmm_free_page(old_phys);
-	}
 
 	__sync_synchronize();
 	pt[pt_idx] = phys | flags | PAGE_PRESENT;

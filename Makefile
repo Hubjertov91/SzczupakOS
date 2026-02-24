@@ -6,23 +6,26 @@ DISK_IMG = disk.img
 
 all: $(BUILD_DIR)/os.iso
 
-k: $(BUILD_DIR)/kernel.bin
-
-u: $(BUILD_DIR)/user/shell.elf
-
-$(BUILD_DIR)/kernel.bin:
+k:
 	$(MAKE) -C kernel
 
-$(BUILD_DIR)/user/shell.elf:
+u:
 	$(MAKE) -C userland
 
-$(DISK_IMG): $(BUILD_DIR)/user/shell.elf
+$(BUILD_DIR)/kernel.bin: k
+
+$(BUILD_DIR)/user/shell.elf: u
+
+$(DISK_IMG): u
 	dd if=/dev/zero of=$(DISK_IMG) bs=1M count=32 2>/dev/null
 	mkfs.fat -F 16 $(DISK_IMG) 2>/dev/null
-	mcopy -i $(DISK_IMG) $(BUILD_DIR)/user/shell.elf ::/SHELL.ELF 2>/dev/null
+	for elf in $(BUILD_DIR)/user/*.elf; do \
+		[ -f "$$elf" ] || continue; \
+		mcopy -i $(DISK_IMG) "$$elf" ::/"$$(basename "$$elf")" 2>/dev/null; \
+	done
 	mcopy -i $(DISK_IMG) assets/fonts/8x16.psf ::/FONT.PSF 2>/dev/null
 
-$(BUILD_DIR)/os.iso: $(BUILD_DIR)/kernel.bin $(BUILD_DIR)/user/shell.elf
+$(BUILD_DIR)/os.iso: k u
 	@mkdir -p $(ISO_DIR)/boot/grub
 	cp $(BUILD_DIR)/kernel.bin $(ISO_DIR)/boot/
 	cp $(BUILD_DIR)/user/shell.elf $(ISO_DIR)/boot/
@@ -40,7 +43,7 @@ clean-disk:
 setup-disk: $(DISK_IMG)
 
 run: $(BUILD_DIR)/os.iso $(DISK_IMG)
-	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M -serial stdio
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M -vga std -serial stdio
 
 run2: $(BUILD_DIR)/os.iso $(DISK_IMG)
-	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 256M -serial stdio -d int,cpu_reset -D qemu.log
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 256M -vga std -serial stdio -d int,cpu_reset -D qemu.log

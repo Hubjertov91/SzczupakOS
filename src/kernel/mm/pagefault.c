@@ -5,14 +5,15 @@
 
 static uint64_t pagefault_count = 0;
 
-void pagefault_handler(uint64_t error_code, uint64_t faulting_addr) {
-    static uint32_t fault_count = 0;
-    fault_count++;
+void pagefault_handler(uint64_t error_code, uint64_t faulting_addr, uint64_t rip) {
+    pagefault_count++;
     
     serial_write("\n[PAGE FAULT #");
-    serial_write_dec(fault_count);
+    serial_write_dec(pagefault_count);
     serial_write("]\n  Address: 0x");
     serial_write_hex(faulting_addr);
+    serial_write("\n  RIP: 0x");
+    serial_write_hex(rip);
     serial_write("\n  Error code: 0x");
     serial_write_hex(error_code);
     serial_write("\n");
@@ -63,6 +64,9 @@ void pagefault_handler(uint64_t error_code, uint64_t faulting_addr) {
                 serial_write("\n");
                 
                 if (pd_entry & 1) {
+                    if (pd_entry & (1ULL << 7)) {
+                        serial_write("  [2MB page mapping at PD level]\n");
+                    } else {
                     uint64_t* pt = (uint64_t*)(((pd_entry & ~0xFFFULL) + 0xFFFF800000000000ULL));
                     size_t pt_idx = (faulting_addr >> 12) & 0x1FF;
                     uint64_t pt_entry = pt[pt_idx];
@@ -76,6 +80,7 @@ void pagefault_handler(uint64_t error_code, uint64_t faulting_addr) {
                         serial_write(" [NX BIT SET - NOT EXECUTABLE!]");
                     }
                     serial_write("\n");
+                    }
                 }
             }
         }

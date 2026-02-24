@@ -113,7 +113,7 @@ void exception_handler(uint64_t vector, uint64_t error_code, uint64_t rip) {
     if (vector == 14) {
         uint64_t faulting_addr;
         __asm__ volatile("mov %%cr2, %0" : "=r"(faulting_addr));
-        pagefault_handler(error_code, faulting_addr);
+        pagefault_handler(error_code, faulting_addr, rip);
         return;
     }
 

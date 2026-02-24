@@ -5,7 +5,7 @@
 #include <mm/uaccess.h>
 #include <mm/heap.h>
 
-#define USER_SPACE_START 0x400000
+#define USER_SPACE_START 0x0000008000000000ULL
 #define USER_SPACE_END   0x800000000000ULL
 #define PAGE_SIZE        4096
 #define PAGE_MASK        (PAGE_SIZE - 1)

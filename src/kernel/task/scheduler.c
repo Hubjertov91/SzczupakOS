@@ -100,12 +100,6 @@ void schedule(void) {
     next->state = TASK_RUNNING;
     spinlock_release_irqrestore(&scheduler_lock, state);
 
-    serial_write("[SCHED] Switching from ");
-    serial_write(prev->name);
-    serial_write(" to ");
-    serial_write(next->name);
-    serial_write("\n");
-
     if (!prev->is_kernel && strcmp(next->name, "idle") == 0) {
         scheduler_add_task(next);
         return;
@@ -166,6 +160,11 @@ uint64_t schedule_from_irq(uint64_t* irq_rsp) {
     task_t* prev = get_current_task();
     if (!prev) return 0;
 
+    uint64_t cs = irq_rsp[18];
+    if ((cs & 0x3) != 0x3 && prev->pid != 0 && prev->state != TASK_TERMINATED && !prev->kernel_preempt_ok) {
+        return 0;
+    }
+
     irq_state_t state = spinlock_acquire_irqsave(&scheduler_lock);
     task_t* next = ready_queue;
     if (!next) {
@@ -179,6 +178,11 @@ uint64_t schedule_from_irq(uint64_t* irq_rsp) {
     spinlock_release_irqrestore(&scheduler_lock, state);
 
     if (next == prev) {
+        scheduler_add_task(next);
+        return 0;
+    }
+
+    if (!prev->is_kernel && strcmp(next->name, "idle") == 0) {
         scheduler_add_task(next);
         return 0;
     }

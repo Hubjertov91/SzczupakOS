@@ -10,14 +10,12 @@ BUILD_DIR = ../build
 OBJ_DIR = $(BUILD_DIR)/obj
 
 KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
-              $(OBJ_DIR)/kernel/arch/x86_64/interrupt_asm.o \
+              $(OBJ_DIR)/kernel/arch/x86_64/interrupt.o \
               $(OBJ_DIR)/kernel/arch/x86_64/entry.o \
-              $(OBJ_DIR)/kernel/arch/x86_64/gdt_asm.o \
+              $(OBJ_DIR)/kernel/arch/x86_64/gdt.o \
               $(OBJ_DIR)/kernel/arch/x86_64/switch.o \
-              $(OBJ_DIR)/kernel/arch/x86_64/syscall_asm.o \
+              $(OBJ_DIR)/kernel/arch/x86_64/syscall.o \
               $(OBJ_DIR)/kernel/kernel.o \
-              $(OBJ_DIR)/kernel/signal.o \
-              $(OBJ_DIR)/kernel/module.o \
               $(OBJ_DIR)/kernel/drivers/vga.o \
               $(OBJ_DIR)/kernel/drivers/serial.o \
               $(OBJ_DIR)/kernel/drivers/pic.o \

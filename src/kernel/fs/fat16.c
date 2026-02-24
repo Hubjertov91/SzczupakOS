@@ -108,26 +108,12 @@ static uint16_t fat16_allocate_cluster(void) {
 }
 
 static bool fat16_read(vfs_node_t* node, void* buffer, size_t offset, size_t size) {
-    serial_write("[FAT16] Read request: size=");
-    serial_write_dec(size);
-    serial_write(" offset=");
-    serial_write_dec(offset);
-    serial_write(" file_size=");
-    serial_write_dec(node->size);
-    serial_write("\n");
-    
     if (!node || !fs_data || node->type != VFS_FILE) {
-        serial_write("[FAT16] Invalid params\n");
         return false;
     }
     
     uint16_t cluster = (uint16_t)(uint64_t)node->fs_data;
-    serial_write("[FAT16] Start cluster: ");
-    serial_write_dec(cluster);
-    serial_write("\n");
-    
     if (cluster == 0) {
-        serial_write("[FAT16] Cluster is 0!\n");
         return false;
     }
     
@@ -138,16 +124,9 @@ static bool fat16_read(vfs_node_t* node, void* buffer, size_t offset, size_t siz
         uint32_t cluster_size = fs_data->sectors_per_cluster * FAT16_SECTOR_SIZE;
         uint32_t sector = fs_data->data_start + (cluster - 2) * fs_data->sectors_per_cluster;
         
-        serial_write("[FAT16] Reading cluster ");
-        serial_write_dec(cluster);
-        serial_write(" at sector ");
-        serial_write_dec(sector);
-        serial_write("\n");
-        
         for (uint8_t s = 0; s < fs_data->sectors_per_cluster && bytes_read < size; s++) {
             uint8_t sector_buf[FAT16_SECTOR_SIZE];
             if (!ata_read_sector(sector + s, sector_buf)) {
-                serial_write("[FAT16] Read sector failed\n");
                 return false;
             }
             
@@ -163,15 +142,6 @@ static bool fat16_read(vfs_node_t* node, void* buffer, size_t offset, size_t siz
         
         cluster = fat16_read_fat_entry(cluster);
     }
-    
-    serial_write("[FAT16] Read ");
-    serial_write_dec(bytes_read);
-    serial_write(" bytes. First 16 bytes: ");
-    for(size_t i = 0; i < 16 && i < bytes_read; i++) {
-        serial_write_hex(buf[i]);
-        serial_write(" ");
-    }
-    serial_write("\n");
     
     return bytes_read > 0;
 }
@@ -227,7 +197,6 @@ static vfs_node_t* fat16_create_file(vfs_node_t* parent, const char* name) {
     node->first_child = NULL;
     node->next_sibling = parent->first_child;
     parent->first_child = node;
-    serial_write("[FAT16] Created file: "); serial_write(node->name); serial_write("\n");
     return node;
 }
 
@@ -261,13 +230,11 @@ static vfs_node_t* fat16_create_dir(vfs_node_t* parent, const char* name) {
     node->first_child = NULL;
     node->next_sibling = parent->first_child;
     parent->first_child = node;
-    serial_write("[FAT16] Created directory: "); serial_write(node->name); serial_write("\n");
     return node;
 }
 
 static bool fat16_delete(vfs_node_t* unused) {
     (void)unused;
-    serial_write("[FAT16] delete not implemented\n");
     return false;
 }
 

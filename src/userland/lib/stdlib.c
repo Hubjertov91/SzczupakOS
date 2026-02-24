@@ -124,3 +124,19 @@ void* malloc(size_t size) {
 void free(void* ptr) {
     (void)ptr;
 }
+
+void* calloc(size_t nmemb, size_t size) {
+    if (nmemb == 0 || size == 0) return NULL;
+    
+    if (nmemb > (size_t)-1 / size) return NULL;
+    
+    size_t total = nmemb * size;
+    void* ptr = malloc(total);
+    if (ptr) {
+        char* p = (char*)ptr;
+        for (size_t i = 0; i < total; i++) {
+            p[i] = 0;
+        }
+    }
+    return ptr;
+}

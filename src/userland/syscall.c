@@ -106,6 +106,10 @@ long sys_fork(void) {
     return syscall0(SYS_FORK);
 }
 
+long sys_exec(const char* path) {
+    return syscall1(SYS_EXEC, (long)path);
+}
+
 long sys_fb_putpixel(uint32_t x, uint32_t y, uint32_t color) {
     return syscall3(SYS_FB_PUTPIXEL, x, y, color);
 }
@@ -130,14 +134,6 @@ long sys_fb_putchar_psf(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg
     return syscall5(SYS_FB_PUTCHAR_PSF, x, y, c, fg, bg);
 }
 
-long sys_kill(long pid, long signal) {
-    return syscall2(SYS_KILL, pid, signal);
-}
-
-long sys_module_load(const char* name, const void* data, long size) {
-    return syscall3(SYS_MODULE_LOAD, (long)name, (long)data, size);
-}
-
-long sys_module_unload(const char* name) {
-    return syscall1(SYS_MODULE_UNLOAD, (long)name);
+long sys_listdir(const char* path, char* buf, long len) {
+    return syscall3(SYS_LISTDIR, (long)path, (long)buf, len);
 }

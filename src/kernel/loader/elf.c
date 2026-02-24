@@ -40,12 +40,21 @@ typedef struct {
 } __attribute__((packed)) elf64_program_header_t;
 
 uint64_t elf_load(task_t* task, uint8_t* elf_data, size_t elf_size) {
+    if (!task || !task->page_dir || !elf_data || elf_size < sizeof(elf64_header_t)) {
+        serial_write("[ELF] Invalid load parameters\n");
+        return 0;
+    }
+
     elf64_header_t* header = (elf64_header_t*)elf_data;
-    
-    (void)elf_size;
-    
+
     if (header->magic != 0x464C457F) {
         serial_write("[ELF] Invalid magic\n");
+        return 0;
+    }
+
+    uint64_t ph_end = header->phoff + ((uint64_t)header->phnum * header->phentsize);
+    if (header->phoff >= elf_size || ph_end > elf_size || header->phentsize < sizeof(elf64_program_header_t)) {
+        serial_write("[ELF] Invalid program header table\n");
         return 0;
     }
     
@@ -58,6 +67,15 @@ uint64_t elf_load(task_t* task, uint8_t* elf_data, size_t elf_size) {
     for (uint16_t i = 0; i < header->phnum; i++) {
         elf64_program_header_t* ph = (elf64_program_header_t*)(elf_data + header->phoff + i * header->phentsize);
         if (ph->type != 1) continue;
+        if (ph->memsz == 0) continue;
+        if (ph->filesz > ph->memsz) {
+            serial_write("[ELF] Invalid segment sizes\n");
+            return 0;
+        }
+        if (ph->offset + ph->filesz > elf_size) {
+            serial_write("[ELF] Segment outside ELF image\n");
+            return 0;
+        }
 
         serial_write("[ELF] Segment ");
         serial_write_dec(i);
@@ -74,20 +92,23 @@ uint64_t elf_load(task_t* task, uint8_t* elf_data, size_t elf_size) {
         uint64_t vstart = ph->vaddr & ~0xFFF;
         uint64_t vend   = (ph->vaddr + ph->memsz + 0xFFF) & ~0xFFF;
 
-        for (uint64_t v = vstart; v < vend; v += 4096) {
-            uint64_t phys = pmm_alloc_page();
-            if (!phys) {
-                serial_write("[ELF] Failed to allocate page\n");
-                return 0;
-            }
-            
-            uint8_t* page = PHYS_TO_VIRT(phys);
-            for (int j = 0; j < 4096; j++) page[j] = 0;
+        uint32_t flags = PAGE_PRESENT | PAGE_USER;
+        if (ph->flags & 0x2) flags |= PAGE_WRITE;
 
-            uint32_t flags = PAGE_PRESENT | PAGE_USER;
-            if (ph->flags & 0x2) flags |= PAGE_WRITE;
-            
-            if (!vmm_map_page(task->page_dir, v, phys, flags)) {
+        for (uint64_t v = vstart; v < vend; v += 4096) {
+            uint64_t phys = vmm_get_physical(task->page_dir, v);
+            if (!phys) {
+                phys = pmm_alloc_page();
+                if (!phys) {
+                    serial_write("[ELF] Failed to allocate page\n");
+                    return 0;
+                }
+
+                uint8_t* page = PHYS_TO_VIRT(phys);
+                for (int j = 0; j < 4096; j++) page[j] = 0;
+            }
+
+            if (!vmm_map_user_page(task->page_dir, v, phys, flags)) {
                 serial_write("[ELF] Failed to map page at 0x");
                 serial_write_hex(v);
                 serial_write("\n");
@@ -106,6 +127,19 @@ uint64_t elf_load(task_t* task, uint8_t* elf_data, size_t elf_size) {
             }
             
             *(uint8_t*)PHYS_TO_VIRT(phys) = elf_data[ph->offset + off];
+        }
+
+        for (uint64_t off = ph->filesz; off < ph->memsz; off++) {
+            uint64_t vaddr = ph->vaddr + off;
+            uint64_t phys = vmm_get_physical(task->page_dir, vaddr);
+            if (!phys) {
+                serial_write("[ELF] Cannot get physical for bss vaddr 0x");
+                serial_write_hex(vaddr);
+                serial_write("\n");
+                return 0;
+            }
+
+            *(uint8_t*)PHYS_TO_VIRT(phys) = 0;
         }
     }
 

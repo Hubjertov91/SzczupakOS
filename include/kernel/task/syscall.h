@@ -19,6 +19,7 @@
 #define SYSCALL_FB_INFO     13
 #define SYSCALL_FB_PUTCHAR  14
 #define SYSCALL_FB_PUTCHAR_PSF 15   
+#define SYSCALL_LISTDIR     16
 
 
 struct sysinfo {
