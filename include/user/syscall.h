@@ -28,6 +28,8 @@
 #define SYS_NET_TCP_PROBE 22
 #define SYS_FS_TOUCH    23
 #define SYS_FS_MKDIR    24
+#define SYS_KB_POLL     25
+#define SYS_MOUSE_POLL  26
 
 struct sysinfo {
     uint64_t uptime;
@@ -40,6 +42,17 @@ struct fb_info {
     uint32_t width;
     uint32_t height;
     uint32_t bpp;
+};
+
+struct mouse_event {
+    int32_t x;
+    int32_t y;
+    int32_t dx;
+    int32_t dy;
+    uint8_t buttons;
+    uint8_t changed;
+    uint16_t _reserved;
+    uint32_t seq;
 };
 
 struct net_info {
@@ -138,5 +151,7 @@ long sys_net_trace_probe(const struct net_trace_probe_req* req, struct net_trace
 long sys_net_tcp_probe(const struct net_tcp_probe_req* req, struct net_tcp_probe_rsp* rsp);
 long sys_fs_touch(const char* path);
 long sys_fs_mkdir(const char* path);
+long sys_kb_poll(void);
+long sys_mouse_poll(struct mouse_event* event);
 
 #endif

@@ -18,6 +18,7 @@
 static page_directory_t* kernel_directory = NULL;
 static uint64_t          next_virt_addr   = 0xFFFF800100000000ULL;
 static spinlock_t        vmm_lock         = SPINLOCK_INIT;
+static bool              warned_bad_sync  = false;
 
 extern uint64_t p4_table;
 
@@ -32,6 +33,13 @@ static inline bool is_canonical(uint64_t addr) {
 
 static inline void invlpg(uint64_t addr) {
 	__asm__ volatile("invlpg (%0)" : : "r"(addr) : "memory");
+}
+
+static inline uint64_t* pml4_virt_from_phys(uint64_t pml4_phys) {
+    if ((pml4_phys & 0xFFFULL) != 0) return NULL;
+    /* Early boot maps only the lower 4 GiB into the higher-half direct map. */
+    if (pml4_phys >= 0x100000000ULL) return NULL;
+    return PHYS_TO_VIRT(pml4_phys);
 }
 
 static uint64_t* get_or_create_table(uint64_t* parent, size_t index, uint32_t flags) {
@@ -100,7 +108,7 @@ page_directory_t* vmm_create_address_space(void) {
 		return NULL;
 	}
 
-	uint64_t* pml4 = vmm_temp_map(pml4_phys);
+	uint64_t* pml4 = pml4_virt_from_phys(pml4_phys);
 	if (!pml4) {
 		serial_write("[VMM] Failed to temp map PML4\n");
 		pmm_free_page(pml4_phys);
@@ -108,7 +116,7 @@ page_directory_t* vmm_create_address_space(void) {
 		return NULL;
 	}
 
-	uint64_t* kernel_pml4 = vmm_temp_map(kernel_directory->pml4_phys);
+	uint64_t* kernel_pml4 = pml4_virt_from_phys(kernel_directory->pml4_phys);
 	if (!kernel_pml4) {
 		serial_write("[VMM] Failed to temp map kernel PML4\n");
 		pmm_free_page(pml4_phys);
@@ -131,8 +139,12 @@ void vmm_destroy_address_space(page_directory_t* dir) {
 	if (!dir || dir == kernel_directory) return;
 
 	irq_state_t state = spinlock_acquire_irqsave(&vmm_lock);
-	uint64_t* pml4 = PHYS_TO_VIRT(dir->pml4_phys);
-	uint64_t* kernel_pml4 = kernel_directory ? PHYS_TO_VIRT(kernel_directory->pml4_phys) : NULL;
+	uint64_t* pml4 = pml4_virt_from_phys(dir->pml4_phys);
+	uint64_t* kernel_pml4 = kernel_directory ? pml4_virt_from_phys(kernel_directory->pml4_phys) : NULL;
+    if (!pml4 || !kernel_pml4) {
+        spinlock_release_irqrestore(&vmm_lock, state);
+        return;
+    }
 
 	for (int pml4_idx = 0; pml4_idx < 256; pml4_idx++) {
 		uint64_t pml4_entry = pml4[pml4_idx];
@@ -431,8 +443,20 @@ bool vmm_map_user_page(page_directory_t* dir, uint64_t virt, uint64_t phys, uint
 void vmm_sync_kernel_mappings(page_directory_t* dir) {
 	if (!dir || !kernel_directory || dir == kernel_directory) return;
 
-	uint64_t* dst_pml4 = dir->pml4;
-	uint64_t* src_pml4 = kernel_directory->pml4;
+	uint64_t* dst_pml4 = pml4_virt_from_phys(dir->pml4_phys);
+	uint64_t* src_pml4 = pml4_virt_from_phys(kernel_directory->pml4_phys);
+	if (!dst_pml4 || !src_pml4) {
+		if (!warned_bad_sync) {
+			serial_write("[VMM] WARNING: cannot sync kernel mappings (bad PML4 phys)\n");
+			warned_bad_sync = true;
+		}
+		return;
+	}
+
+    if (dir->pml4 != dst_pml4) {
+        serial_write("[VMM] WARNING: repaired stale dir->pml4 cache\n");
+        dir->pml4 = dst_pml4;
+    }
 
 	for (size_t i = 257; i < 512; i++) {
 		dst_pml4[i] = src_pml4[i];

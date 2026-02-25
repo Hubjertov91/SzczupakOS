@@ -10,6 +10,7 @@
 #include <kernel/drivers/pic.h>
 #include <kernel/drivers/pit.h>
 #include <kernel/drivers/keyboard.h>
+#include <kernel/drivers/mouse.h>
 #include <kernel/task/scheduler.h>
 #include <kernel/task/task.h>
 #include <kernel/task/tss.h>
@@ -70,6 +71,7 @@ void kernel_main(uint64_t multiboot_addr) {
     pic_init();
     pit_init(100);
     keyboard_init();
+    mouse_init();
 
     bool net_ready = false;
     if (net_init()) {

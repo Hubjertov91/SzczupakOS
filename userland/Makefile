@@ -13,6 +13,7 @@ USER_ELFS = $(addprefix $(BUILD_DIR)/user/,$(addsuffix .elf,$(PROGRAMS)))
 PROGRAM_OBJS = $(addprefix $(OBJ_DIR)/user/programs/,$(addsuffix .o,$(PROGRAMS)))
 
 USER_COMMON_OBJS = $(OBJ_DIR)/user/crt0.o \
+                   $(OBJ_DIR)/user/lib/gui.o \
                    $(OBJ_DIR)/user/lib/math.o \
                    $(OBJ_DIR)/user/lib/netcli.o \
                    $(OBJ_DIR)/user/lib/stdio.o \

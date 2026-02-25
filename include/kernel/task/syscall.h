@@ -28,6 +28,8 @@
 #define SYSCALL_NET_TCP_PROBE 22
 #define SYSCALL_FS_TOUCH    23
 #define SYSCALL_FS_MKDIR    24
+#define SYSCALL_KB_POLL     25
+#define SYSCALL_MOUSE_POLL  26
 
 
 struct sysinfo {
@@ -41,6 +43,17 @@ struct fb_info {
     uint32_t width;
     uint32_t height;
     uint32_t bpp;
+};
+
+struct mouse_event {
+    int32_t x;
+    int32_t y;
+    int32_t dx;
+    int32_t dy;
+    uint8_t buttons;
+    uint8_t changed;
+    uint16_t _reserved;
+    uint32_t seq;
 };
 
 struct net_info {

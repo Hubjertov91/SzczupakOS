@@ -21,6 +21,7 @@ KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
               $(OBJ_DIR)/kernel/drivers/pic.o \
               $(OBJ_DIR)/kernel/drivers/pit.o \
               $(OBJ_DIR)/kernel/drivers/keyboard.o \
+              $(OBJ_DIR)/kernel/drivers/mouse.o \
               $(OBJ_DIR)/kernel/drivers/ata.o \
               $(OBJ_DIR)/kernel/drivers/framebuffer.o \
               $(OBJ_DIR)/kernel/drivers/psf.o \

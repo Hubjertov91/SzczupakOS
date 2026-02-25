@@ -169,3 +169,11 @@ long sys_fs_touch(const char* path) {
 long sys_fs_mkdir(const char* path) {
     return syscall1(SYS_FS_MKDIR, (long)path);
 }
+
+long sys_kb_poll(void) {
+    return syscall0(SYS_KB_POLL);
+}
+
+long sys_mouse_poll(struct mouse_event* event) {
+    return syscall1(SYS_MOUSE_POLL, (long)event);
+}

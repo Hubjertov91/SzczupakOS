@@ -9,6 +9,8 @@
 #include <fs/vfs.h>
 #include <drivers/framebuffer.h>
 #include <drivers/psf.h>
+#include <drivers/keyboard.h>
+#include <drivers/mouse.h>
 #include <net/net.h>
 #include <kernel/string.h>
 
@@ -531,6 +533,34 @@ static uint64_t sys_fb_putchar_psf_syscall(uint64_t x, uint64_t y, uint64_t c, u
     return 0;
 }
 
+static uint64_t sys_kb_poll(void) {
+    if (!keyboard_has_input()) return 0;
+    return (uint64_t)(uint8_t)keyboard_getchar();
+}
+
+static uint64_t sys_mouse_poll(uint64_t event_addr) {
+    if (!event_addr) return (uint64_t)-1;
+
+    mouse_event_t ev;
+    if (!mouse_poll_event(&ev)) return 0;
+
+    struct mouse_event out = {
+        .x = ev.x,
+        .y = ev.y,
+        .dx = ev.dx,
+        .dy = ev.dy,
+        .buttons = ev.buttons,
+        .changed = ev.changed,
+        ._reserved = 0,
+        .seq = ev.seq
+    };
+
+    if (copy_to_user((void*)event_addr, &out, sizeof(out)) != 0) {
+        return (uint64_t)-1;
+    }
+    return 1;
+}
+
 static uint64_t sys_net_info(uint64_t info_addr) {
     if (!info_addr) return (uint64_t)-1;
 
@@ -724,6 +754,8 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_NET_STATS: regs->rax = sys_net_stats(regs->rdi); break;
         case SYSCALL_NET_TRACE_PROBE: regs->rax = sys_net_trace_probe(regs->rdi, regs->rsi); break;
         case SYSCALL_NET_TCP_PROBE: regs->rax = sys_net_tcp_probe(regs->rdi, regs->rsi); break;
+        case SYSCALL_KB_POLL: regs->rax = sys_kb_poll(); break;
+        case SYSCALL_MOUSE_POLL: regs->rax = sys_mouse_poll(regs->rdi); break;
         default:
             serial_write("[SYSCALL] Unknown syscall: ");
             serial_write_dec(regs->rax);

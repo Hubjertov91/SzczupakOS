@@ -3,6 +3,7 @@ bits 64
 
 extern exception_handler
 extern keyboard_handler
+extern mouse_handler
 extern pit_handler
 
 %macro ISR_NOERRCODE 1
@@ -129,6 +130,8 @@ irq_common:
     je .pit
     cmp rdi, 33
     je .keyboard
+    cmp rdi, 44
+    je .mouse
     jmp .done
     
 .pit:
@@ -141,6 +144,10 @@ irq_common:
     
 .keyboard:
     call keyboard_handler
+    jmp .done
+
+.mouse:
+    call mouse_handler
     jmp .done
     
 .done:

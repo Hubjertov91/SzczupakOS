@@ -55,10 +55,18 @@ static inline page_directory_t* get_current_user_dir(void) {
     return current->page_dir;
 }
 
+static inline uint64_t* pml4_virt_for_dir(page_directory_t* dir) {
+    if (!dir) return NULL;
+    if ((dir->pml4_phys & 0xFFFULL) != 0) return NULL;
+    if (dir->pml4_phys >= 0x100000000ULL) return NULL;
+    return (uint64_t*)PHYS_TO_VIRT(dir->pml4_phys);
+}
+
 static inline bool check_page_permissions(page_directory_t* dir, uint64_t virt, bool write) {
     if (!dir) return false;
     
-    uint64_t* pml4 = dir->pml4;
+    uint64_t* pml4 = pml4_virt_for_dir(dir);
+    if (!pml4) return false;
     size_t pml4_idx = (virt >> 39) & 0x1FF;
     if (!(pml4[pml4_idx] & PAGE_PRESENT)) return false;
     if (!(pml4[pml4_idx] & PAGE_USER)) return false;
@@ -235,7 +243,7 @@ ssize_t strnlen_user(const char* user_str, size_t max_len) {
             return -EFAULT;
         }
         
-        volatile uint8_t* page_ptr = (volatile uint8_t*)(phys + page_offset);
+        volatile uint8_t* page_ptr = (volatile uint8_t*)PHYS_TO_VIRT(phys & ~0xFFFULL) + page_offset;
         
         while (page_offset < PAGE_SIZE && len < max_len) {
             char c = (char)page_ptr[0];
