@@ -26,6 +26,8 @@
 #define SYSCALL_NET_STATS   20
 #define SYSCALL_NET_TRACE_PROBE 21
 #define SYSCALL_NET_TCP_PROBE 22
+#define SYSCALL_FS_TOUCH    23
+#define SYSCALL_FS_MKDIR    24
 
 
 struct sysinfo {

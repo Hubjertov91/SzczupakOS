@@ -26,6 +26,8 @@
 #define SYS_NET_STATS   20
 #define SYS_NET_TRACE_PROBE 21
 #define SYS_NET_TCP_PROBE 22
+#define SYS_FS_TOUCH    23
+#define SYS_FS_MKDIR    24
 
 struct sysinfo {
     uint64_t uptime;
@@ -134,5 +136,7 @@ long sys_net_resolve(const char* hostname, uint32_t timeout_ms, uint8_t out_ip[4
 long sys_net_stats(struct net_stats* stats);
 long sys_net_trace_probe(const struct net_trace_probe_req* req, struct net_trace_probe_rsp* rsp);
 long sys_net_tcp_probe(const struct net_tcp_probe_req* req, struct net_tcp_probe_rsp* rsp);
+long sys_fs_touch(const char* path);
+long sys_fs_mkdir(const char* path);
 
 #endif

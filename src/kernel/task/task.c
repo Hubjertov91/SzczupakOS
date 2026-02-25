@@ -368,7 +368,6 @@ task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_dat
         *(--kstack) = 0;
     }
 
-    /* Initial user regs restored by irq epilogue: rdi=argc, rsi=argv */
     kstack[9] = user_argc;
     kstack[10] = user_argv;
     

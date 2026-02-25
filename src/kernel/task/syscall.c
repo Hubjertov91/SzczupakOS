@@ -41,9 +41,101 @@ extern uint64_t pmm_get_used_memory(void);
 #define EXEC_FILE_MAX (2 * 1024 * 1024)
 #define LISTDIR_BUF_MAX 4096
 #define NET_HOSTNAME_MAX 256
+#define FS_RET_INVALID   ((uint64_t)-1)
+#define FS_RET_PARENT    ((uint64_t)-2)
+#define FS_RET_EXISTS    ((uint64_t)-3)
+#define FS_RET_UNSUP     ((uint64_t)-4)
+#define FS_RET_CREATE    ((uint64_t)-5)
 
 static bool is_space(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
+
+static char upper_ascii(char c) {
+    if (c >= 'a' && c <= 'z') return (char)(c - ('a' - 'A'));
+    return c;
+}
+
+static bool streq_ascii_nocase(const char* a, const char* b) {
+    if (!a || !b) return false;
+    while (*a && *b) {
+        if (upper_ascii(*a) != upper_ascii(*b)) return false;
+        a++;
+        b++;
+    }
+    return *a == *b;
+}
+
+static vfs_node_t* vfs_find_child_nocase(vfs_node_t* parent, const char* name) {
+    if (!parent || !name || parent->type != VFS_DIRECTORY) return NULL;
+    for (vfs_node_t* child = parent->first_child; child; child = child->next_sibling) {
+        if (streq_ascii_nocase(child->name, name)) {
+            return child;
+        }
+    }
+    return NULL;
+}
+
+static int copy_user_string(uint64_t user_addr, char* out, size_t out_size) {
+    if (!user_addr || !out || out_size < 2) return -1;
+
+    size_t i = 0;
+    for (; i < out_size; i++) {
+        if (copy_from_user(&out[i], (const void*)(user_addr + i), 1) != 0) {
+            return -1;
+        }
+        if (out[i] == '\0') break;
+    }
+
+    if (i == 0 || i == out_size) return -1;
+    return 0;
+}
+
+static int split_parent_name(const char* abs_path, char* parent_out, size_t parent_size, char* name_out, size_t name_size) {
+    if (!abs_path || !parent_out || !name_out || parent_size < 2 || name_size < 2) {
+        return -1;
+    }
+
+    size_t len = strlen(abs_path);
+    if (len < 2 || abs_path[0] != '/') return -1;
+
+    while (len > 1 && abs_path[len - 1] == '/') {
+        len--;
+    }
+    if (len <= 1) return -1;
+
+    for (size_t i = 1; i < len; i++) {
+        if (abs_path[i] == '/' && abs_path[i - 1] == '/') {
+            return -1;
+        }
+    }
+
+    size_t slash = len - 1;
+    while (slash > 0 && abs_path[slash] != '/') {
+        slash--;
+    }
+    if (abs_path[slash] != '/') return -1;
+
+    size_t name_len = len - slash - 1;
+    if (name_len == 0 || name_len >= name_size) return -1;
+
+    if ((name_len == 1 && abs_path[slash + 1] == '.') ||
+        (name_len == 2 && abs_path[slash + 1] == '.' && abs_path[slash + 2] == '.')) {
+        return -1;
+    }
+
+    if (slash == 0) {
+        parent_out[0] = '/';
+        parent_out[1] = '\0';
+    } else {
+        if (slash >= parent_size) return -1;
+        memcpy(parent_out, abs_path, slash);
+        parent_out[slash] = '\0';
+    }
+
+    memcpy(name_out, abs_path + slash + 1, name_len);
+    name_out[name_len] = '\0';
+    return 0;
 }
 
 static uint64_t sys_write(uint64_t str_addr, uint64_t size) {
@@ -194,7 +286,18 @@ static uint64_t sys_exec(uint64_t cmdline_addr) {
         current->kernel_preempt_ok = false;
     }
 
-    return task->pid;
+    uint64_t pid = task->pid;
+    if (task->page_dir) {
+        vmm_destroy_address_space(task->page_dir);
+        task->page_dir = NULL;
+    }
+    if (task->kernel_stack && task->stack_size >= PAGE_SIZE) {
+        vmm_free_pages(task->kernel_stack, task->stack_size / PAGE_SIZE);
+        task->kernel_stack = NULL;
+    }
+    kfree(task);
+
+    return pid;
 }
 
 static uint64_t sys_listdir(uint64_t path_addr, uint64_t buf_addr, uint64_t buf_size) {
@@ -264,6 +367,78 @@ done:
         return (uint64_t)-1;
     }
     return out_pos;
+}
+
+static uint64_t sys_fs_touch(uint64_t path_addr) {
+    char path[EXEC_PATH_MAX];
+    if (copy_user_string(path_addr, path, sizeof(path)) != 0) {
+        return FS_RET_INVALID;
+    }
+
+    char parent_path[EXEC_PATH_MAX];
+    char name[MAX_FILENAME];
+    if (split_parent_name(path, parent_path, sizeof(parent_path), name, sizeof(name)) != 0) {
+        return FS_RET_INVALID;
+    }
+
+    vfs_node_t* parent = vfs_open(parent_path, 0);
+    if (!parent || parent->type != VFS_DIRECTORY) {
+        if (parent) vfs_close(parent);
+        return FS_RET_PARENT;
+    }
+
+    if (parent->parent != NULL) {
+        vfs_close(parent);
+        return FS_RET_UNSUP;
+    }
+
+    vfs_node_t* existing = vfs_find_child_nocase(parent, name);
+    if (existing) {
+        uint64_t rc = (existing->type == VFS_FILE) ? 0 : FS_RET_EXISTS;
+        vfs_close(parent);
+        return rc;
+    }
+
+    vfs_node_t* file = vfs_create_file(parent, name);
+    vfs_close(parent);
+    if (!file) {
+        return FS_RET_CREATE;
+    }
+    return 0;
+}
+
+static uint64_t sys_fs_mkdir(uint64_t path_addr) {
+    char path[EXEC_PATH_MAX];
+    if (copy_user_string(path_addr, path, sizeof(path)) != 0) {
+        return FS_RET_INVALID;
+    }
+
+    char parent_path[EXEC_PATH_MAX];
+    char name[MAX_FILENAME];
+    if (split_parent_name(path, parent_path, sizeof(parent_path), name, sizeof(name)) != 0) {
+        return FS_RET_INVALID;
+    }
+
+    vfs_node_t* parent = vfs_open(parent_path, 0);
+    if (!parent || parent->type != VFS_DIRECTORY) {
+        if (parent) vfs_close(parent);
+        return FS_RET_PARENT;
+    }
+
+    if (parent->parent != NULL) {
+        vfs_close(parent);
+        return FS_RET_UNSUP;
+    }
+
+    if (vfs_find_child_nocase(parent, name)) {
+        vfs_close(parent);
+        return FS_RET_EXISTS;
+    }
+
+    vfs_node_t* dir = vfs_create_directory(parent, name);
+    vfs_close(parent);
+    if (!dir) return FS_RET_CREATE;
+    return 0;
 }
 
 static uint64_t sys_fb_putpixel(uint64_t x, uint64_t y, uint64_t color) {
@@ -541,6 +716,8 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_FB_PUTCHAR:  regs->rax = sys_fb_putchar_syscall(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8); break;
         case SYSCALL_FB_PUTCHAR_PSF: regs->rax = sys_fb_putchar_psf_syscall(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8); break;
         case SYSCALL_LISTDIR: regs->rax = sys_listdir(regs->rdi, regs->rsi, regs->rdx); break;
+        case SYSCALL_FS_TOUCH: regs->rax = sys_fs_touch(regs->rdi); break;
+        case SYSCALL_FS_MKDIR: regs->rax = sys_fs_mkdir(regs->rdi); break;
         case SYSCALL_NET_INFO: regs->rax = sys_net_info(regs->rdi); break;
         case SYSCALL_NET_PING: regs->rax = sys_net_ping(regs->rdi, regs->rsi, regs->rdx); break;
         case SYSCALL_NET_RESOLVE: regs->rax = sys_net_resolve(regs->rdi, regs->rsi, regs->rdx); break;

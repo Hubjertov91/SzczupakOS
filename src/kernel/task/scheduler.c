@@ -100,7 +100,7 @@ void schedule(void) {
     next->state = TASK_RUNNING;
     spinlock_release_irqrestore(&scheduler_lock, state);
 
-    if (!prev->is_kernel && strcmp(next->name, "idle") == 0) {
+    if (!prev->is_kernel && prev->state != TASK_TERMINATED && strcmp(next->name, "idle") == 0) {
         scheduler_add_task(next);
         return;
     }
@@ -183,7 +183,7 @@ uint64_t schedule_from_irq(uint64_t* irq_rsp) {
         return 0;
     }
 
-    if (!prev->is_kernel && strcmp(next->name, "idle") == 0) {
+    if (!prev->is_kernel && prev->state != TASK_TERMINATED && strcmp(next->name, "idle") == 0) {
         scheduler_add_task(next);
         return 0;
     }

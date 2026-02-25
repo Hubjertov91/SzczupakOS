@@ -26,12 +26,6 @@ static void memset(void* dest, int c, size_t n) {
 	while (n--) *d++ = (char)c;
 }
 
-static void memcpy(void* dest, const void* src, size_t n) {
-	char* d = (char*)dest;
-	const char* s = (const char*)src;
-	while (n--) *d++ = *s++;
-}
-
 static inline bool is_canonical(uint64_t addr) {
 	return (addr <= 0x00007FFFFFFFFFFFULL) || (addr >= 0xFFFF800000000000ULL);
 }
@@ -72,52 +66,6 @@ static uint64_t* get_or_create_table(uint64_t* parent, size_t index, uint32_t fl
 	parent[index] = table_phys | table_flags;
 
 	return table;
-}
-
-static bool clone_low_half_kernel_mapping(uint64_t* dst_pml4, uint64_t* src_pml4) {
-	if (!dst_pml4 || !src_pml4) return false;
-	if (!(src_pml4[0] & PAGE_PRESENT)) return true;
-
-	uint64_t src_pdp_phys = src_pml4[0] & ~0xFFFULL;
-	uint64_t* src_pdp = PHYS_TO_VIRT(src_pdp_phys);
-
-	uint64_t dst_pdp_phys = pmm_alloc_page();
-	if (!dst_pdp_phys) return false;
-
-	uint64_t* dst_pdp = PHYS_TO_VIRT(dst_pdp_phys);
-	memset(dst_pdp, 0, PAGE_SIZE);
-
-	uint64_t allocated_pd[512];
-	size_t allocated_count = 0;
-
-	for (int i = 0; i < 512; i++) {
-		uint64_t src_pdp_entry = src_pdp[i];
-		if (!(src_pdp_entry & PAGE_PRESENT)) continue;
-
-		/* 1GiB pages are copied as-is. */
-		if (src_pdp_entry & (1ULL << 7)) {
-			dst_pdp[i] = src_pdp_entry;
-			continue;
-		}
-
-		uint64_t src_pd_phys = src_pdp_entry & ~0xFFFULL;
-		uint64_t dst_pd_phys = pmm_alloc_page();
-		if (!dst_pd_phys) {
-			for (size_t j = 0; j < allocated_count; j++) pmm_free_page(allocated_pd[j]);
-			pmm_free_page(dst_pdp_phys);
-			return false;
-		}
-
-		uint64_t* src_pd = PHYS_TO_VIRT(src_pd_phys);
-		uint64_t* dst_pd = PHYS_TO_VIRT(dst_pd_phys);
-		memcpy(dst_pd, src_pd, PAGE_SIZE);
-
-		dst_pdp[i] = dst_pd_phys | (src_pdp_entry & 0xFFFULL);
-		allocated_pd[allocated_count++] = dst_pd_phys;
-	}
-
-	dst_pml4[0] = dst_pdp_phys | (src_pml4[0] & 0xFFFULL);
-	return true;
 }
 
 bool vmm_init(void) {
@@ -172,13 +120,7 @@ page_directory_t* vmm_create_address_space(void) {
 	dir->pml4_phys = pml4_phys;
 
 	for (int i = 0; i < 512; i++) pml4[i] = 0;
-	if (!clone_low_half_kernel_mapping(pml4, kernel_pml4)) {
-		serial_write("[VMM] Failed to clone low-half kernel mapping\n");
-		pmm_free_page(pml4_phys);
-		kfree(dir);
-		return NULL;
-	}
-
+	pml4[0] = kernel_pml4[0];
 	for (int i = 256; i < 512; i++) pml4[i] = kernel_pml4[i];
 
 	serial_write("[VMM] Created address space successfully\n");
@@ -190,25 +132,41 @@ void vmm_destroy_address_space(page_directory_t* dir) {
 
 	irq_state_t state = spinlock_acquire_irqsave(&vmm_lock);
 	uint64_t* pml4 = PHYS_TO_VIRT(dir->pml4_phys);
+	uint64_t* kernel_pml4 = kernel_directory ? PHYS_TO_VIRT(kernel_directory->pml4_phys) : NULL;
 
 	for (int pml4_idx = 0; pml4_idx < 256; pml4_idx++) {
-		if (!(pml4[pml4_idx] & PAGE_PRESENT)) continue;
-		uint64_t* pdp = PHYS_TO_VIRT(pml4[pml4_idx] & ~0xFFFULL);
+		uint64_t pml4_entry = pml4[pml4_idx];
+		if (!(pml4_entry & PAGE_PRESENT)) continue;
+		if (kernel_pml4 && pml4_entry == kernel_pml4[pml4_idx]) continue;
+
+		uint64_t pdp_phys = pml4_entry & ~0xFFFULL;
+		uint64_t* pdp = PHYS_TO_VIRT(pdp_phys);
 
 		for (int pdp_idx = 0; pdp_idx < 512; pdp_idx++) {
-			if (!(pdp[pdp_idx] & PAGE_PRESENT)) continue;
-			if (pdp[pdp_idx] & (1ULL << 7)) continue;
-			uint64_t* pd = PHYS_TO_VIRT(pdp[pdp_idx] & ~0xFFFULL);
+			uint64_t pdp_entry = pdp[pdp_idx];
+			if (!(pdp_entry & PAGE_PRESENT)) continue;
+			if (pdp_entry & (1ULL << 7)) continue;
+
+			uint64_t pd_phys = pdp_entry & ~0xFFFULL;
+			uint64_t* pd = PHYS_TO_VIRT(pd_phys);
 
 			for (int pd_idx = 0; pd_idx < 512; pd_idx++) {
-				if (!(pd[pd_idx] & PAGE_PRESENT)) continue;
-				if (pd[pd_idx] & (1ULL << 7)) continue;
-				uint64_t pt_phys = pd[pd_idx] & ~0xFFFULL;
+				uint64_t pd_entry = pd[pd_idx];
+				if (!(pd_entry & PAGE_PRESENT)) continue;
+				if (pd_entry & (1ULL << 7)) continue;
+
+				uint64_t pt_phys = pd_entry & ~0xFFFULL;
+				uint64_t* pt = PHYS_TO_VIRT(pt_phys);
+				for (int pt_idx = 0; pt_idx < 512; pt_idx++) {
+					if (!(pt[pt_idx] & PAGE_PRESENT)) continue;
+					uint64_t page_phys = pt[pt_idx] & ~0xFFFULL;
+					pmm_free_page(page_phys);
+				}
 				pmm_free_page(pt_phys);
 			}
-			pmm_free_page(pdp[pdp_idx] & ~0xFFFULL);
+			pmm_free_page(pd_phys);
 		}
-		pmm_free_page(pml4[pml4_idx] & ~0xFFFULL);
+		pmm_free_page(pdp_phys);
 	}
 
 	pmm_free_page(dir->pml4_phys);
@@ -475,8 +433,10 @@ void vmm_sync_kernel_mappings(page_directory_t* dir) {
 
 	uint64_t* dst_pml4 = dir->pml4;
 	uint64_t* src_pml4 = kernel_directory->pml4;
-	for (size_t i = 256; i < 512; i++) {
+
+	for (size_t i = 257; i < 512; i++) {
 		dst_pml4[i] = src_pml4[i];
 	}
+	dst_pml4[256] = src_pml4[256];
 	__sync_synchronize();
 }
