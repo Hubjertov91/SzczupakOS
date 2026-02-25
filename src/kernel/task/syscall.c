@@ -13,6 +13,8 @@
 #include <drivers/mouse.h>
 #include <net/net.h>
 #include <kernel/string.h>
+#include <task/scheduler.h>
+#include <kernel/pty.h>
 
 extern void syscall_handler_asm(void);
 
@@ -219,60 +221,100 @@ static uint64_t sys_fork(void) {
     return (uint64_t)child->pid;
 }
 
-static uint64_t sys_exec(uint64_t cmdline_addr) {
-    if (!cmdline_addr) return (uint64_t)-1;
-
+static bool copy_cmdline_from_user(uint64_t cmdline_addr, char* out, size_t out_size) {
+    if (!cmdline_addr || !out || out_size < 2) return false;
     char cmdline[EXEC_CMDLINE_MAX];
     size_t i = 0;
-    for (; i < EXEC_CMDLINE_MAX; i++) {
+    for (; i < out_size; i++) {
         if (copy_from_user(&cmdline[i], (const void*)(cmdline_addr + i), 1) != 0) {
-            return (uint64_t)-1;
+            return false;
         }
         if (cmdline[i] == '\0') break;
     }
+    if (i == 0 || i == out_size) return false;
+    memcpy(out, cmdline, i + 1);
+    return true;
+}
 
-    if (i == 0 || i == EXEC_CMDLINE_MAX) return (uint64_t)-1;
+static void destroy_terminated_task(task_t* task) {
+    if (!task) return;
+    if (task->page_dir) {
+        vmm_destroy_address_space(task->page_dir);
+        task->page_dir = NULL;
+    }
+    if (task->kernel_stack && task->stack_size >= PAGE_SIZE) {
+        vmm_free_pages(task->kernel_stack, task->stack_size / PAGE_SIZE);
+        task->kernel_stack = NULL;
+    }
+    kfree(task);
+}
+
+static task_t* spawn_task_from_cmdline(char* cmdline, int32_t pty_id) {
+    if (!cmdline) return NULL;
 
     size_t p = 0;
     while (is_space(cmdline[p])) p++;
-    if (cmdline[p] == '\0') return (uint64_t)-1;
+    if (cmdline[p] == '\0') return NULL;
 
     char path[EXEC_PATH_MAX];
     size_t path_len = 0;
     while (cmdline[p] != '\0' && !is_space(cmdline[p])) {
-        if (path_len + 1 >= EXEC_PATH_MAX) return (uint64_t)-1;
+        if (path_len + 1 >= EXEC_PATH_MAX) return NULL;
         path[path_len++] = cmdline[p++];
     }
     path[path_len] = '\0';
 
-    if (path[0] != '/') return (uint64_t)-1;
+    if (path[0] != '/') return NULL;
     vfs_node_t* file = vfs_open(path, 0);
     if (!file || file->type != VFS_FILE || file->size == 0 || file->size > EXEC_FILE_MAX) {
         if (file) vfs_close(file);
-        return (uint64_t)-1;
+        return NULL;
     }
 
     uint8_t* elf_data = (uint8_t*)kmalloc(file->size);
     if (!elf_data) {
         vfs_close(file);
-        return (uint64_t)-1;
+        return NULL;
     }
 
     if (!vfs_read(file, elf_data, 0, file->size)) {
         kfree(elf_data);
         vfs_close(file);
-        return (uint64_t)-1;
+        return NULL;
     }
 
     task_t* task = task_create_user(path, cmdline, elf_data, file->size);
     kfree(elf_data);
     vfs_close(file);
 
-    if (!task) {
+    if (!task) return NULL;
+
+    if (pty_id >= 0) {
+        if (!pty_is_open(pty_id) || pty_attach_slave(pty_id, task->pid) != 0) {
+            task->state = TASK_TERMINATED;
+            scheduler_remove_task(task);
+            destroy_terminated_task(task);
+            return NULL;
+        }
+        task->pty_id = pty_id;
+    }
+
+    return task;
+}
+
+static uint64_t sys_exec(uint64_t cmdline_addr) {
+    if (!cmdline_addr) return (uint64_t)-1;
+
+    char cmdline[EXEC_CMDLINE_MAX];
+    if (!copy_cmdline_from_user(cmdline_addr, cmdline, sizeof(cmdline))) {
         return (uint64_t)-1;
     }
 
     task_t* current = get_current_task();
+    int32_t inherited_pty = (current) ? current->pty_id : -1;
+    task_t* task = spawn_task_from_cmdline(cmdline, inherited_pty);
+    if (!task) return (uint64_t)-1;
+
     bool preempt_enabled = false;
     if (current && !current->is_kernel) {
         current->kernel_preempt_ok = true;
@@ -289,17 +331,59 @@ static uint64_t sys_exec(uint64_t cmdline_addr) {
     }
 
     uint64_t pid = task->pid;
-    if (task->page_dir) {
-        vmm_destroy_address_space(task->page_dir);
-        task->page_dir = NULL;
-    }
-    if (task->kernel_stack && task->stack_size >= PAGE_SIZE) {
-        vmm_free_pages(task->kernel_stack, task->stack_size / PAGE_SIZE);
-        task->kernel_stack = NULL;
-    }
-    kfree(task);
+    destroy_terminated_task(task);
 
     return pid;
+}
+
+static uint64_t sys_pty_open(void) {
+    return (uint64_t)pty_open();
+}
+
+static uint64_t sys_pty_close(uint64_t pty_id) {
+    if (!pty_is_open((int32_t)pty_id)) return (uint64_t)-1;
+    return (uint64_t)pty_close((int32_t)pty_id);
+}
+
+static uint64_t sys_pty_read(uint64_t pty_id, uint64_t buf_addr, uint64_t size) {
+    if (!buf_addr || size == 0) return 0;
+    if (!pty_is_open((int32_t)pty_id)) return (uint64_t)-1;
+    if (size > 4096) size = 4096;
+
+    char buffer[4096];
+    size_t n = pty_host_read((int32_t)pty_id, buffer, (size_t)size);
+    if (n == 0) return 0;
+    if (copy_to_user((void*)buf_addr, buffer, n) != 0) return (uint64_t)-1;
+    return (uint64_t)n;
+}
+
+static uint64_t sys_pty_write(uint64_t pty_id, uint64_t buf_addr, uint64_t size) {
+    if (!buf_addr || size == 0) return 0;
+    if (!pty_is_open((int32_t)pty_id)) return (uint64_t)-1;
+    if (size > 4096) size = 4096;
+
+    char buffer[4096];
+    if (copy_from_user(buffer, (const void*)buf_addr, size) != 0) return (uint64_t)-1;
+    return (uint64_t)pty_host_write((int32_t)pty_id, buffer, (size_t)size);
+}
+
+static uint64_t sys_pty_spawn(uint64_t cmdline_addr, uint64_t pty_id) {
+    if (!cmdline_addr) return (uint64_t)-1;
+    if (!pty_is_open((int32_t)pty_id)) return (uint64_t)-1;
+
+    char cmdline[EXEC_CMDLINE_MAX];
+    if (!copy_cmdline_from_user(cmdline_addr, cmdline, sizeof(cmdline))) {
+        return (uint64_t)-1;
+    }
+
+    task_t* task = spawn_task_from_cmdline(cmdline, (int32_t)pty_id);
+    if (!task) return (uint64_t)-1;
+    return (uint64_t)task->pid;
+}
+
+static uint64_t sys_pty_out_avail(uint64_t pty_id) {
+    if (!pty_is_open((int32_t)pty_id)) return (uint64_t)-1;
+    return (uint64_t)pty_host_out_available((int32_t)pty_id);
 }
 
 static uint64_t sys_listdir(uint64_t path_addr, uint64_t buf_addr, uint64_t buf_size) {
@@ -453,6 +537,15 @@ static uint64_t sys_fb_putpixel(uint64_t x, uint64_t y, uint64_t color) {
     };
     fb_putpixel((uint32_t)x, (uint32_t)y, c);
     return 0;
+}
+
+static uint64_t sys_fb_getpixel(uint64_t x, uint64_t y) {
+    if (!framebuffer_available()) return (uint64_t)-1;
+    uint32_t color = 0;
+    if (!fb_getpixel_rgb((uint32_t)x, (uint32_t)y, &color)) {
+        return (uint64_t)-1;
+    }
+    return (uint64_t)color;
 }
 
 static uint64_t sys_fb_clear(uint64_t color) {
@@ -740,6 +833,7 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_FORK:   regs->rax = sys_fork(); break;
         case SYSCALL_EXEC:   regs->rax = sys_exec(regs->rdi); break;
         case SYSCALL_FB_PUTPIXEL: regs->rax = sys_fb_putpixel(regs->rdi, regs->rsi, regs->rdx); break;
+        case SYSCALL_FB_GETPIXEL: regs->rax = sys_fb_getpixel(regs->rdi, regs->rsi); break;
         case SYSCALL_FB_CLEAR:    regs->rax = sys_fb_clear(regs->rdi); break;
         case SYSCALL_FB_RECT:     regs->rax = sys_fb_rect(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8); break;
         case SYSCALL_FB_INFO:     regs->rax = sys_fb_info(regs->rdi); break;
@@ -756,6 +850,12 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_NET_TCP_PROBE: regs->rax = sys_net_tcp_probe(regs->rdi, regs->rsi); break;
         case SYSCALL_KB_POLL: regs->rax = sys_kb_poll(); break;
         case SYSCALL_MOUSE_POLL: regs->rax = sys_mouse_poll(regs->rdi); break;
+        case SYSCALL_PTY_OPEN: regs->rax = sys_pty_open(); break;
+        case SYSCALL_PTY_CLOSE: regs->rax = sys_pty_close(regs->rdi); break;
+        case SYSCALL_PTY_READ: regs->rax = sys_pty_read(regs->rdi, regs->rsi, regs->rdx); break;
+        case SYSCALL_PTY_WRITE: regs->rax = sys_pty_write(regs->rdi, regs->rsi, regs->rdx); break;
+        case SYSCALL_PTY_SPAWN: regs->rax = sys_pty_spawn(regs->rdi, regs->rsi); break;
+        case SYSCALL_PTY_OUT_AVAIL: regs->rax = sys_pty_out_avail(regs->rdi); break;
         default:
             serial_write("[SYSCALL] Unknown syscall: ");
             serial_write_dec(regs->rax);

@@ -29,6 +29,7 @@ typedef struct {
 
 long gui_get_fb_info(gui_fb_info_t* out);
 long gui_putpixel(uint32_t x, uint32_t y, uint32_t color);
+long gui_getpixel(uint32_t x, uint32_t y, uint32_t* out_color);
 long gui_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color);
 long gui_clear(uint32_t color);
 long gui_draw_char(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg);

@@ -114,6 +114,10 @@ long sys_fb_putpixel(uint32_t x, uint32_t y, uint32_t color) {
     return syscall3(SYS_FB_PUTPIXEL, x, y, color);
 }
 
+long sys_fb_getpixel(uint32_t x, uint32_t y) {
+    return syscall2(SYS_FB_GETPIXEL, x, y);
+}
+
 long sys_fb_clear(uint32_t color) {
     return syscall1(SYS_FB_CLEAR, color);
 }
@@ -176,4 +180,28 @@ long sys_kb_poll(void) {
 
 long sys_mouse_poll(struct mouse_event* event) {
     return syscall1(SYS_MOUSE_POLL, (long)event);
+}
+
+long sys_pty_open(void) {
+    return syscall0(SYS_PTY_OPEN);
+}
+
+long sys_pty_close(int32_t pty_id) {
+    return syscall1(SYS_PTY_CLOSE, (long)pty_id);
+}
+
+long sys_pty_read(int32_t pty_id, char* buf, uint32_t size) {
+    return syscall3(SYS_PTY_READ, (long)pty_id, (long)buf, (long)size);
+}
+
+long sys_pty_write(int32_t pty_id, const char* buf, uint32_t size) {
+    return syscall3(SYS_PTY_WRITE, (long)pty_id, (long)buf, (long)size);
+}
+
+long sys_pty_spawn(const char* cmdline, int32_t pty_id) {
+    return syscall2(SYS_PTY_SPAWN, (long)cmdline, (long)pty_id);
+}
+
+long sys_pty_out_avail(int32_t pty_id) {
+    return syscall1(SYS_PTY_OUT_AVAIL, (long)pty_id);
 }

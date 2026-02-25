@@ -10,6 +10,14 @@ static uint32_t char_width = 8;
 static uint32_t char_height = 16;
 static uint32_t chars_count = 256;
 
+static void psf_draw_fallback_char(uint32_t x, uint32_t y, char c, fb_color_t fg, fb_color_t bg) {
+    fb_fill_rect(x, y, 8, 16, bg);
+    if (c == ' ') return;
+
+    fb_fill_rect(x + 1, y + 1, 6, 14, fg);
+    fb_fill_rect(x + 2, y + 2, 4, 12, bg);
+}
+
 bool psf_load(const char* path) {
     vfs_node_t* file = vfs_open(path, 0);
     if (!file) {
@@ -65,7 +73,7 @@ bool psf_load(const char* path) {
 
 void psf_draw_char(uint32_t x, uint32_t y, char c, fb_color_t fg, fb_color_t bg) {
     if (!font_data) {
-        fb_putchar(x, y, c, fg, bg);
+        psf_draw_fallback_char(x, y, c, fg, bg);
         return;
     }
 
@@ -73,13 +81,7 @@ void psf_draw_char(uint32_t x, uint32_t y, char c, fb_color_t fg, fb_color_t bg)
     if (ch >= chars_count) ch = 0;
 
     uint8_t* glyph = font_data + (ch * char_height);
-
-    for (uint32_t row = 0; row < char_height; row++) {
-        uint8_t line = glyph[row];
-        for (uint32_t col = 0; col < char_width; col++) {
-            fb_putpixel(x + col, y + row, (line & (0x80 >> col)) ? fg : bg);
-        }
-    }
+    fb_draw_mono8(x, y, glyph, char_height, fg, bg);
 }
 
 uint32_t psf_get_width(void) {

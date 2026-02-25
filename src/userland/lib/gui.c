@@ -19,6 +19,14 @@ long gui_putpixel(uint32_t x, uint32_t y, uint32_t color) {
     return sys_fb_putpixel(x, y, color);
 }
 
+long gui_getpixel(uint32_t x, uint32_t y, uint32_t* out_color) {
+    if (!out_color) return -1;
+    long rc = sys_fb_getpixel(x, y);
+    if (rc < 0) return rc;
+    *out_color = (uint32_t)rc;
+    return 0;
+}
+
 long gui_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color) {
     if (w == 0 || h == 0) return 0;
     return sys_fb_rect(x, y, w, h, color);

@@ -30,6 +30,13 @@
 #define SYSCALL_FS_MKDIR    24
 #define SYSCALL_KB_POLL     25
 #define SYSCALL_MOUSE_POLL  26
+#define SYSCALL_FB_GETPIXEL 27
+#define SYSCALL_PTY_OPEN    28
+#define SYSCALL_PTY_CLOSE   29
+#define SYSCALL_PTY_READ    30
+#define SYSCALL_PTY_WRITE   31
+#define SYSCALL_PTY_SPAWN   32
+#define SYSCALL_PTY_OUT_AVAIL 33
 
 
 struct sysinfo {

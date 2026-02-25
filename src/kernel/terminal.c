@@ -6,6 +6,7 @@
 #include <drivers/psf.h>
 #include <task/task.h>
 #include <net/net.h>
+#include <kernel/pty.h>
 
 #define LINE_BUF_SIZE 256
 static uint32_t term_x = 0;
@@ -16,11 +17,17 @@ static fb_color_t bg_color = {.r = 0x00, .g = 0x00, .b = 0x00, .a = 255};
 __attribute__((noinline)) void terminal_wait_input(void) {
     task_t* task = get_current_task();
     bool allow_preempt = (task && !task->is_kernel);
+    bool use_pty = pty_task_attached(task);
     if (allow_preempt) {
         task->kernel_preempt_ok = true;
     }
 
-    while (!keyboard_has_input() && !serial_has_data()) {
+    while (1) {
+        if (use_pty) {
+            if (pty_slave_has_input(task)) break;
+        } else {
+            if (keyboard_has_input() || serial_has_data()) break;
+        }
         __asm__ volatile("sti; hlt; cli");
         net_poll();
     }
@@ -39,6 +46,13 @@ void terminal_init(void) {
 }
 
 void terminal_clear(void) {
+    task_t* task = get_current_task();
+    if (pty_task_attached(task)) {
+        char ff = '\f';
+        (void)pty_slave_write(task, &ff, 1);
+        return;
+    }
+
     if (framebuffer_available()) {
         fb_clear(bg_color);
     } else {
@@ -49,6 +63,12 @@ void terminal_clear(void) {
 }
 
 void terminal_write(const char* str, size_t len) {
+    task_t* task = get_current_task();
+    if (pty_task_attached(task)) {
+        (void)pty_slave_write(task, str, len);
+        return;
+    }
+
     uint32_t char_w = psf_get_width();
     uint32_t char_h = psf_get_height();
     if (char_w == 0) char_w = 8;
@@ -108,6 +128,11 @@ size_t terminal_read(char* buf, size_t size) {
     if (size == 0) return 0;
 
     terminal_wait_input();
+
+    task_t* task = get_current_task();
+    if (pty_task_attached(task)) {
+        return pty_slave_read(task, buf, size);
+    }
 
     char c = 0;
     if (keyboard_has_input()) {

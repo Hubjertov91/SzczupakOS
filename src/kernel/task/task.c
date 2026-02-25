@@ -9,6 +9,7 @@
 #include <kernel/elf.h>
 #include <kernel/stdint.h>
 #include <net/net.h>
+#include <kernel/pty.h>
 
 #define KERNEL_STACK_SIZE 16384
 #define USER_STACK_SIZE (32 * 4096)
@@ -193,6 +194,7 @@ bool task_init(void) {
     current_task->cpu_time = 0;
     current_task->creation_time = 0;
     current_task->kernel_preempt_ok = false;
+    current_task->pty_id = -1;
 
     current_task->context.r15 = 0;
     current_task->context.r14 = 0;
@@ -245,6 +247,7 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     task->cpu_time = 0;
     task->creation_time = pit_get_ticks();
     task->kernel_preempt_ok = false;
+    task->pty_id = -1;
 
     task->kernel_stack = kmalloc(KERNEL_STACK_SIZE);
     if (!task->kernel_stack) {
@@ -299,6 +302,7 @@ task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_dat
     task->cpu_time = 0;
     task->creation_time = pit_get_ticks();
     task->kernel_preempt_ok = false;
+    task->pty_id = -1;
 
     task->kernel_stack = vmm_alloc_pages(KERNEL_STACK_SIZE / PAGE_SIZE);
     if (!task->kernel_stack) {
@@ -390,6 +394,8 @@ task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_dat
 void task_exit(void) {
     if (!current_task) return;
 
+    pty_detach_slave(current_task->pid);
+    current_task->pty_id = -1;
     current_task->state = TASK_TERMINATED;
     scheduler_remove_task(current_task);
 
@@ -434,6 +440,7 @@ task_t* task_fork(void) {
     child->cpu_time = 0;
     child->creation_time = pit_get_ticks();
     child->kernel_preempt_ok = false;
+    child->pty_id = -1;
     child->next = NULL;
 
     child->kernel_stack = kmalloc(KERNEL_STACK_SIZE);

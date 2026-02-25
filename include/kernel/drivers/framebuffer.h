@@ -27,9 +27,11 @@ bool framebuffer_init(struct multiboot_tag_framebuffer* fb_tag);
 framebuffer_info_t* framebuffer_get_info(void);
 bool framebuffer_available(void);
 void fb_putpixel(uint32_t x, uint32_t y, fb_color_t color);
+bool fb_getpixel_rgb(uint32_t x, uint32_t y, uint32_t* out_rgb);
 void fb_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, fb_color_t color);
 void fb_clear(fb_color_t color);
 void fb_putchar(uint32_t x, uint32_t y, char c, fb_color_t fg, fb_color_t bg);
 void fb_write_string(uint32_t x, uint32_t y, const char* str, fb_color_t fg, fb_color_t bg);
+void fb_draw_mono8(uint32_t x, uint32_t y, const uint8_t* rows, uint32_t row_count, fb_color_t fg, fb_color_t bg);
 
 #endif

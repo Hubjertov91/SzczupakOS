@@ -19,6 +19,7 @@
 #include <kernel/elf.h>
 #include <kernel/drivers/framebuffer.h>
 #include <kernel/drivers/psf.h>
+#include <kernel/pty.h>
 #include <net/net.h>
 
 #define KERNEL_STACK_SIZE 16384
@@ -93,6 +94,7 @@ void kernel_main(uint64_t multiboot_addr) {
         serial_write("[KERNEL] ERROR: Task initialization failed\n");
         while(1) __asm__ volatile("hlt");
     }
+    // pty_init();
     
     scheduler_init();
     vfs_init();

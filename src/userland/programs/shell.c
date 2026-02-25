@@ -39,8 +39,8 @@ int cmd_help(int argc, char** argv) {
     printf("  quit        - Exit shell (alias)\n");
     printf("\n");
     printf("External programs:\n");
-    printf("  desktop     - GUI desktop/window demo\n");
-    printf("                (WASD/C/Q + mouse drag)\n");
+    printf("  desktop     - GUI desktop with shell window\n");
+    printf("                (Tab focus, mouse drag, ESC quit)\n");
     printf("  Type ELF name or path, e.g. /LS.ELF\n");
     return 0;
 }

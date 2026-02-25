@@ -30,6 +30,13 @@
 #define SYS_FS_MKDIR    24
 #define SYS_KB_POLL     25
 #define SYS_MOUSE_POLL  26
+#define SYS_FB_GETPIXEL 27
+#define SYS_PTY_OPEN    28
+#define SYS_PTY_CLOSE   29
+#define SYS_PTY_READ    30
+#define SYS_PTY_WRITE   31
+#define SYS_PTY_SPAWN   32
+#define SYS_PTY_OUT_AVAIL 33
 
 struct sysinfo {
     uint64_t uptime;
@@ -137,6 +144,7 @@ long sys_sysinfo(struct sysinfo* info);
 long sys_fork(void);
 long sys_exec(const char* cmdline);
 long sys_fb_putpixel(uint32_t x, uint32_t y, uint32_t color);
+long sys_fb_getpixel(uint32_t x, uint32_t y);
 long sys_fb_clear(uint32_t color);
 long sys_fb_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color);
 long sys_fb_info(struct fb_info* info);
@@ -153,5 +161,11 @@ long sys_fs_touch(const char* path);
 long sys_fs_mkdir(const char* path);
 long sys_kb_poll(void);
 long sys_mouse_poll(struct mouse_event* event);
+long sys_pty_open(void);
+long sys_pty_close(int32_t pty_id);
+long sys_pty_read(int32_t pty_id, char* buf, uint32_t size);
+long sys_pty_write(int32_t pty_id, const char* buf, uint32_t size);
+long sys_pty_spawn(const char* cmdline, int32_t pty_id);
+long sys_pty_out_avail(int32_t pty_id);
 
 #endif

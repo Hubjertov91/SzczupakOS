@@ -40,10 +40,11 @@ KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
               $(OBJ_DIR)/kernel/task/gdt.o \
               $(OBJ_DIR)/kernel/task/tss.o \
               $(OBJ_DIR)/kernel/task/syscall.o \
-              $(OBJ_DIR)/kernel/net/net.o \
-              $(OBJ_DIR)/kernel/loader/elf.o \
-              $(OBJ_DIR)/kernel/terminal.o \
-              $(OBJ_DIR)/kernel/string.o
+	              $(OBJ_DIR)/kernel/net/net.o \
+	              $(OBJ_DIR)/kernel/loader/elf.o \
+	              $(OBJ_DIR)/kernel/pty.o \
+	              $(OBJ_DIR)/kernel/terminal.o \
+	              $(OBJ_DIR)/kernel/string.o
 
 all: $(BUILD_DIR)/kernel.bin
 

@@ -43,6 +43,7 @@ typedef struct task {
     uint64_t creation_time;
     uint64_t syscall_kernel_rsp;
     bool kernel_preempt_ok;
+    int32_t pty_id;
 } task_t;
 
 bool task_init(void);
