@@ -3,8 +3,12 @@ ISO_DIR = $(BUILD_DIR)/iso
 DISK_IMG = disk.img
 HOSTPING_TAP = tap0
 HOSTPING_HOST_CIDR = 192.168.76.1/24
+QEMU_USB_CONTROLLER = -device qemu-xhci,id=xhci
+QEMU_USB_HID = -device usb-kbd,bus=xhci.0 -device usb-mouse,bus=xhci.0
+QEMU_GUI_CONSOLE = -vga std -serial stdio -monitor none
+QEMU_HEADLESS_CONSOLE = -display none -serial stdio -monitor none
 
-.PHONY: all clean clean-disk setup-disk run run-nat run2 run-hostping run-hostping-debug hostping-up hostping-down k u
+.PHONY: all clean clean-disk setup-disk run run-nat run2 run-hostping run-hostping-debug run-usb-hid run-nat-usb-hid run-serial run-nat-serial hostping-up hostping-down k u
 
 all: $(BUILD_DIR)/os.iso
 
@@ -49,14 +53,14 @@ run: $(BUILD_DIR)/os.iso $(DISK_IMG)
 	@./scripts/tap-up.sh $(HOSTPING_TAP) $(HOSTPING_HOST_CIDR)
 	@echo "[run] Expected guest IP: 192.168.76.2"
 	@echo "[run] Type directly in this terminal (serial stdio)."
-	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M -vga std -serial stdio -netdev tap,id=hn0,ifname=$(HOSTPING_TAP),script=no,downscript=no -device rtl8139,netdev=hn0
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_GUI_CONSOLE) -netdev tap,id=hn0,ifname=$(HOSTPING_TAP),script=no,downscript=no -device rtl8139,netdev=hn0 $(QEMU_USB_CONTROLLER)
 
 run-nat: $(BUILD_DIR)/os.iso $(DISK_IMG)
 	@echo "[run-nat] SLIRP/NAT mode (host -> guest ping is not expected)"
-	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M -vga std -serial stdio -nic user,model=rtl8139
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_GUI_CONSOLE) -nic user,model=rtl8139 $(QEMU_USB_CONTROLLER)
 
 run2: $(BUILD_DIR)/os.iso $(DISK_IMG)
-	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 256M -vga std -serial stdio -nic user,model=rtl8139 -d int,cpu_reset -D qemu.log
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 256M $(QEMU_GUI_CONSOLE) -nic user,model=rtl8139 $(QEMU_USB_CONTROLLER) -d int,cpu_reset -D qemu.log
 
 hostping-up:
 	./scripts/tap-up.sh $(HOSTPING_TAP) $(HOSTPING_HOST_CIDR)
@@ -68,4 +72,23 @@ run-hostping: run
 
 run-hostping-debug: $(BUILD_DIR)/os.iso $(DISK_IMG)
 	@echo "[run-hostping-debug] Logging interrupts/resets to qemu.log"
-	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M -vga std -serial stdio -netdev tap,id=hn0,ifname=$(HOSTPING_TAP),script=no,downscript=no -device rtl8139,netdev=hn0 -d int,cpu_reset -D qemu.log
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_GUI_CONSOLE) -netdev tap,id=hn0,ifname=$(HOSTPING_TAP),script=no,downscript=no -device rtl8139,netdev=hn0 $(QEMU_USB_CONTROLLER) -d int,cpu_reset -D qemu.log
+
+run-usb-hid: $(BUILD_DIR)/os.iso $(DISK_IMG)
+	@echo "[run-usb-hid] TAP mode + USB keyboard/mouse attached (USB HID driver required in guest)"
+	@./scripts/tap-up.sh $(HOSTPING_TAP) $(HOSTPING_HOST_CIDR)
+	@echo "[run-usb-hid] If shell input is stuck, type in this terminal (serial stdio)."
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_GUI_CONSOLE) -netdev tap,id=hn0,ifname=$(HOSTPING_TAP),script=no,downscript=no -device rtl8139,netdev=hn0 $(QEMU_USB_CONTROLLER) $(QEMU_USB_HID)
+
+run-nat-usb-hid: $(BUILD_DIR)/os.iso $(DISK_IMG)
+	@echo "[run-nat-usb-hid] SLIRP/NAT + USB keyboard/mouse attached (USB HID driver required in guest)"
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_GUI_CONSOLE) -nic user,model=rtl8139 $(QEMU_USB_CONTROLLER) $(QEMU_USB_HID)
+
+run-serial: $(BUILD_DIR)/os.iso $(DISK_IMG)
+	@echo "[run-serial] TAP mode headless serial console"
+	@./scripts/tap-up.sh $(HOSTPING_TAP) $(HOSTPING_HOST_CIDR)
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_HEADLESS_CONSOLE) -netdev tap,id=hn0,ifname=$(HOSTPING_TAP),script=no,downscript=no -device rtl8139,netdev=hn0 $(QEMU_USB_CONTROLLER)
+
+run-nat-serial: $(BUILD_DIR)/os.iso $(DISK_IMG)
+	@echo "[run-nat-serial] NAT mode headless serial console"
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_HEADLESS_CONSOLE) -nic user,model=rtl8139 $(QEMU_USB_CONTROLLER)

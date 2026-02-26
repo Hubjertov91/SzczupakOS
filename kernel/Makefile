@@ -18,11 +18,15 @@ KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
               $(OBJ_DIR)/kernel/kernel.o \
               $(OBJ_DIR)/kernel/drivers/vga.o \
               $(OBJ_DIR)/kernel/drivers/serial.o \
+              $(OBJ_DIR)/kernel/drivers/rtc.o \
+              $(OBJ_DIR)/kernel/drivers/pci.o \
+              $(OBJ_DIR)/kernel/drivers/usb.o \
               $(OBJ_DIR)/kernel/drivers/pic.o \
               $(OBJ_DIR)/kernel/drivers/pit.o \
               $(OBJ_DIR)/kernel/drivers/keyboard.o \
               $(OBJ_DIR)/kernel/drivers/mouse.o \
               $(OBJ_DIR)/kernel/drivers/ata.o \
+              $(OBJ_DIR)/kernel/drivers/rtl8168.o \
               $(OBJ_DIR)/kernel/drivers/framebuffer.o \
               $(OBJ_DIR)/kernel/drivers/psf.o \
               $(OBJ_DIR)/kernel/multiboot/multiboot2.o \
@@ -45,6 +49,16 @@ KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
 	              $(OBJ_DIR)/kernel/pty.o \
 	              $(OBJ_DIR)/kernel/terminal.o \
 	              $(OBJ_DIR)/kernel/string.o
+
+NET_SPLIT_SRCS = ../src/kernel/net/net_utils.c \
+                 ../src/kernel/net/net_driver.c \
+                 ../src/kernel/net/net_ip.c \
+                 ../src/kernel/net/net_dhcp.c \
+                 ../src/kernel/net/net_icmp.c \
+                 ../src/kernel/net/net_dns.c \
+                 ../src/kernel/net/net_tcp.c \
+                 ../src/kernel/net/net_rx.c \
+                 ../src/kernel/net/net_api.c
 
 all: $(BUILD_DIR)/kernel.bin
 
@@ -79,6 +93,8 @@ $(OBJ_DIR)/kernel/task/%.o: ../src/kernel/task/%.c
 $(OBJ_DIR)/kernel/net/%.o: ../src/kernel/net/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/kernel/net/net.o: $(NET_SPLIT_SRCS)
 
 $(OBJ_DIR)/kernel/loader/%.o: ../src/kernel/loader/%.c
 	@mkdir -p $(dir $@)

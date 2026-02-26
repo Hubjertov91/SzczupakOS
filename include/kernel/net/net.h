@@ -53,6 +53,7 @@ bool net_configure_dhcp(uint32_t timeout_ms);
 bool net_configure_static(const uint8_t ip[4], const uint8_t netmask[4],
                           const uint8_t gateway[4], const uint8_t dns[4]);
 bool net_is_ready(void);
+const char* net_get_backend_name(void);
 const net_config_t* net_get_config(void);
 bool net_get_info(net_info_t* out_info);
 bool net_get_stats(net_stats_t* out_stats);
@@ -62,5 +63,12 @@ bool net_trace_probe_ipv4(const uint8_t dst_ip[4], uint8_t ttl, uint32_t timeout
 bool net_tcp_probe_ipv4(const uint8_t dst_ip[4], uint16_t dst_port, uint32_t timeout_ms,
                         bool* out_open, uint32_t* out_rtt_ms);
 bool net_dns_resolve_ipv4(const char* hostname, uint8_t out_ip[4], uint32_t timeout_ms);
+bool net_http_get_ipv4(const uint8_t dst_ip[4], uint16_t dst_port,
+                       const char* host, const char* path,
+                       uint32_t timeout_ms,
+                       uint8_t* out_body, uint32_t out_body_capacity,
+                       uint32_t* out_body_length,
+                       uint16_t* out_status_code,
+                       bool* out_truncated);
 
 #endif

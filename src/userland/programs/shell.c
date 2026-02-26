@@ -41,6 +41,10 @@ int cmd_help(int argc, char** argv) {
     printf("External programs:\n");
     printf("  desktop     - GUI desktop with shell window\n");
     printf("                (Tab focus, mouse drag, ESC quit)\n");
+    printf("  http        - HTTP GET client (http://... or host/path)\n");
+    printf("  lspci       - List detected PCI/PCIe devices\n");
+    printf("  ptysh       - Run command inside PTY bridge (default: /SHELL.ELF)\n");
+    printf("  usb         - List detected USB host controllers\n");
     printf("  Type ELF name or path, e.g. /LS.ELF\n");
     return 0;
 }
@@ -229,6 +233,7 @@ int cmd_clear(int argc, char** argv) {
     (void)argc; (void)argv;
     sys_clear();
     printf("SzczupakOS Shell\n");
+    printf("Adaptive hardware mode: enabled\n");
     printf("Type 'help' for available commands\n\n");
     return 0;
 }
@@ -417,6 +422,7 @@ int execute_command(char* line) {
 int main(void) {
     sys_clear();
     printf("SzczupakOS Shell v1.0\n");
+    printf("Adaptive hardware mode: enabled\n");
     printf("Type 'help' for available commands\n\n");
 
     while (1) {

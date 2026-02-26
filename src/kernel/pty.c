@@ -85,6 +85,10 @@ int32_t pty_close(int32_t id) {
         irq_restore(flags);
         return -1;
     }
+    if (g_ptys[id].slave_pid != 0) {
+        irq_restore(flags);
+        return -1;
+    }
     g_ptys[id].used = false;
     g_ptys[id].slave_pid = 0;
     ring_reset(&g_ptys[id].host_to_slave);
@@ -239,4 +243,14 @@ size_t pty_host_out_available(int32_t id) {
     }
     irq_restore(flags);
     return out;
+}
+
+size_t pty_host_in_available(int32_t id) {
+    uint64_t flags = irq_save_disable();
+    size_t in = 0;
+    if (pty_slot_valid_locked(id)) {
+        in = g_ptys[id].host_to_slave.count;
+    }
+    irq_restore(flags);
+    return in;
 }

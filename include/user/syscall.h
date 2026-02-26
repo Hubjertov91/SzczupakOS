@@ -37,6 +37,15 @@
 #define SYS_PTY_WRITE   31
 #define SYS_PTY_SPAWN   32
 #define SYS_PTY_OUT_AVAIL 33
+#define SYS_NET_HTTP_GET 34
+#define SYS_PCI_GET_COUNT 35
+#define SYS_PCI_GET_DEVICE 36
+#define SYS_USB_GET_COUNT 37
+#define SYS_USB_GET_CONTROLLER 38
+#define SYS_PTY_IN_AVAIL 39
+
+#define NET_HTTP_HOST_MAX 128
+#define NET_HTTP_PATH_MAX 192
 
 struct sysinfo {
     uint64_t uptime;
@@ -126,6 +135,58 @@ struct net_tcp_probe_rsp {
     uint32_t rtt_ms;
 };
 
+struct net_http_get_req {
+    uint8_t dst_ip[4];
+    uint16_t dst_port;
+    uint16_t _reserved0;
+    uint32_t timeout_ms;
+    uint64_t out_body_addr;
+    uint32_t out_body_capacity;
+    uint32_t _reserved1;
+    char host[NET_HTTP_HOST_MAX];
+    char path[NET_HTTP_PATH_MAX];
+};
+
+struct net_http_get_rsp {
+    uint8_t ok;
+    uint8_t truncated;
+    uint16_t status_code;
+    uint32_t body_length;
+};
+
+struct pci_device_info {
+    uint8_t bus;
+    uint8_t slot;
+    uint8_t function;
+    uint8_t class_code;
+    uint8_t subclass;
+    uint8_t prog_if;
+    uint8_t revision_id;
+    uint8_t header_type;
+    uint16_t vendor_id;
+    uint16_t device_id;
+    uint8_t is_pcie;
+    uint8_t _reserved[3];
+};
+
+struct usb_controller_info {
+    uint8_t bus;
+    uint8_t slot;
+    uint8_t function;
+    uint8_t controller_type;
+    uint8_t class_code;
+    uint8_t subclass;
+    uint8_t prog_if;
+    uint16_t vendor_id;
+    uint16_t device_id;
+    uint8_t is_pcie;
+    uint8_t initialized;
+    uint8_t port_count;
+    uint8_t connected_ports;
+    uint32_t io_base;
+    uint64_t mmio_base;
+};
+
 long syscall0(long n);
 long syscall1(long n, long a1);
 long syscall2(long n, long a1, long a2);
@@ -157,6 +218,11 @@ long sys_net_resolve(const char* hostname, uint32_t timeout_ms, uint8_t out_ip[4
 long sys_net_stats(struct net_stats* stats);
 long sys_net_trace_probe(const struct net_trace_probe_req* req, struct net_trace_probe_rsp* rsp);
 long sys_net_tcp_probe(const struct net_tcp_probe_req* req, struct net_tcp_probe_rsp* rsp);
+long sys_net_http_get(const struct net_http_get_req* req, struct net_http_get_rsp* rsp);
+long sys_pci_get_count(void);
+long sys_pci_get_device(uint16_t index, struct pci_device_info* out_info);
+long sys_usb_get_count(void);
+long sys_usb_get_controller(uint16_t index, struct usb_controller_info* out_info);
 long sys_fs_touch(const char* path);
 long sys_fs_mkdir(const char* path);
 long sys_kb_poll(void);
@@ -167,5 +233,6 @@ long sys_pty_read(int32_t pty_id, char* buf, uint32_t size);
 long sys_pty_write(int32_t pty_id, const char* buf, uint32_t size);
 long sys_pty_spawn(const char* cmdline, int32_t pty_id);
 long sys_pty_out_avail(int32_t pty_id);
+long sys_pty_in_avail(int32_t pty_id);
 
 #endif

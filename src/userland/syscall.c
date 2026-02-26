@@ -166,6 +166,26 @@ long sys_net_tcp_probe(const struct net_tcp_probe_req* req, struct net_tcp_probe
     return syscall2(SYS_NET_TCP_PROBE, (long)req, (long)rsp);
 }
 
+long sys_net_http_get(const struct net_http_get_req* req, struct net_http_get_rsp* rsp) {
+    return syscall2(SYS_NET_HTTP_GET, (long)req, (long)rsp);
+}
+
+long sys_pci_get_count(void) {
+    return syscall0(SYS_PCI_GET_COUNT);
+}
+
+long sys_pci_get_device(uint16_t index, struct pci_device_info* out_info) {
+    return syscall2(SYS_PCI_GET_DEVICE, (long)index, (long)out_info);
+}
+
+long sys_usb_get_count(void) {
+    return syscall0(SYS_USB_GET_COUNT);
+}
+
+long sys_usb_get_controller(uint16_t index, struct usb_controller_info* out_info) {
+    return syscall2(SYS_USB_GET_CONTROLLER, (long)index, (long)out_info);
+}
+
 long sys_fs_touch(const char* path) {
     return syscall1(SYS_FS_TOUCH, (long)path);
 }
@@ -204,4 +224,8 @@ long sys_pty_spawn(const char* cmdline, int32_t pty_id) {
 
 long sys_pty_out_avail(int32_t pty_id) {
     return syscall1(SYS_PTY_OUT_AVAIL, (long)pty_id);
+}
+
+long sys_pty_in_avail(int32_t pty_id) {
+    return syscall1(SYS_PTY_IN_AVAIL, (long)pty_id);
 }

@@ -20,5 +20,6 @@ size_t pty_slave_write(task_t* task, const char* buf, size_t len);
 size_t pty_host_read(int32_t id, char* buf, size_t len);
 size_t pty_host_write(int32_t id, const char* buf, size_t len);
 size_t pty_host_out_available(int32_t id);
+size_t pty_host_in_available(int32_t id);
 
 #endif

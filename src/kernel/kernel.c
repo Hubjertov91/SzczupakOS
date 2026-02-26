@@ -11,6 +11,11 @@
 #include <kernel/drivers/pit.h>
 #include <kernel/drivers/keyboard.h>
 #include <kernel/drivers/mouse.h>
+#include <kernel/drivers/rtc.h>
+#include <kernel/drivers/pci.h>
+#include <kernel/drivers/usb.h>
+#include <kernel/drivers/ata.h>
+#include <kernel/drivers/rtl8168.h>
 #include <kernel/task/scheduler.h>
 #include <kernel/task/task.h>
 #include <kernel/task/tss.h>
@@ -73,6 +78,14 @@ void kernel_main(uint64_t multiboot_addr) {
     pit_init(100);
     keyboard_init();
     mouse_init();
+    rtc_init();
+    pci_init();
+    usb_init();
+    serial_write("[HW] Adaptive hardware mode: probing host devices and selecting drivers\n");
+    bool host_rtl8168_ready = rtl8168_init();
+    if (host_rtl8168_ready) {
+        serial_write("[HW] Host NIC profile detected: Realtek RTL8168 family\n");
+    }
 
     bool net_ready = false;
     if (net_init()) {
@@ -86,7 +99,15 @@ void kernel_main(uint64_t multiboot_addr) {
         }
         __asm__ volatile("cli");
         net_ready = net_is_ready();
+        if (net_ready) {
+            serial_write("[HW] Network backend selected: ");
+            serial_write(net_get_backend_name());
+            serial_write("\n");
+        }
     } else {
+        if (host_rtl8168_ready) {
+            serial_write("[HW] Native RTL8168 detected; full stack integration is in progress\n");
+        }
         serial_write("[KERNEL] WARNING: Network initialization failed\n");
     }
     
@@ -94,10 +115,11 @@ void kernel_main(uint64_t multiboot_addr) {
         serial_write("[KERNEL] ERROR: Task initialization failed\n");
         while(1) __asm__ volatile("hlt");
     }
-    // pty_init();
+    pty_init();
     
     scheduler_init();
     vfs_init();
+    ata_init();
 
     if (framebuffer_available()) {
         fb_color_t bg = {0, 0, 0, 0};

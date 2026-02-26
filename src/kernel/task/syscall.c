@@ -11,6 +11,8 @@
 #include <drivers/psf.h>
 #include <drivers/keyboard.h>
 #include <drivers/mouse.h>
+#include <drivers/pci.h>
+#include <drivers/usb.h>
 #include <net/net.h>
 #include <kernel/string.h>
 #include <task/scheduler.h>
@@ -45,6 +47,7 @@ extern uint64_t pmm_get_used_memory(void);
 #define EXEC_FILE_MAX (2 * 1024 * 1024)
 #define LISTDIR_BUF_MAX 4096
 #define NET_HOSTNAME_MAX 256
+#define NET_HTTP_BODY_MAX 8192
 #define FS_RET_INVALID   ((uint64_t)-1)
 #define FS_RET_PARENT    ((uint64_t)-2)
 #define FS_RET_EXISTS    ((uint64_t)-3)
@@ -384,6 +387,11 @@ static uint64_t sys_pty_spawn(uint64_t cmdline_addr, uint64_t pty_id) {
 static uint64_t sys_pty_out_avail(uint64_t pty_id) {
     if (!pty_is_open((int32_t)pty_id)) return (uint64_t)-1;
     return (uint64_t)pty_host_out_available((int32_t)pty_id);
+}
+
+static uint64_t sys_pty_in_avail(uint64_t pty_id) {
+    if (!pty_is_open((int32_t)pty_id)) return (uint64_t)-1;
+    return (uint64_t)pty_host_in_available((int32_t)pty_id);
 }
 
 static uint64_t sys_listdir(uint64_t path_addr, uint64_t buf_addr, uint64_t buf_size) {
@@ -810,6 +818,145 @@ static uint64_t sys_net_tcp_probe(uint64_t req_addr, uint64_t rsp_addr) {
     return 0;
 }
 
+static bool fixed_buffer_has_nul(const char* buf, size_t max_len) {
+    if (!buf || max_len == 0) {
+        return false;
+    }
+    for (size_t i = 0; i < max_len; i++) {
+        if (buf[i] == '\0') {
+            return true;
+        }
+    }
+    return false;
+}
+
+static uint64_t sys_net_http_get(uint64_t req_addr, uint64_t rsp_addr) {
+    if (!req_addr || !rsp_addr) return (uint64_t)-1;
+
+    struct net_http_get_req req;
+    if (copy_from_user(&req, (const void*)req_addr, sizeof(req)) != 0) {
+        return (uint64_t)-1;
+    }
+
+    if (!req.out_body_addr || req.out_body_capacity == 0 ||
+        req.out_body_capacity > NET_HTTP_BODY_MAX) {
+        return (uint64_t)-1;
+    }
+
+    if (!fixed_buffer_has_nul(req.host, sizeof(req.host)) ||
+        !fixed_buffer_has_nul(req.path, sizeof(req.path))) {
+        return (uint64_t)-1;
+    }
+
+    uint8_t* body = kmalloc(req.out_body_capacity);
+    if (!body) {
+        return (uint64_t)-1;
+    }
+
+    const char* path = (req.path[0] != '\0') ? req.path : "/";
+    uint16_t status_code = 0;
+    uint32_t body_length = 0;
+    bool truncated = false;
+    bool ok = net_http_get_ipv4(req.dst_ip, req.dst_port,
+                                req.host, path, req.timeout_ms,
+                                body, req.out_body_capacity,
+                                &body_length, &status_code, &truncated);
+
+    if (ok && body_length > 0) {
+        if (copy_to_user((void*)req.out_body_addr, body, body_length) != 0) {
+            kfree(body);
+            return (uint64_t)-1;
+        }
+    }
+
+    struct net_http_get_rsp rsp;
+    memset(&rsp, 0, sizeof(rsp));
+    rsp.ok = ok ? 1u : 0u;
+    rsp.truncated = truncated ? 1u : 0u;
+    rsp.status_code = status_code;
+    rsp.body_length = body_length;
+
+    kfree(body);
+
+    if (copy_to_user((void*)rsp_addr, &rsp, sizeof(rsp)) != 0) {
+        return (uint64_t)-1;
+    }
+
+    return 0;
+}
+
+static uint64_t sys_pci_get_count(void) {
+    return (uint64_t)pci_get_device_count();
+}
+
+static uint64_t sys_pci_get_device(uint64_t index, uint64_t out_addr) {
+    if (!out_addr || index > 0xFFFFu) {
+        return (uint64_t)-1;
+    }
+
+    pci_device_t kdev;
+    if (!pci_get_device((uint16_t)index, &kdev)) {
+        return (uint64_t)-1;
+    }
+
+    struct pci_device_info udev;
+    memset(&udev, 0, sizeof(udev));
+    udev.bus = kdev.bus;
+    udev.slot = kdev.slot;
+    udev.function = kdev.function;
+    udev.class_code = kdev.class_code;
+    udev.subclass = kdev.subclass;
+    udev.prog_if = kdev.prog_if;
+    udev.revision_id = kdev.revision_id;
+    udev.header_type = kdev.header_type;
+    udev.vendor_id = kdev.vendor_id;
+    udev.device_id = kdev.device_id;
+    udev.is_pcie = kdev.is_pcie ? 1u : 0u;
+
+    if (copy_to_user((void*)out_addr, &udev, sizeof(udev)) != 0) {
+        return (uint64_t)-1;
+    }
+    return 0;
+}
+
+static uint64_t sys_usb_get_count(void) {
+    return (uint64_t)usb_get_controller_count();
+}
+
+static uint64_t sys_usb_get_controller(uint64_t index, uint64_t out_addr) {
+    if (!out_addr || index > 0xFFFFu) {
+        return (uint64_t)-1;
+    }
+
+    usb_controller_info_t kctrl;
+    if (!usb_get_controller((uint16_t)index, &kctrl)) {
+        return (uint64_t)-1;
+    }
+
+    struct usb_controller_info uctrl;
+    memset(&uctrl, 0, sizeof(uctrl));
+    uctrl.bus = kctrl.bus;
+    uctrl.slot = kctrl.slot;
+    uctrl.function = kctrl.function;
+    uctrl.controller_type = kctrl.controller_type;
+    uctrl.class_code = kctrl.class_code;
+    uctrl.subclass = kctrl.subclass;
+    uctrl.prog_if = kctrl.prog_if;
+    uctrl.vendor_id = kctrl.vendor_id;
+    uctrl.device_id = kctrl.device_id;
+    uctrl.is_pcie = kctrl.is_pcie ? 1u : 0u;
+    uctrl.initialized = kctrl.initialized ? 1u : 0u;
+    uctrl.port_count = kctrl.port_count;
+    uctrl.connected_ports = kctrl.connected_ports;
+    uctrl.io_base = kctrl.io_base;
+    uctrl.mmio_base = kctrl.mmio_base;
+
+    if (copy_to_user((void*)out_addr, &uctrl, sizeof(uctrl)) != 0) {
+        return (uint64_t)-1;
+    }
+    return 0;
+}
+
 void syscall_handler(syscall_regs_t* regs) {
     task_t* current_task = get_current_task();
     if (!current_task) {
@@ -848,6 +995,11 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_NET_STATS: regs->rax = sys_net_stats(regs->rdi); break;
         case SYSCALL_NET_TRACE_PROBE: regs->rax = sys_net_trace_probe(regs->rdi, regs->rsi); break;
         case SYSCALL_NET_TCP_PROBE: regs->rax = sys_net_tcp_probe(regs->rdi, regs->rsi); break;
+        case SYSCALL_NET_HTTP_GET: regs->rax = sys_net_http_get(regs->rdi, regs->rsi); break;
+        case SYSCALL_PCI_GET_COUNT: regs->rax = sys_pci_get_count(); break;
+        case SYSCALL_PCI_GET_DEVICE: regs->rax = sys_pci_get_device(regs->rdi, regs->rsi); break;
+        case SYSCALL_USB_GET_COUNT: regs->rax = sys_usb_get_count(); break;
+        case SYSCALL_USB_GET_CONTROLLER: regs->rax = sys_usb_get_controller(regs->rdi, regs->rsi); break;
         case SYSCALL_KB_POLL: regs->rax = sys_kb_poll(); break;
         case SYSCALL_MOUSE_POLL: regs->rax = sys_mouse_poll(regs->rdi); break;
         case SYSCALL_PTY_OPEN: regs->rax = sys_pty_open(); break;
@@ -856,6 +1008,7 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_PTY_WRITE: regs->rax = sys_pty_write(regs->rdi, regs->rsi, regs->rdx); break;
         case SYSCALL_PTY_SPAWN: regs->rax = sys_pty_spawn(regs->rdi, regs->rsi); break;
         case SYSCALL_PTY_OUT_AVAIL: regs->rax = sys_pty_out_avail(regs->rdi); break;
+        case SYSCALL_PTY_IN_AVAIL: regs->rax = sys_pty_in_avail(regs->rdi); break;
         default:
             serial_write("[SYSCALL] Unknown syscall: ");
             serial_write_dec(regs->rax);

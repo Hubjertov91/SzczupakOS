@@ -37,6 +37,15 @@
 #define SYSCALL_PTY_WRITE   31
 #define SYSCALL_PTY_SPAWN   32
 #define SYSCALL_PTY_OUT_AVAIL 33
+#define SYSCALL_NET_HTTP_GET 34
+#define SYSCALL_PCI_GET_COUNT 35
+#define SYSCALL_PCI_GET_DEVICE 36
+#define SYSCALL_USB_GET_COUNT 37
+#define SYSCALL_USB_GET_CONTROLLER 38
+#define SYSCALL_PTY_IN_AVAIL 39
+
+#define NET_HTTP_HOST_MAX 128
+#define NET_HTTP_PATH_MAX 192
 
 
 struct sysinfo {
@@ -125,6 +134,58 @@ struct net_tcp_probe_rsp {
     uint8_t open;
     uint8_t _reserved[2];
     uint32_t rtt_ms;
+};
+
+struct net_http_get_req {
+    uint8_t dst_ip[4];
+    uint16_t dst_port;
+    uint16_t _reserved0;
+    uint32_t timeout_ms;
+    uint64_t out_body_addr;
+    uint32_t out_body_capacity;
+    uint32_t _reserved1;
+    char host[NET_HTTP_HOST_MAX];
+    char path[NET_HTTP_PATH_MAX];
+};
+
+struct net_http_get_rsp {
+    uint8_t ok;
+    uint8_t truncated;
+    uint16_t status_code;
+    uint32_t body_length;
+};
+
+struct pci_device_info {
+    uint8_t bus;
+    uint8_t slot;
+    uint8_t function;
+    uint8_t class_code;
+    uint8_t subclass;
+    uint8_t prog_if;
+    uint8_t revision_id;
+    uint8_t header_type;
+    uint16_t vendor_id;
+    uint16_t device_id;
+    uint8_t is_pcie;
+    uint8_t _reserved[3];
+};
+
+struct usb_controller_info {
+    uint8_t bus;
+    uint8_t slot;
+    uint8_t function;
+    uint8_t controller_type;
+    uint8_t class_code;
+    uint8_t subclass;
+    uint8_t prog_if;
+    uint16_t vendor_id;
+    uint16_t device_id;
+    uint8_t is_pcie;
+    uint8_t initialized;
+    uint8_t port_count;
+    uint8_t connected_ports;
+    uint32_t io_base;
+    uint64_t mmio_base;
 };
 
 bool syscall_init(void);

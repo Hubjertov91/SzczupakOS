@@ -28,8 +28,12 @@ __attribute__((noinline)) void terminal_wait_input(void) {
         } else {
             if (keyboard_has_input() || serial_has_data()) break;
         }
-        __asm__ volatile("sti; hlt; cli");
         net_poll();
+        /*
+         * Keep polling input even if timer/IRQ delivery is temporarily broken.
+         * This avoids getting stuck in HLT while serial input is pending.
+         */
+        __asm__ volatile("sti; pause; pause; pause; cli");
     }
 
     if (allow_preempt) {
