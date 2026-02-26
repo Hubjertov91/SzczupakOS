@@ -156,10 +156,20 @@ static uint64_t sys_write(uint64_t str_addr, uint64_t size) {
 
 static uint64_t sys_read(uint64_t buf_addr, uint64_t size) {
     if (!buf_addr || size == 0) return 0;
+    if (size > 4096) size = 4096;
+
+    if (size == 1) {
+        char c = 0;
+        if (terminal_read(&c, 1) <= 0) return 0;
+        if (c == '\r') c = '\n';
+        if (copy_to_user((void*)buf_addr, &c, 1) != 0) return -1;
+        return 1;
+    }
+
     char buffer[4096];
     size_t pos = 0;
     
-    while (pos < size - 1 && pos < 4096 - 1) {
+    while (pos < size - 1 && pos < sizeof(buffer) - 1) {
         char c;
         size_t n = terminal_read(&c, 1);
         if (n <= 0) break;
@@ -213,7 +223,7 @@ static uint64_t sys_sysinfo(uint64_t info_addr) {
     info.uptime = pit_get_ticks() / 100;
     info.total_memory = pmm_get_total_memory();
     info.free_memory = pmm_get_total_memory() - pmm_get_used_memory();
-    info.nr_processes = 1;
+    info.nr_processes = task_get_process_count();
     if (copy_to_user((void*)info_addr, &info, sizeof(info)) != 0) return -1;
     return 0;
 }
@@ -237,19 +247,6 @@ static bool copy_cmdline_from_user(uint64_t cmdline_addr, char* out, size_t out_
     if (i == 0 || i == out_size) return false;
     memcpy(out, cmdline, i + 1);
     return true;
-}
-
-static void destroy_terminated_task(task_t* task) {
-    if (!task) return;
-    if (task->page_dir) {
-        vmm_destroy_address_space(task->page_dir);
-        task->page_dir = NULL;
-    }
-    if (task->kernel_stack && task->stack_size >= PAGE_SIZE) {
-        vmm_free_pages(task->kernel_stack, task->stack_size / PAGE_SIZE);
-        task->kernel_stack = NULL;
-    }
-    kfree(task);
 }
 
 static task_t* spawn_task_from_cmdline(char* cmdline, int32_t pty_id) {
@@ -296,7 +293,7 @@ static task_t* spawn_task_from_cmdline(char* cmdline, int32_t pty_id) {
         if (!pty_is_open(pty_id) || pty_attach_slave(pty_id, task->pid) != 0) {
             task->state = TASK_TERMINATED;
             scheduler_remove_task(task);
-            destroy_terminated_task(task);
+            task_reap_terminated();
             return NULL;
         }
         task->pty_id = pty_id;
@@ -317,6 +314,7 @@ static uint64_t sys_exec(uint64_t cmdline_addr) {
     int32_t inherited_pty = (current) ? current->pty_id : -1;
     task_t* task = spawn_task_from_cmdline(cmdline, inherited_pty);
     if (!task) return (uint64_t)-1;
+    task->reap_blocked = true;
 
     bool preempt_enabled = false;
     if (current && !current->is_kernel) {
@@ -329,13 +327,14 @@ static uint64_t sys_exec(uint64_t cmdline_addr) {
         net_poll();
     }
 
+    uint64_t pid = task->pid;
+    task->reap_blocked = false;
+
     if (preempt_enabled && current) {
         current->kernel_preempt_ok = false;
     }
 
-    uint64_t pid = task->pid;
-    destroy_terminated_task(task);
-
+    task_reap_terminated();
     return pid;
 }
 

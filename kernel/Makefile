@@ -5,6 +5,7 @@ LD = ld
 ASFLAGS = -f elf64
 CFLAGS = -m64 -ffreestanding -O0 -Wall -Wextra -nostdlib -nostdinc -fno-pie -mcmodel=large -I../include -I../include/kernel
 LDFLAGS = -n -T ../kernel.ld
+DEPFLAGS = -MMD -MP
 
 BUILD_DIR = ../build
 OBJ_DIR = $(BUILD_DIR)/obj
@@ -72,35 +73,37 @@ $(OBJ_DIR)/kernel/arch/x86_64/%.o: ../src/kernel/arch/x86_64/%.S
 
 $(OBJ_DIR)/kernel/%.o: ../src/kernel/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/kernel/drivers/%.o: ../src/kernel/drivers/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/kernel/fs/%.o: ../src/kernel/fs/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/kernel/mm/%.o: ../src/kernel/mm/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/kernel/task/%.o: ../src/kernel/task/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/kernel/net/%.o: ../src/kernel/net/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/kernel/net/net.o: $(NET_SPLIT_SRCS)
 
 $(OBJ_DIR)/kernel/loader/%.o: ../src/kernel/loader/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)/kernel.bin $(OBJ_DIR)/kernel
 
 .PHONY: all clean
+
+-include $(KERNEL_OBJS:.o=.d)

@@ -117,6 +117,10 @@ int copy_from_user(void* kernel_dst, const void* user_src, size_t size) {
     }
     
     uint64_t src_addr = (uint64_t)user_src;
+    int ret = validate_user_range(src_addr, size);
+    if (ret) {
+        return ret;
+    }
     
     page_directory_t* dir = get_current_user_dir();
     if (!dir) {
@@ -125,12 +129,20 @@ int copy_from_user(void* kernel_dst, const void* user_src, size_t size) {
     
     uint8_t* dst = (uint8_t*)kernel_dst;
     size_t copied = 0;
+
+    if (smap_enabled) stac();
     
     while (copied < size) {
         uint64_t vaddr = src_addr + copied;
+
+        if (!check_page_permissions(dir, vaddr, false)) {
+            if (smap_enabled) clac();
+            return -EFAULT;
+        }
         
         uint64_t phys = vmm_get_physical(dir, vaddr);
         if (!phys) {
+            if (smap_enabled) clac();
             return -EFAULT;
         }
         
@@ -138,7 +150,7 @@ int copy_from_user(void* kernel_dst, const void* user_src, size_t size) {
         size_t chunk = 4096 - page_offset;
         if (chunk > size - copied) chunk = size - copied;
         
-        const uint8_t* src_page = (const uint8_t*)((phys & ~0xFFFULL) + 0xFFFF800000000000ULL + page_offset);
+        const uint8_t* src_page = (const uint8_t*)PHYS_TO_VIRT(phys & ~0xFFFULL) + page_offset;
         
         for (size_t i = 0; i < chunk; i++) {
             dst[copied + i] = src_page[i];
@@ -146,6 +158,8 @@ int copy_from_user(void* kernel_dst, const void* user_src, size_t size) {
         
         copied += chunk;
     }
+
+    if (smap_enabled) clac();
     
     return 0;
 }
@@ -352,7 +366,7 @@ int clear_user(void* user_dst, size_t size) {
             return -EFAULT;
         }
         
-        volatile uint8_t* dst_page = (volatile uint8_t*)(phys + page_offset);
+        volatile uint8_t* dst_page = (volatile uint8_t*)PHYS_TO_VIRT(phys & ~0xFFFULL) + page_offset;
         
         if (chunk_size >= FAST_COPY_THRESHOLD && ((uint64_t)dst_page & 7) == 0) {
             size_t qwords = chunk_size / 8;

@@ -3,6 +3,7 @@ LD = ld
 
 USER_CFLAGS = -m64 -ffreestanding -nostdlib -nostdinc -fno-pie -fno-stack-protector -fcf-protection=none -mcmodel=large -O0 -I../include/user
 USER_LDFLAGS = -nostdlib -T ../src/userland/ld/user.ld
+DEPFLAGS = -MMD -MP
 
 BUILD_DIR = ../build
 OBJ_DIR = $(BUILD_DIR)/obj
@@ -29,7 +30,7 @@ $(BUILD_DIR)/user/%.elf: $(USER_COMMON_OBJS) $(OBJ_DIR)/user/programs/%.o
 
 $(OBJ_DIR)/user/%.o: ../src/userland/%.c
 	@mkdir -p $(dir $@)
-	$(CC) $(USER_CFLAGS) -c $< -o $@
+	$(CC) $(USER_CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/user/crt0.o: ../src/userland/arch/x86_64/crt0.S
 	@mkdir -p $(dir $@)
@@ -40,3 +41,5 @@ clean:
 
 .SECONDARY: $(PROGRAM_OBJS)
 .PHONY: all clean
+
+-include $(USER_COMMON_OBJS:.o=.d) $(PROGRAM_OBJS:.o=.d)

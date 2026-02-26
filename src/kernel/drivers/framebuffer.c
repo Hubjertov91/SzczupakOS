@@ -129,6 +129,11 @@ bool framebuffer_init(struct multiboot_tag_framebuffer* fb_tag) {
     fb_info.type = fb_tag->framebuffer_type;
     fb_info.bytes_per_pixel = (fb_info.bpp + 7) / 8;
     fb_info.buffer_size = fb_info.pitch * fb_info.height;
+
+    if (fb_info.type != 1) {
+        serial_write("[FB] Unsupported framebuffer type, falling back to VGA text\n");
+        return false;
+    }
     if (fb_info.bytes_per_pixel == 0 || fb_info.width == 0 || fb_info.height == 0) {
         serial_write("[FB] Invalid framebuffer geometry\n");
         return false;

@@ -33,6 +33,7 @@ typedef struct task {
     void* kernel_stack;
     uint64_t stack_size;
     struct task* next;
+    struct task* all_next;
     uint64_t time_slice;
     uint8_t priority;
     bool is_kernel;
@@ -44,6 +45,7 @@ typedef struct task {
     uint64_t syscall_kernel_rsp;
     bool kernel_preempt_ok;
     int32_t pty_id;
+    bool reap_blocked;
 } task_t;
 
 bool task_init(void);
@@ -55,5 +57,7 @@ task_t* get_current_task(void);
 void task_yield(void);
 uint32_t task_get_pid(void);
 void task_set_current(task_t* task);
+uint32_t task_get_process_count(void);
+void task_reap_terminated(void);
 
 #endif

@@ -34,6 +34,14 @@ struct multiboot_tag_framebuffer {
     uint8_t  reserved;
 } __attribute__((packed));
 
+struct multiboot_tag_module {
+    uint32_t type;
+    uint32_t size;
+    uint32_t mod_start;
+    uint32_t mod_end;
+    char cmdline[0];
+} __attribute__((packed));
+
 struct multiboot_color {
     uint8_t red;
     uint8_t green;
@@ -41,8 +49,10 @@ struct multiboot_color {
 };
 
 #define MULTIBOOT_TAG_TYPE_END 0
+#define MULTIBOOT_TAG_TYPE_CMDLINE 1
 #define MULTIBOOT_TAG_TYPE_MMAP 6
 #define MULTIBOOT_TAG_TYPE_FRAMEBUFFER 8
+#define MULTIBOOT_TAG_TYPE_MODULE 3
 
 #define MULTIBOOT_MEMORY_AVAILABLE 1
 #define MULTIBOOT_MEMORY_RESERVED 2
@@ -51,5 +61,9 @@ struct multiboot_color {
 
 bool multiboot_parse(uint64_t addr);
 struct multiboot_tag_framebuffer* multiboot_get_framebuffer_tag(void);
+const char* multiboot_get_cmdline(void);
+size_t multiboot_get_module_count(void);
+const struct multiboot_tag_module* multiboot_get_module(size_t index);
+const struct multiboot_tag_module* multiboot_find_module(const char* token);
 
 #endif

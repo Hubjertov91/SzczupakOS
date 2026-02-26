@@ -2,10 +2,44 @@
 #include <kernel/vga.h>
 #include <mm/pmm.h>
 #include <kernel/multiboot2.h>
+#include <kernel/string.h>
 
 extern uint8_t kernel_end;
 
 static struct multiboot_tag_framebuffer* saved_fb_tag = NULL;
+static const struct multiboot_tag_module* saved_modules[32];
+static size_t saved_module_count = 0;
+static char saved_cmdline[256];
+
+static char upper_ascii(char c) {
+    if (c >= 'a' && c <= 'z') {
+        return (char)(c - ('a' - 'A'));
+    }
+    return c;
+}
+
+static bool contains_token_nocase(const char* haystack, const char* needle) {
+    if (!haystack || !needle) return false;
+
+    size_t needle_len = strlen(needle);
+    if (needle_len == 0) return false;
+
+    size_t hay_len = strlen(haystack);
+    if (hay_len < needle_len) return false;
+
+    for (size_t i = 0; i + needle_len <= hay_len; i++) {
+        bool match = true;
+        for (size_t j = 0; j < needle_len; j++) {
+            if (upper_ascii(haystack[i + j]) != upper_ascii(needle[j])) {
+                match = false;
+                break;
+            }
+        }
+        if (match) return true;
+    }
+
+    return false;
+}
 
 bool multiboot_parse(uint64_t multiboot_addr) {
     if (multiboot_addr == 0) {
@@ -22,6 +56,10 @@ bool multiboot_parse(uint64_t multiboot_addr) {
     struct multiboot_tag* tag;
     struct multiboot_tag_mmap* mmap_tag = NULL;
     uint64_t highest_addr = 0;
+
+    saved_fb_tag = NULL;
+    saved_module_count = 0;
+    saved_cmdline[0] = '\0';
     
     for (tag = (struct multiboot_tag*)(multiboot_addr + 8);
          tag->type != MULTIBOOT_TAG_TYPE_END;
@@ -48,6 +86,33 @@ bool multiboot_parse(uint64_t multiboot_addr) {
         if (tag->type == MULTIBOOT_TAG_TYPE_FRAMEBUFFER) {
             saved_fb_tag = (struct multiboot_tag_framebuffer*)tag;
         }
+
+        if (tag->type == MULTIBOOT_TAG_TYPE_CMDLINE && tag->size > sizeof(struct multiboot_tag)) {
+            const char* cmdline = (const char*)((const uint8_t*)tag + sizeof(struct multiboot_tag));
+            size_t payload = (size_t)tag->size - sizeof(struct multiboot_tag);
+            size_t copy_len = payload;
+            if (copy_len >= sizeof(saved_cmdline)) {
+                copy_len = sizeof(saved_cmdline) - 1;
+            }
+            memcpy(saved_cmdline, cmdline, copy_len);
+            saved_cmdline[copy_len] = '\0';
+
+            for (size_t i = 0; i < copy_len; i++) {
+                if (saved_cmdline[i] == '\0') {
+                    break;
+                }
+                if (i + 1 == copy_len) {
+                    saved_cmdline[copy_len] = '\0';
+                }
+            }
+        }
+
+        if (tag->type == MULTIBOOT_TAG_TYPE_MODULE && saved_module_count < (sizeof(saved_modules) / sizeof(saved_modules[0]))) {
+            struct multiboot_tag_module* module = (struct multiboot_tag_module*)tag;
+            if (module->mod_end > module->mod_start) {
+                saved_modules[saved_module_count++] = module;
+            }
+        }
     }
     
     pmm_init(0, highest_addr);
@@ -62,10 +127,55 @@ bool multiboot_parse(uint64_t multiboot_addr) {
             }
         }
     }
+
+    for (size_t i = 0; i < saved_module_count; i++) {
+        const struct multiboot_tag_module* module = saved_modules[i];
+        pmm_reserve_range(module->mod_start, module->mod_end);
+    }
+
+    serial_write("[MULTIBOOT] Modules: ");
+    serial_write_dec((uint32_t)saved_module_count);
+    serial_write("\n");
+    if (saved_cmdline[0] != '\0') {
+        serial_write("[MULTIBOOT] Kernel cmdline: ");
+        serial_write(saved_cmdline);
+        serial_write("\n");
+    }
+
     serial_write("[MULTIBOOT] Multiboot info parsed successfully\n");
     return true;
 }
 
 struct multiboot_tag_framebuffer* multiboot_get_framebuffer_tag(void) {
     return saved_fb_tag;
+}
+
+const char* multiboot_get_cmdline(void) {
+    return saved_cmdline;
+}
+
+size_t multiboot_get_module_count(void) {
+    return saved_module_count;
+}
+
+const struct multiboot_tag_module* multiboot_get_module(size_t index) {
+    if (index >= saved_module_count) {
+        return NULL;
+    }
+    return saved_modules[index];
+}
+
+const struct multiboot_tag_module* multiboot_find_module(const char* token) {
+    if (!token || token[0] == '\0') {
+        return NULL;
+    }
+
+    for (size_t i = 0; i < saved_module_count; i++) {
+        const struct multiboot_tag_module* module = saved_modules[i];
+        if (contains_token_nocase(module->cmdline, token)) {
+            return module;
+        }
+    }
+
+    return NULL;
 }

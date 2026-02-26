@@ -1,6 +1,8 @@
 BUILD_DIR = build
 ISO_DIR = $(BUILD_DIR)/iso
 DISK_IMG = disk.img
+VDI_IMG = disk.vdi
+VBOXMANAGE ?= VBoxManage
 HOSTPING_TAP = tap0
 HOSTPING_HOST_CIDR = 192.168.76.1/24
 QEMU_USB_CONTROLLER = -device qemu-xhci,id=xhci
@@ -8,9 +10,9 @@ QEMU_USB_HID = -device usb-kbd,bus=xhci.0 -device usb-mouse,bus=xhci.0
 QEMU_GUI_CONSOLE = -vga std -serial stdio -monitor none
 QEMU_HEADLESS_CONSOLE = -display none -serial stdio -monitor none
 
-.PHONY: all clean clean-disk setup-disk run run-nat run2 run-hostping run-hostping-debug run-usb-hid run-nat-usb-hid run-serial run-nat-serial hostping-up hostping-down k u
+.PHONY: all clean clean-disk clean-vdi setup-disk setup-vdi run run-nat run2 run-hostping run-hostping-debug run-usb-hid run-nat-usb-hid run-serial run-nat-serial hostping-up hostping-down k u
 
-all: $(BUILD_DIR)/os.iso
+all: $(BUILD_DIR)/os.iso $(DISK_IMG) $(VDI_IMG)
 
 k:
 	$(MAKE) -C kernel
@@ -31,22 +33,36 @@ $(DISK_IMG): u
 	done
 	mcopy -i $(DISK_IMG) assets/fonts/8x16.psf ::/FONT.PSF 2>/dev/null
 
+$(VDI_IMG): $(DISK_IMG)
+	@command -v $(VBOXMANAGE) >/dev/null 2>&1 || { \
+		echo "[vdi] ERROR: $(VBOXMANAGE) not found in PATH"; \
+		echo "[vdi] Install VirtualBox CLI or set VBOXMANAGE=/path/to/VBoxManage"; \
+		exit 1; \
+	}
+	rm -f $(VDI_IMG)
+	$(VBOXMANAGE) convertfromraw $(DISK_IMG) $(VDI_IMG) --format VDI >/dev/null
+
 $(BUILD_DIR)/os.iso: k u
 	@mkdir -p $(ISO_DIR)/boot/grub
 	cp $(BUILD_DIR)/kernel.bin $(ISO_DIR)/boot/
-	cp $(BUILD_DIR)/user/shell.elf $(ISO_DIR)/boot/
+	cp $(BUILD_DIR)/user/shell.elf $(ISO_DIR)/boot/SHELL.ELF
+	cp assets/fonts/8x16.psf $(ISO_DIR)/boot/FONT.PSF
 	cp boot/grub/grub.cfg $(ISO_DIR)/boot/grub/
 	grub-mkrescue -o $@ $(ISO_DIR) 2>/dev/null
 
 clean:
-	rm -rf $(BUILD_DIR) $(DISK_IMG)
+	rm -rf $(BUILD_DIR) $(DISK_IMG) $(VDI_IMG)
 	$(MAKE) -C kernel clean
 	$(MAKE) -C userland clean
 
 clean-disk:
 	rm -f $(DISK_IMG)
 
+clean-vdi:
+	rm -f $(VDI_IMG)
+
 setup-disk: $(DISK_IMG)
+setup-vdi: $(VDI_IMG)
 
 run: $(BUILD_DIR)/os.iso $(DISK_IMG)
 	@echo "[run] TAP mode with host ping support"

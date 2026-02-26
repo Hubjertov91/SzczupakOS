@@ -14,6 +14,7 @@ typedef struct {
 } psf1_header_t;
 
 bool psf_load(const char* path);
+bool psf_load_from_memory(const void* data, size_t size);
 void psf_draw_char(uint32_t x, uint32_t y, char c, fb_color_t fg, fb_color_t bg);
 uint32_t psf_get_width(void);
 uint32_t psf_get_height(void);

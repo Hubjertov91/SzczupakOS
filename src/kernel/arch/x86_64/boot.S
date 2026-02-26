@@ -16,9 +16,9 @@ framebuffer_tag_start:
     dw 5
     dw 0
     dd framebuffer_tag_end - framebuffer_tag_start
-    dd 1024
-    dd 768
-    dd 32
+    dd 0
+    dd 0
+    dd 0
 framebuffer_tag_end:
     
     align 8

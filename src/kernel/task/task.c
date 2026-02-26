@@ -10,6 +10,7 @@
 #include <kernel/stdint.h>
 #include <net/net.h>
 #include <kernel/pty.h>
+#include <kernel/spinlock.h>
 
 #define KERNEL_STACK_SIZE 16384
 #define USER_STACK_SIZE (32 * 4096)
@@ -21,6 +22,7 @@
 static task_t* current_task = NULL;
 static task_t* task_list_head = NULL;
 static uint32_t next_pid = 1;
+static spinlock_t task_list_lock = SPINLOCK_INIT;
 
 task_t* get_current_task(void) {
     return current_task;
@@ -32,8 +34,69 @@ extern void schedule(void);
 extern uint64_t pit_get_ticks(void);
 extern void usermode_entry(void);
 
+static bool task_stack_uses_vmm(void* stack, uint64_t stack_size) {
+    uint64_t addr = (uint64_t)stack;
+    if (!stack) return false;
+    if (addr < 0xFFFF800000000000ULL) return false;
+    if (stack_size == 0 || (stack_size % PAGE_SIZE) != 0) return false;
+    return true;
+}
+
+static void task_list_insert(task_t* task) {
+    if (!task) return;
+    irq_state_t state = spinlock_acquire_irqsave(&task_list_lock);
+    task->all_next = task_list_head;
+    task_list_head = task;
+    spinlock_release_irqrestore(&task_list_lock, state);
+}
+
+static bool task_list_remove(task_t* task) {
+    if (!task) return false;
+    irq_state_t state = spinlock_acquire_irqsave(&task_list_lock);
+
+    task_t* prev = NULL;
+    task_t* it = task_list_head;
+    while (it) {
+        if (it == task) {
+            if (prev) prev->all_next = it->all_next;
+            else task_list_head = it->all_next;
+            it->all_next = NULL;
+            spinlock_release_irqrestore(&task_list_lock, state);
+            return true;
+        }
+        prev = it;
+        it = it->all_next;
+    }
+
+    spinlock_release_irqrestore(&task_list_lock, state);
+    return false;
+}
+
+static void task_destroy(task_t* task) {
+    if (!task) return;
+
+    if (task->page_dir) {
+        vmm_destroy_address_space(task->page_dir);
+        task->page_dir = NULL;
+        task->cr3_phys = 0;
+    }
+
+    if (task->kernel_stack) {
+        if (task_stack_uses_vmm(task->kernel_stack, task->stack_size)) {
+            vmm_free_pages(task->kernel_stack, task->stack_size / PAGE_SIZE);
+        } else {
+            kfree(task->kernel_stack);
+        }
+        task->kernel_stack = NULL;
+        task->stack_size = 0;
+    }
+
+    kfree(task);
+}
+
 static void idle_task_entry(void) {
     for (;;) {
+        task_reap_terminated();
         __asm__ volatile("sti; hlt; cli");
         net_poll();
     }
@@ -186,6 +249,7 @@ bool task_init(void) {
     current_task->stack_size = KERNEL_STACK_SIZE;
     current_task->user_stack = NULL;
     current_task->next = NULL;
+    current_task->all_next = NULL;
     current_task->time_slice = 10;
     current_task->priority = 255;
     current_task->is_kernel = true;
@@ -195,6 +259,7 @@ bool task_init(void) {
     current_task->creation_time = 0;
     current_task->kernel_preempt_ok = false;
     current_task->pty_id = -1;
+    current_task->reap_blocked = false;
 
     current_task->context.r15 = 0;
     current_task->context.r14 = 0;
@@ -220,7 +285,7 @@ bool task_init(void) {
     current_task->context.cr3 = 0;
     current_task->syscall_kernel_rsp = (uint64_t)current_task->kernel_stack + KERNEL_STACK_SIZE - 256;
 
-    task_list_head = current_task;
+    task_list_insert(current_task);
     serial_write("[TASK] Idle task generated\n");
     return true;
 }
@@ -248,6 +313,7 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     task->creation_time = pit_get_ticks();
     task->kernel_preempt_ok = false;
     task->pty_id = -1;
+    task->reap_blocked = false;
 
     task->kernel_stack = kmalloc(KERNEL_STACK_SIZE);
     if (!task->kernel_stack) {
@@ -258,6 +324,7 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     task->stack_size = KERNEL_STACK_SIZE;
     task->user_stack = NULL;
     task->next = NULL;
+    task->all_next = NULL;
 
     uint64_t* kstack = (uint64_t*)((uint64_t)task->kernel_stack + KERNEL_STACK_SIZE);
 
@@ -282,6 +349,7 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     task->context.cr3 = 0;
     task->syscall_kernel_rsp = (uint64_t)task->kernel_stack + KERNEL_STACK_SIZE - 256;
 
+    task_list_insert(task);
     scheduler_add_task(task);
     return task;
 }
@@ -297,12 +365,14 @@ task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_dat
     task->state = TASK_READY;
     task->is_kernel = false;
     task->next = NULL;
+    task->all_next = NULL;
     task->time_slice = 10;
     task->priority = 10;
     task->cpu_time = 0;
     task->creation_time = pit_get_ticks();
     task->kernel_preempt_ok = false;
     task->pty_id = -1;
+    task->reap_blocked = false;
 
     task->kernel_stack = vmm_alloc_pages(KERNEL_STACK_SIZE / PAGE_SIZE);
     if (!task->kernel_stack) {
@@ -386,6 +456,7 @@ task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_dat
     
     task->syscall_kernel_rsp = (uint64_t)task->kernel_stack + KERNEL_STACK_SIZE - 256;
 
+    task_list_insert(task);
     scheduler_add_task(task);
 
     return task;
@@ -396,6 +467,7 @@ void task_exit(void) {
 
     pty_detach_slave(current_task->pid);
     current_task->pty_id = -1;
+    current_task->reap_blocked = false;
     current_task->state = TASK_TERMINATED;
     scheduler_remove_task(current_task);
 
@@ -421,64 +493,54 @@ uint32_t task_get_pid(void) {
     return current_task ? current_task->pid : 0;
 }
 
+uint32_t task_get_process_count(void) {
+    uint32_t count = 0;
+    irq_state_t state = spinlock_acquire_irqsave(&task_list_lock);
+    for (task_t* it = task_list_head; it; it = it->all_next) {
+        if (it->state != TASK_TERMINATED) {
+            count++;
+        }
+    }
+    spinlock_release_irqrestore(&task_list_lock, state);
+    return count;
+}
+
+void task_reap_terminated(void) {
+    for (;;) {
+        task_t* victim = NULL;
+
+        irq_state_t state = spinlock_acquire_irqsave(&task_list_lock);
+        task_t* it = task_list_head;
+        while (it) {
+            if (it != current_task && it->state == TASK_TERMINATED) {
+                if (it->reap_blocked) {
+                    it = it->all_next;
+                    continue;
+                }
+                victim = it;
+                break;
+            }
+            it = it->all_next;
+        }
+        spinlock_release_irqrestore(&task_list_lock, state);
+
+        if (!victim) {
+            return;
+        }
+        if (!task_list_remove(victim)) {
+            continue;
+        }
+
+        pty_detach_slave(victim->pid);
+        task_destroy(victim);
+    }
+}
+
 void task_set_current(task_t* task) {
     current_task = task;
 }
 
 task_t* task_fork(void) {
-    if (!current_task) return NULL;
-
-    task_t* child = (task_t*)kmalloc(sizeof(task_t));
-    if (!child) return NULL;
-
-    child->pid = next_pid++;
-    strcpy_safe(child->name, current_task->name, sizeof(child->name));
-    child->state = TASK_READY;
-    child->time_slice = current_task->time_slice;
-    child->priority = current_task->priority;
-    child->is_kernel = current_task->is_kernel;
-    child->cpu_time = 0;
-    child->creation_time = pit_get_ticks();
-    child->kernel_preempt_ok = false;
-    child->pty_id = -1;
-    child->next = NULL;
-
-    child->kernel_stack = kmalloc(KERNEL_STACK_SIZE);
-    if (!child->kernel_stack) {
-        kfree(child);
-        return NULL;
-    }
-    child->stack_size = KERNEL_STACK_SIZE;
-
-    if (current_task->is_kernel) {
-        child->user_stack = NULL;
-        child->page_dir = NULL;
-        child->cr3_phys = 0;
-    } else {
-        if (current_task->user_stack) {
-            child->user_stack = kmalloc(USER_STACK_SIZE);
-            if (!child->user_stack) {
-                kfree(child->kernel_stack);
-                kfree(child);
-                return NULL;
-            }
-            for (size_t i = 0; i < USER_STACK_SIZE; i++)
-                ((char*)child->user_stack)[i] = ((char*)current_task->user_stack)[i];
-        } else {
-            child->user_stack = NULL;
-        }
-        child->page_dir = current_task->page_dir;
-        child->cr3_phys = current_task->cr3_phys;
-    }
-
-    child->context.r15 = 0;
-    child->context.r14 = 0;
-    child->context.r13 = 0;
-    child->context.r12 = 0;
-    child->context.rbp = 0;
-    child->context.rbx = 0;
-    child->context.kernel_rsp = (uint64_t)child->kernel_stack + KERNEL_STACK_SIZE;
-
-    scheduler_add_task(child);
-    return child;
+    serial_write("[TASK] fork is temporarily disabled (unsafe semantics)\n");
+    return NULL;
 }
