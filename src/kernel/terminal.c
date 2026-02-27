@@ -2,6 +2,7 @@
 #include <kernel/vga.h>
 #include <drivers/serial.h>
 #include <drivers/keyboard.h>
+#include <drivers/usb.h>
 #include <drivers/framebuffer.h>
 #include <drivers/psf.h>
 #include <task/task.h>
@@ -24,6 +25,7 @@ __attribute__((noinline)) void terminal_wait_input(void) {
     }
 
     while (1) {
+        usb_poll();
         if (use_pty) {
             if (pty_slave_has_input(task)) break;
         } else {

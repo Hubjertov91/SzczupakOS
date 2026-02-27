@@ -211,11 +211,11 @@ static bool mount_boot_filesystem(void) {
 }
 
 void kernel_main(uint64_t multiboot_addr) {
+    serial_init();
+    serial_write("[KERNEL] Starting SzczupakOS...\n");
     vga_init();
     terminal_init();
-    serial_init();
-    
-    serial_write("[KERNEL] Starting SzczupakOS...\n");
+
     static const char boot_banner[] = "SzczupakOS: booting kernel...\n";
     terminal_write(boot_banner, sizeof(boot_banner) - 1);
     

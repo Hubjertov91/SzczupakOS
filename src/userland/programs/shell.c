@@ -41,6 +41,7 @@ int cmd_help(int argc, char** argv) {
     printf("External programs:\n");
     printf("  desktop     - GUI desktop with shell window\n");
     printf("                (Tab focus, mouse drag, ESC quit)\n");
+    printf("  file        - Detect file format by magic bytes\n");
     printf("  http        - HTTP GET client (http://... or host/path)\n");
     printf("  lspci       - List detected PCI/PCIe devices\n");
     printf("  ptysh       - Run command inside PTY bridge (default: /SHELL.ELF)\n");

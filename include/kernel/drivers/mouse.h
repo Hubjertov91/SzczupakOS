@@ -16,6 +16,9 @@ typedef struct {
 
 void mouse_init(void);
 void mouse_handler(void);
+void mouse_inject_usb(int8_t dx, int8_t dy, uint8_t buttons);
 bool mouse_poll_event(mouse_event_t* out);
+void mouse_set_usb_hid_active(bool active);
+uint32_t mouse_get_overrun_count(void);
 
 #endif

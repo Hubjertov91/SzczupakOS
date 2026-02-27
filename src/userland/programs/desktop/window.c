@@ -21,6 +21,8 @@ void window_apply_theme(desktop_window_t* w) {
     w->win.title_bg_color = themes[w->theme_idx].title_bg;
     w->win.body_color = themes[w->theme_idx].body_bg;
     w->win.title_fg_color = GUI_COLOR_RGB(245, 248, 253);
+    w->selected_bg_color = GUI_COLOR_RGB(52, 96, 141);
+    w->selected_fg_color = GUI_COLOR_RGB(246, 250, 255);
 }
 
 uint32_t window_title_height(const gui_window_t* win) {
@@ -69,7 +71,6 @@ void dirty_add(dirty_set_t* d, const gui_fb_info_t* fb, rect_t r) {
     rect_t merged = clip_to_fb(fb, r);
     if (!rect_valid(merged)) return;
 
-    // Keep the dirty list compact by fully coalescing overlapping rectangles.
     for (uint32_t i = 0; i < d->count;) {
         if (!rect_intersects(d->rects[i], merged)) {
             i++;

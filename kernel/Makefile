@@ -21,7 +21,12 @@ KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
               $(OBJ_DIR)/kernel/drivers/serial.o \
               $(OBJ_DIR)/kernel/drivers/rtc.o \
               $(OBJ_DIR)/kernel/drivers/pci.o \
-              $(OBJ_DIR)/kernel/drivers/usb.o \
+              $(OBJ_DIR)/kernel/drivers/usb/common.o \
+              $(OBJ_DIR)/kernel/drivers/usb/core.o \
+              $(OBJ_DIR)/kernel/drivers/usb/uhci.o \
+              $(OBJ_DIR)/kernel/drivers/usb/ohci.o \
+              $(OBJ_DIR)/kernel/drivers/usb/ehci.o \
+              $(OBJ_DIR)/kernel/drivers/usb/xhci.o \
               $(OBJ_DIR)/kernel/drivers/pic.o \
               $(OBJ_DIR)/kernel/drivers/pit.o \
               $(OBJ_DIR)/kernel/drivers/keyboard.o \
@@ -45,11 +50,11 @@ KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
               $(OBJ_DIR)/kernel/task/gdt.o \
               $(OBJ_DIR)/kernel/task/tss.o \
               $(OBJ_DIR)/kernel/task/syscall.o \
-	              $(OBJ_DIR)/kernel/net/net.o \
-	              $(OBJ_DIR)/kernel/loader/elf.o \
-	              $(OBJ_DIR)/kernel/pty.o \
-	              $(OBJ_DIR)/kernel/terminal.o \
-	              $(OBJ_DIR)/kernel/string.o
+              $(OBJ_DIR)/kernel/net/net.o \
+              $(OBJ_DIR)/kernel/loader/elf.o \
+              $(OBJ_DIR)/kernel/pty.o \
+              $(OBJ_DIR)/kernel/terminal.o \
+              $(OBJ_DIR)/kernel/string.o
 
 NET_SPLIT_SRCS = ../src/kernel/net/net_utils.c \
                  ../src/kernel/net/net_driver.c \
@@ -76,6 +81,10 @@ $(OBJ_DIR)/kernel/%.o: ../src/kernel/%.c
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/kernel/drivers/%.o: ../src/kernel/drivers/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/kernel/drivers/usb/%.o: ../src/kernel/drivers/usb/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 

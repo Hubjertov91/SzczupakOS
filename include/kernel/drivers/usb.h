@@ -30,6 +30,7 @@ typedef struct {
 } usb_controller_info_t;
 
 bool usb_init(void);
+void usb_poll(void);
 uint16_t usb_get_controller_count(void);
 bool usb_get_controller(uint16_t index, usb_controller_info_t* out_info);
 

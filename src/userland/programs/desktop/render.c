@@ -2,7 +2,7 @@
 
 static const char* k_icon_labels[WINDOW_COUNT] = { "SHELL", "FILES", "NET" };
 static const char* k_title = "SzczupakOS Desktop";
-static const char* k_hint = "Tab focus  WASD move  C theme  X close  1-3 toggle  ESC quit";
+static const char* k_hint = "Tab focus  WASD move  C theme  X close  Files: J/K O U D  1-3 toggle  ESC quit";
 
 static void fill_rect_clipped(rect_t target, uint32_t color, rect_t clip) {
     rect_t r = rect_intersection(target, clip);
@@ -85,11 +85,18 @@ static void draw_icon(uint32_t x, uint32_t y, const char* label, uint32_t accent
 static void draw_window_contents_region(const desktop_window_t* w, rect_t clip, uint32_t body_color, uint32_t text_color, int32_t title_h) {
     if (!w) return;
 
+    rect_t body = window_body_rect(w);
     int32_t line_y = w->win.y + 1 + title_h + 10;
     int32_t line_x = w->win.x + 14;
     for (uint32_t i = 0; i < w->line_count; i++) {
+        if (w->selected_line >= 0 && (int32_t)i == w->selected_line && rect_valid(body) && body.w > 4) {
+            rect_t hl = make_rect(body.x + 2, line_y - 1, body.w - 4, desktop_font_h() + 2);
+            fill_rect_clipped(hl, w->selected_bg_color, clip);
+        }
         const char* line = w->lines[i] ? w->lines[i] : "";
-        draw_text_if_visible(clip, line_x, line_y, line, text_color, body_color);
+        uint32_t line_fg = (w->selected_line >= 0 && (int32_t)i == w->selected_line) ? w->selected_fg_color : text_color;
+        uint32_t line_bg = (w->selected_line >= 0 && (int32_t)i == w->selected_line) ? w->selected_bg_color : body_color;
+        draw_text_if_visible(clip, line_x, line_y, line, line_fg, line_bg);
         line_y += desktop_line_advance();
     }
 }

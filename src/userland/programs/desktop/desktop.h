@@ -30,12 +30,17 @@
 #define WINDOW_COUNT 3
 #define MAX_DIRTY_RECTS 48
 #define SHELL_WINDOW_IDX 0
+#define FILES_WINDOW_IDX 1
+#define NETWORK_WINDOW_IDX 2
 #define SHELL_INPUT_MAX 96
 #define SHELL_LINE_MAX 96
 #define SHELL_SCROLLBACK 64
 #define SHELL_VIEW_MAX 14
 #define SHELL_ARG_MAX 16
 #define SHELL_PATH_MAX 128
+#define SHELL_HISTORY_MAX 24
+#define PANEL_LINE_MAX 14
+#define FILES_ENTRY_MAX 96
 
 typedef struct {
     uint32_t border;
@@ -55,6 +60,9 @@ typedef struct {
     uint32_t theme_idx;
     const char** lines;
     uint32_t line_count;
+    int32_t selected_line;
+    uint32_t selected_bg_color;
+    uint32_t selected_fg_color;
     bool visible;
 } desktop_window_t;
 
@@ -74,6 +82,9 @@ typedef struct {
 typedef struct {
     char cwd[SHELL_PATH_MAX];
     char prev_cwd[SHELL_PATH_MAX];
+    int32_t ext_pid;
+    int32_t ext_pty;
+    bool ext_running;
     char input[SHELL_INPUT_MAX];
     uint32_t input_len;
     char scrollback[SHELL_SCROLLBACK][SHELL_LINE_MAX];
@@ -82,12 +93,66 @@ typedef struct {
     char prompt[SHELL_LINE_MAX];
     const char* view[SHELL_VIEW_MAX];
     uint32_t view_count;
+    char history[SHELL_HISTORY_MAX][SHELL_INPUT_MAX];
+    uint32_t history_count;
+    uint32_t history_next;
 } desktop_shell_t;
 
 typedef enum {
     SHELL_ACTION_NONE = 0,
-    SHELL_ACTION_HIDE_WINDOW = 1
+    SHELL_ACTION_HIDE_WINDOW = 1u << 0,
+    SHELL_ACTION_FORCE_FULL_REPAINT = 1u << 1
 } shell_action_t;
+
+typedef struct {
+    desktop_window_t windows[WINDOW_COUNT];
+    desktop_shell_t shell_state;
+    char files_cwd[SHELL_PATH_MAX];
+    char files_lines[PANEL_LINE_MAX][SHELL_LINE_MAX];
+    const char* files_view[PANEL_LINE_MAX];
+    int32_t files_line_to_entry[PANEL_LINE_MAX];
+    char files_entries[FILES_ENTRY_MAX][SHELL_PATH_MAX];
+    uint8_t files_entry_is_dir[FILES_ENTRY_MAX];
+    uint8_t files_entry_is_parent[FILES_ENTRY_MAX];
+    uint32_t files_entry_count;
+    int32_t files_selected_entry;
+    uint32_t files_scroll_offset;
+    uint64_t files_last_click_tick;
+    int32_t files_last_click_entry;
+    uint32_t files_line_count;
+    char files_status[SHELL_LINE_MAX];
+    char net_lines[PANEL_LINE_MAX][SHELL_LINE_MAX];
+    const char* net_view[PANEL_LINE_MAX];
+    uint32_t net_line_count;
+    int32_t net_last_ping_ms;
+    int32_t net_last_ping_ok;
+    uint8_t net_last_dns_ip[4];
+    int32_t net_last_dns_ok;
+    uint64_t last_net_probe_tick;
+    uint64_t last_panel_refresh_tick;
+    int32_t z_order[WINDOW_COUNT];
+    int32_t active_idx;
+    int32_t cursor_x;
+    int32_t cursor_y;
+    int32_t dragging_idx;
+    int32_t drag_off_x;
+    int32_t drag_off_y;
+    cursor_save_t cursor_save;
+    uint32_t theme_count;
+} desktop_runtime_t;
+
+typedef struct {
+    desktop_window_t windows[WINDOW_COUNT];
+    int32_t z_order[WINDOW_COUNT];
+    int32_t active_idx;
+} desktop_snapshot_t;
+
+typedef struct {
+    bool quit;
+    bool scene_changed;
+    bool cursor_changed;
+    bool force_full_redraw;
+} desktop_frame_state_t;
 
 static inline int32_t desktop_font_w(void) {
     return (int32_t)gui_font_width();
@@ -140,6 +205,8 @@ bool clamp_window(desktop_window_t* w, const gui_fb_info_t* fb);
 void shell_init(desktop_shell_t* shell);
 void shell_sync_window(desktop_shell_t* shell, desktop_window_t* window);
 shell_action_t shell_submit_input(desktop_shell_t* shell);
+shell_action_t shell_run_line(desktop_shell_t* shell, const char* line);
+bool shell_pump_external(desktop_shell_t* shell);
 void shell_handle_backspace(desktop_shell_t* shell);
 void shell_handle_char(desktop_shell_t* shell, char c);
 
@@ -154,6 +221,24 @@ void repaint_region(const gui_fb_info_t* fb,
 void draw_cursor(const gui_fb_info_t* fb, int32_t x, int32_t y);
 void cursor_capture_under(const gui_fb_info_t* fb, cursor_save_t* save, int32_t x, int32_t y);
 void cursor_restore_under(const gui_fb_info_t* fb, cursor_save_t* save);
+
+void desktop_runtime_init(desktop_runtime_t* rt, const gui_fb_info_t* fb);
+bool desktop_refresh_files_panel(desktop_runtime_t* rt);
+bool desktop_refresh_network_panel(desktop_runtime_t* rt);
+bool desktop_files_select_next(desktop_runtime_t* rt, int32_t delta);
+bool desktop_files_select_at_point(desktop_runtime_t* rt, int32_t x, int32_t y);
+shell_action_t desktop_files_activate_selected(desktop_runtime_t* rt, bool* out_changed);
+bool desktop_files_delete_selected(desktop_runtime_t* rt);
+bool desktop_refresh_dynamic_panels(desktop_runtime_t* rt);
+void desktop_snapshot_save(desktop_snapshot_t* snap, const desktop_runtime_t* rt);
+void desktop_poll_keyboard(desktop_runtime_t* rt, desktop_frame_state_t* frame);
+void desktop_poll_mouse(desktop_runtime_t* rt, desktop_frame_state_t* frame);
+void desktop_finalize_state(desktop_runtime_t* rt, const gui_fb_info_t* fb, desktop_frame_state_t* frame);
+void desktop_render_frame(const gui_fb_info_t* fb,
+                          desktop_runtime_t* rt,
+                          const desktop_snapshot_t* prev,
+                          const desktop_frame_state_t* frame);
+uint32_t desktop_frame_sleep_ms(const desktop_frame_state_t* frame);
 
 int desktop_main(void);
 

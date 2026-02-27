@@ -17,6 +17,8 @@ static volatile int32_t mouse_x = 512;
 static volatile int32_t mouse_y = 384;
 static volatile uint8_t mouse_buttons = 0;
 static volatile uint32_t mouse_seq = 0;
+static volatile uint32_t mouse_overrun_count = 0;
+static bool usb_hid_active = false;
 
 static mouse_event_t queue[MOUSE_QUEUE_SIZE];
 static volatile uint32_t queue_head = 0;
@@ -37,6 +39,7 @@ static inline void irq_restore(uint64_t flags) {
 static inline void mouse_queue_push(const mouse_event_t* ev) {
     uint32_t next = (queue_head + 1) % MOUSE_QUEUE_SIZE;
     if (next == queue_tail) {
+        mouse_overrun_count++;
         queue_tail = (queue_tail + 1) % MOUSE_QUEUE_SIZE;
     }
     queue[queue_head] = *ev;
@@ -80,12 +83,8 @@ static int32_t clamp_i32(int32_t v, int32_t lo, int32_t hi) {
     return v;
 }
 
-static void mouse_handle_packet(uint8_t b0, uint8_t b1, uint8_t b2) {
-    int32_t dx = (int32_t)(int8_t)b1;
-    int32_t dy = (int32_t)(int8_t)b2;
-
-    if (b0 & 0x40) dx = 0;
-    if (b0 & 0x80) dy = 0;
+static void mouse_apply_delta(int32_t dx, int32_t dy, uint8_t buttons) {
+    buttons &= 0x07u;
 
     int32_t screen_w = 1024;
     int32_t screen_h = 768;
@@ -97,7 +96,6 @@ static void mouse_handle_packet(uint8_t b0, uint8_t b1, uint8_t b2) {
 
     int32_t nx = clamp_i32(mouse_x + dx, 0, screen_w - 1);
     int32_t ny = clamp_i32(mouse_y - dy, 0, screen_h - 1);
-    uint8_t buttons = b0 & 0x07;
     uint8_t changed = buttons ^ mouse_buttons;
 
     if (nx == mouse_x && ny == mouse_y && changed == 0) {
@@ -121,12 +119,30 @@ static void mouse_handle_packet(uint8_t b0, uint8_t b1, uint8_t b2) {
     mouse_queue_push(&ev);
 }
 
+static void mouse_handle_packet(uint8_t b0, uint8_t b1, uint8_t b2) {
+    int32_t dx = (int32_t)(int8_t)b1;
+    int32_t dy = (int32_t)(int8_t)b2;
+
+    if (b0 & 0x40) dx = 0;
+    if (b0 & 0x80) dy = 0;
+    uint64_t flags = irq_save_disable();
+    mouse_apply_delta(dx, dy, b0 & 0x07u);
+    irq_restore(flags);
+}
+
 void mouse_init(void) {
     framebuffer_info_t* fb = framebuffer_get_info();
     if (fb && fb->width > 0 && fb->height > 0) {
         mouse_x = (int32_t)(fb->width / 2);
         mouse_y = (int32_t)(fb->height / 2);
     }
+    mouse_buttons = 0;
+    mouse_seq = 0;
+    mouse_overrun_count = 0;
+    packet_index = 0;
+    queue_head = 0;
+    queue_tail = 0;
+    usb_hid_active = false;
 
     if (ps2_wait_input_ready()) outb(PS2_CMD_PORT, 0xA8);
 
@@ -151,6 +167,17 @@ void mouse_init(void) {
 }
 
 void mouse_handler(void) {
+    if (usb_hid_active) {
+        while (1) {
+            uint8_t status = inb(PS2_STATUS_PORT);
+            if ((status & 0x01) == 0u) break;
+            if ((status & 0x20) == 0u) break;
+            (void)inb(PS2_DATA_PORT);
+        }
+        pic_send_eoi(12);
+        return;
+    }
+
     uint32_t iter = 0;
     while (iter < 16) {
         uint8_t status = inb(PS2_STATUS_PORT);
@@ -174,6 +201,12 @@ void mouse_handler(void) {
     pic_send_eoi(12);
 }
 
+void mouse_inject_usb(int8_t dx, int8_t dy, uint8_t buttons) {
+    uint64_t flags = irq_save_disable();
+    mouse_apply_delta((int32_t)dx, (int32_t)dy, buttons);
+    irq_restore(flags);
+}
+
 bool mouse_poll_event(mouse_event_t* out) {
     if (!out) return false;
 
@@ -187,4 +220,29 @@ bool mouse_poll_event(mouse_event_t* out) {
     queue_tail = (queue_tail + 1) % MOUSE_QUEUE_SIZE;
     irq_restore(flags);
     return true;
+}
+
+void mouse_set_usb_hid_active(bool active) {
+    uint64_t flags = irq_save_disable();
+    bool changed = (usb_hid_active != active);
+    usb_hid_active = active;
+    irq_restore(flags);
+
+    if (active) {
+        pic_set_mask(12);
+    } else {
+        pic_clear_mask(12);
+    }
+
+    if (changed) {
+        serial_write(active ? "[MOUSE] PS/2 mouse disabled (USB HID active)\n"
+                            : "[MOUSE] PS/2 mouse enabled\n");
+    }
+}
+
+uint32_t mouse_get_overrun_count(void) {
+    uint64_t flags = irq_save_disable();
+    uint32_t count = mouse_overrun_count;
+    irq_restore(flags);
+    return count;
 }

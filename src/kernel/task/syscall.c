@@ -48,6 +48,7 @@ extern uint64_t pmm_get_used_memory(void);
 #define LISTDIR_BUF_MAX 4096
 #define NET_HOSTNAME_MAX 256
 #define NET_HTTP_BODY_MAX 8192
+#define FS_IO_BUF_MAX 4096
 #define FS_RET_INVALID   ((uint64_t)-1)
 #define FS_RET_PARENT    ((uint64_t)-2)
 #define FS_RET_EXISTS    ((uint64_t)-3)
@@ -565,6 +566,118 @@ static uint64_t sys_fs_delete(uint64_t path_addr) {
     return 0;
 }
 
+static vfs_node_t* open_or_create_file_for_write(const char* path) {
+    if (!path) return NULL;
+
+    vfs_node_t* node = vfs_open(path, 0);
+    if (node) {
+        if (node->type != VFS_FILE) {
+            vfs_close(node);
+            return NULL;
+        }
+        return node;
+    }
+
+    char parent_path[EXEC_PATH_MAX];
+    char name[MAX_FILENAME];
+    if (split_parent_name(path, parent_path, sizeof(parent_path), name, sizeof(name)) != 0) {
+        return NULL;
+    }
+
+    vfs_node_t* parent = vfs_open(parent_path, 0);
+    if (!parent || parent->type != VFS_DIRECTORY) {
+        if (parent) vfs_close(parent);
+        return NULL;
+    }
+
+    node = vfs_find_child_nocase(parent, name);
+    if (node) {
+        if (node->type != VFS_FILE) {
+            vfs_close(parent);
+            return NULL;
+        }
+        vfs_close(parent);
+        return node;
+    }
+
+    node = vfs_create_file(parent, name);
+    vfs_close(parent);
+    if (!node || node->type != VFS_FILE) {
+        return NULL;
+    }
+    return node;
+}
+
+static uint64_t sys_fs_read(uint64_t path_addr, uint64_t offset, uint64_t buf_addr, uint64_t size) {
+    if (!path_addr || !buf_addr) return (uint64_t)-1;
+    if (size == 0) return 0;
+    if (offset > (uint64_t)(~(size_t)0)) return (uint64_t)-1;
+    if (size > FS_IO_BUF_MAX) size = FS_IO_BUF_MAX;
+
+    char path[EXEC_PATH_MAX];
+    if (copy_user_string(path_addr, path, sizeof(path)) != 0) {
+        return (uint64_t)-1;
+    }
+
+    vfs_node_t* file = vfs_open(path, 0);
+    if (!file || file->type != VFS_FILE) {
+        if (file) vfs_close(file);
+        return (uint64_t)-1;
+    }
+
+    size_t off = (size_t)offset;
+    if (off >= file->size) {
+        vfs_close(file);
+        return 0;
+    }
+
+    size_t to_read = (size_t)size;
+    size_t remaining = file->size - off;
+    if (to_read > remaining) {
+        to_read = remaining;
+    }
+
+    uint8_t io_buf[FS_IO_BUF_MAX];
+    if (!vfs_read(file, io_buf, off, to_read)) {
+        vfs_close(file);
+        return (uint64_t)-1;
+    }
+    vfs_close(file);
+
+    if (copy_to_user((void*)buf_addr, io_buf, to_read) != 0) {
+        return (uint64_t)-1;
+    }
+    return (uint64_t)to_read;
+}
+
+static uint64_t sys_fs_write(uint64_t path_addr, uint64_t offset, uint64_t buf_addr, uint64_t size) {
+    if (!path_addr) return (uint64_t)-1;
+    if (size == 0) return 0;
+    if (!buf_addr) return (uint64_t)-1;
+    if (offset > (uint64_t)(~(size_t)0)) return (uint64_t)-1;
+    if (size > FS_IO_BUF_MAX) size = FS_IO_BUF_MAX;
+
+    char path[EXEC_PATH_MAX];
+    if (copy_user_string(path_addr, path, sizeof(path)) != 0) {
+        return (uint64_t)-1;
+    }
+
+    uint8_t io_buf[FS_IO_BUF_MAX];
+    if (copy_from_user(io_buf, (const void*)buf_addr, size) != 0) {
+        return (uint64_t)-1;
+    }
+
+    vfs_node_t* file = open_or_create_file_for_write(path);
+    if (!file) {
+        return (uint64_t)-1;
+    }
+
+    bool ok = vfs_write(file, io_buf, (size_t)offset, (size_t)size);
+    vfs_close(file);
+    if (!ok) return (uint64_t)-1;
+    return size;
+}
+
 static uint64_t sys_fb_putpixel(uint64_t x, uint64_t y, uint64_t color) {
     if (!framebuffer_available()) return -1;
     fb_color_t c = {
@@ -667,12 +780,15 @@ static uint64_t sys_fb_putchar_psf_syscall(uint64_t x, uint64_t y, uint64_t c, u
 }
 
 static uint64_t sys_kb_poll(void) {
+    usb_poll();
     if (!keyboard_has_input()) return 0;
     return (uint64_t)(uint8_t)keyboard_getchar();
 }
 
 static uint64_t sys_mouse_poll(uint64_t event_addr) {
     if (!event_addr) return (uint64_t)-1;
+
+    usb_poll();
 
     mouse_event_t ev;
     if (!mouse_poll_event(&ev)) return 0;
@@ -1023,6 +1139,8 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_FS_TOUCH: regs->rax = sys_fs_touch(regs->rdi); break;
         case SYSCALL_FS_MKDIR: regs->rax = sys_fs_mkdir(regs->rdi); break;
         case SYSCALL_FS_DELETE: regs->rax = sys_fs_delete(regs->rdi); break;
+        case SYSCALL_FS_READ: regs->rax = sys_fs_read(regs->rdi, regs->rsi, regs->rdx, regs->r10); break;
+        case SYSCALL_FS_WRITE: regs->rax = sys_fs_write(regs->rdi, regs->rsi, regs->rdx, regs->r10); break;
         case SYSCALL_NET_INFO: regs->rax = sys_net_info(regs->rdi); break;
         case SYSCALL_NET_PING: regs->rax = sys_net_ping(regs->rdi, regs->rsi, regs->rdx); break;
         case SYSCALL_NET_RESOLVE: regs->rax = sys_net_resolve(regs->rdi, regs->rsi, regs->rdx); break;

@@ -202,6 +202,14 @@ long sys_fs_delete(const char* path) {
     return syscall1(SYS_FS_DELETE, (long)path);
 }
 
+long sys_fs_read(const char* path, uint64_t offset, char* buf, uint32_t size) {
+    return syscall4(SYS_FS_READ, (long)path, (long)offset, (long)buf, (long)size);
+}
+
+long sys_fs_write(const char* path, uint64_t offset, const char* buf, uint32_t size) {
+    return syscall4(SYS_FS_WRITE, (long)path, (long)offset, (long)buf, (long)size);
+}
+
 long sys_kb_poll(void) {
     return syscall0(SYS_KB_POLL);
 }

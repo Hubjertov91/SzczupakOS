@@ -196,6 +196,52 @@ gdt64:
 section .text
 bits 64
 
+early_serial_init:
+    mov dx, 0x3F9
+    xor al, al
+    out dx, al
+
+    mov dx, 0x3FB
+    mov al, 0x80
+    out dx, al
+
+    mov dx, 0x3F8
+    mov al, 0x03
+    out dx, al
+
+    mov dx, 0x3F9
+    xor al, al
+    out dx, al
+
+    mov dx, 0x3FB
+    mov al, 0x03
+    out dx, al
+
+    mov dx, 0x3FA
+    mov al, 0xC7
+    out dx, al
+
+    mov dx, 0x3FC
+    mov al, 0x0B
+    out dx, al
+    ret
+
+early_serial_putc:
+    push rdx
+    push rcx
+    mov cl, al
+.wait_tx:
+    mov dx, 0x3FD
+    in al, dx
+    test al, 0x20
+    jz .wait_tx
+    mov dx, 0x3F8
+    mov al, cl
+    out dx, al
+    pop rcx
+    pop rdx
+    ret
+
 long_mode_start:
     xor ax, ax
     mov ss, ax
@@ -205,8 +251,13 @@ long_mode_start:
     mov gs, ax
     
     mov rsp, stack_top
+    call early_serial_init
+    mov al, 'B'
+    call early_serial_putc
     
     mov edi, ebx
+    mov al, 'K'
+    call early_serial_putc
     
     extern kernel_main
     call kernel_main

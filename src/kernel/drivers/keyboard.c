@@ -11,6 +11,20 @@ static size_t key_buffer_head = 0;
 static size_t key_buffer_tail = 0;
 static bool shift_pressed = false;
 static bool caps_lock     = false;
+static bool usb_hid_active = false;
+static volatile uint32_t key_drop_count = 0;
+
+static inline uint64_t irq_save_disable(void) {
+    uint64_t flags;
+    __asm__ volatile("pushfq; pop %0; cli" : "=r"(flags) : : "memory");
+    return flags;
+}
+
+static inline void irq_restore(uint64_t flags) {
+    if (flags & (1ULL << 9)) {
+        __asm__ volatile("sti" : : : "memory");
+    }
+}
 
 static const char scancode_to_ascii[] = {
     0,  27, '1','2','3','4','5','6','7','8','9','0','-','=','\b',
@@ -31,6 +45,10 @@ static const char scancode_to_ascii_shift[] = {
 void keyboard_init(void) {
     key_buffer_head = 0;
     key_buffer_tail = 0;
+    shift_pressed = false;
+    caps_lock = false;
+    usb_hid_active = false;
+    key_drop_count = 0;
     pic_clear_mask(1);
     serial_write("[KB] init\n");
 }
@@ -40,11 +58,17 @@ static void key_buffer_push(char c) {
     if (next != key_buffer_tail) {
         key_buffer[key_buffer_head] = c;
         key_buffer_head = next;
+    } else {
+        key_drop_count++;
     }
 }
 
 void keyboard_handler(void) {
     uint8_t scancode = inb(KEYBOARD_DATA_PORT);
+    if (usb_hid_active) {
+        pic_send_eoi(1);
+        return;
+    }
 
     if (scancode == 0x2A || scancode == 0x36) { shift_pressed = true;  pic_send_eoi(1); return; }
     if (scancode == 0xAA || scancode == 0xB6) { shift_pressed = false; pic_send_eoi(1); return; }
@@ -67,13 +91,53 @@ void keyboard_handler(void) {
     pic_send_eoi(1);
 }
 
+void keyboard_inject_char(char c) {
+    if (c == 0) return;
+    uint64_t flags = irq_save_disable();
+    key_buffer_push(c);
+    irq_restore(flags);
+}
+
 char keyboard_getchar(void) {
-    if (key_buffer_head == key_buffer_tail) return 0;
+    uint64_t flags = irq_save_disable();
+    if (key_buffer_head == key_buffer_tail) {
+        irq_restore(flags);
+        return 0;
+    }
     char c = key_buffer[key_buffer_tail];
     key_buffer_tail = (key_buffer_tail + 1) % KEY_BUFFER_SIZE;
+    irq_restore(flags);
     return c;
 }
 
 bool keyboard_has_input(void) {
-    return key_buffer_head != key_buffer_tail;
+    uint64_t flags = irq_save_disable();
+    bool has_input = (key_buffer_head != key_buffer_tail);
+    irq_restore(flags);
+    return has_input;
+}
+
+void keyboard_set_usb_hid_active(bool active) {
+    uint64_t flags = irq_save_disable();
+    bool changed = (usb_hid_active != active);
+    usb_hid_active = active;
+    irq_restore(flags);
+
+    if (active) {
+        pic_set_mask(1);
+    } else {
+        pic_clear_mask(1);
+    }
+
+    if (changed) {
+        serial_write(active ? "[KB] PS/2 keyboard disabled (USB HID active)\n"
+                            : "[KB] PS/2 keyboard enabled\n");
+    }
+}
+
+uint32_t keyboard_get_drop_count(void) {
+    uint64_t flags = irq_save_disable();
+    uint32_t count = key_drop_count;
+    irq_restore(flags);
+    return count;
 }

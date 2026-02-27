@@ -45,6 +45,8 @@
 #define SYS_PTY_IN_AVAIL 39
 #define SYS_WAITPID 40
 #define SYS_FS_DELETE 41
+#define SYS_FS_READ 42
+#define SYS_FS_WRITE 43
 
 #define NET_HTTP_HOST_MAX 128
 #define NET_HTTP_PATH_MAX 192
@@ -231,6 +233,8 @@ long sys_usb_get_controller(uint16_t index, struct usb_controller_info* out_info
 long sys_fs_touch(const char* path);
 long sys_fs_mkdir(const char* path);
 long sys_fs_delete(const char* path);
+long sys_fs_read(const char* path, uint64_t offset, char* buf, uint32_t size);
+long sys_fs_write(const char* path, uint64_t offset, const char* buf, uint32_t size);
 long sys_kb_poll(void);
 long sys_mouse_poll(struct mouse_event* event);
 long sys_pty_open(void);

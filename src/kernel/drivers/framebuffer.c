@@ -22,6 +22,14 @@ static inline uint16_t fb_pack_color16(fb_color_t color) {
     return (uint16_t)((r << 11) | (g << 5) | b);
 }
 
+static inline uint8_t fb_pack_color8(fb_color_t color) {
+    /* RGB332 fallback for palettized 8-bit framebuffers. */
+    uint8_t r = (uint8_t)(color.r & 0xE0u);
+    uint8_t g = (uint8_t)((color.g & 0xE0u) >> 3);
+    uint8_t b = (uint8_t)(color.b >> 6);
+    return (uint8_t)(r | g | b);
+}
+
 static bool fb_clip_rect(uint32_t* x, uint32_t* y, uint32_t* w, uint32_t* h) {
     if (!x || !y || !w || !h) return false;
     if (*w == 0 || *h == 0) return false;
@@ -98,6 +106,16 @@ static void fb_fill_rect_16(uint32_t x, uint32_t y, uint32_t w, uint32_t h, fb_c
     }
 }
 
+static void fb_fill_rect_8(uint32_t x, uint32_t y, uint32_t w, uint32_t h, fb_color_t color) {
+    uint8_t pixel = fb_pack_color8(color);
+    for (uint32_t row = 0; row < h; row++) {
+        uint8_t* dst = fb_pixel_ptr(x, y + row);
+        for (uint32_t col = 0; col < w; col++) {
+            dst[col] = pixel;
+        }
+    }
+}
+
 static void fb_fill_rect_generic(uint32_t x, uint32_t y, uint32_t w, uint32_t h, fb_color_t color) {
     uint8_t packed[8] = {0};
     if (fb_info.bytes_per_pixel > sizeof(packed)) return;
@@ -130,7 +148,9 @@ bool framebuffer_init(struct multiboot_tag_framebuffer* fb_tag) {
     fb_info.bytes_per_pixel = (fb_info.bpp + 7) / 8;
     fb_info.buffer_size = fb_info.pitch * fb_info.height;
 
-    if (fb_info.type != 1) {
+    if (fb_info.type == 0u) {
+        serial_write("[FB] Indexed framebuffer detected, using RGB332 fallback\n");
+    } else if (fb_info.type != 1u) {
         serial_write("[FB] Unsupported framebuffer type, falling back to VGA text\n");
         return false;
     }
@@ -206,6 +226,10 @@ void fb_putpixel(uint32_t x, uint32_t y, fb_color_t color) {
         *(uint16_t*)pixel = fb_pack_color16(color);
         return;
     }
+    if (fb_info.bpp == 8) {
+        *pixel = fb_pack_color8(color);
+        return;
+    }
 
     uint8_t packed[8] = {0};
     if (fb_info.bytes_per_pixel > sizeof(packed)) return;
@@ -245,6 +269,14 @@ bool fb_getpixel_rgb(uint32_t x, uint32_t y, uint32_t* out_rgb) {
         r = (uint8_t)((r5 * 255u) / 31u);
         g = (uint8_t)((g6 * 255u) / 63u);
         b = (uint8_t)((b5 * 255u) / 31u);
+    } else if (fb_info.bpp == 8) {
+        uint8_t px = *pixel;
+        uint8_t r3 = (uint8_t)((px >> 5) & 0x07u);
+        uint8_t g3 = (uint8_t)((px >> 2) & 0x07u);
+        uint8_t b2 = (uint8_t)(px & 0x03u);
+        r = (uint8_t)((r3 * 255u) / 7u);
+        g = (uint8_t)((g3 * 255u) / 7u);
+        b = (uint8_t)((b2 * 255u) / 3u);
     } else {
         if (fb_info.bytes_per_pixel >= 3) {
             b = pixel[0];
@@ -275,6 +307,10 @@ void fb_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, fb_color_t col
     }
     if (fb_info.bpp == 16) {
         fb_fill_rect_16(x, y, w, h, color);
+        return;
+    }
+    if (fb_info.bpp == 8) {
+        fb_fill_rect_8(x, y, w, h, color);
         return;
     }
     fb_fill_rect_generic(x, y, w, h, color);

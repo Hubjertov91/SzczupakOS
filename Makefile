@@ -7,6 +7,8 @@ HOSTPING_TAP = tap0
 HOSTPING_HOST_CIDR = 192.168.76.1/24
 QEMU_USB_CONTROLLER = -device qemu-xhci,id=xhci
 QEMU_USB_HID = -device usb-kbd,bus=xhci.0 -device usb-mouse,bus=xhci.0
+QEMU_USB_HID_CONTROLLER = -device piix3-usb-uhci,id=uhci
+QEMU_USB_HID_DEVICES = -device usb-kbd,bus=uhci.0,port=1 -device usb-mouse,bus=uhci.0,port=2
 QEMU_GUI_CONSOLE = -vga std -serial stdio -monitor none
 QEMU_HEADLESS_CONSOLE = -display none -serial stdio -monitor none
 
@@ -91,14 +93,15 @@ run-hostping-debug: $(BUILD_DIR)/os.iso $(DISK_IMG)
 	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_GUI_CONSOLE) -netdev tap,id=hn0,ifname=$(HOSTPING_TAP),script=no,downscript=no -device rtl8139,netdev=hn0 $(QEMU_USB_CONTROLLER) -d int,cpu_reset -D qemu.log
 
 run-usb-hid: $(BUILD_DIR)/os.iso $(DISK_IMG)
-	@echo "[run-usb-hid] TAP mode + USB keyboard/mouse attached (USB HID driver required in guest)"
+	@echo "[run-usb-hid] TAP mode + USB keyboard/mouse attached"
 	@./scripts/tap-up.sh $(HOSTPING_TAP) $(HOSTPING_HOST_CIDR)
-	@echo "[run-usb-hid] If shell input is stuck, type in this terminal (serial stdio)."
-	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_GUI_CONSOLE) -netdev tap,id=hn0,ifname=$(HOSTPING_TAP),script=no,downscript=no -device rtl8139,netdev=hn0 $(QEMU_USB_CONTROLLER) $(QEMU_USB_HID)
+	@echo "[run-usb-hid] Using UHCI USB HID path (usb-kbd + usb-mouse on uhci.0)"
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_GUI_CONSOLE) -netdev tap,id=hn0,ifname=$(HOSTPING_TAP),script=no,downscript=no -device rtl8139,netdev=hn0 $(QEMU_USB_HID_CONTROLLER) $(QEMU_USB_HID_DEVICES)
 
 run-nat-usb-hid: $(BUILD_DIR)/os.iso $(DISK_IMG)
-	@echo "[run-nat-usb-hid] SLIRP/NAT + USB keyboard/mouse attached (USB HID driver required in guest)"
-	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_GUI_CONSOLE) -nic user,model=rtl8139 $(QEMU_USB_CONTROLLER) $(QEMU_USB_HID)
+	@echo "[run-nat-usb-hid] SLIRP/NAT + USB keyboard/mouse attached"
+	@echo "[run-nat-usb-hid] Using UHCI USB HID path (usb-kbd + usb-mouse on uhci.0)"
+	qemu-system-x86_64 -cdrom $(BUILD_DIR)/os.iso -drive file=$(DISK_IMG),format=raw,if=ide -boot order=d -m 512M $(QEMU_GUI_CONSOLE) -nic user,model=rtl8139 $(QEMU_USB_HID_CONTROLLER) $(QEMU_USB_HID_DEVICES)
 
 run-serial: $(BUILD_DIR)/os.iso $(DISK_IMG)
 	@echo "[run-serial] TAP mode headless serial console"
