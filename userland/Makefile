@@ -12,6 +12,8 @@ PROGRAM_SRCS = $(wildcard ../src/userland/programs/*.c)
 PROGRAMS = $(patsubst ../src/userland/programs/%.c,%,$(PROGRAM_SRCS))
 USER_ELFS = $(addprefix $(BUILD_DIR)/user/,$(addsuffix .elf,$(PROGRAMS)))
 PROGRAM_OBJS = $(addprefix $(OBJ_DIR)/user/programs/,$(addsuffix .o,$(PROGRAMS)))
+DESKTOP_SRCS = $(wildcard ../src/userland/programs/desktop/*.c)
+DESKTOP_OBJS = $(patsubst ../src/userland/%.c,$(OBJ_DIR)/user/%.o,$(DESKTOP_SRCS))
 
 USER_COMMON_OBJS = $(OBJ_DIR)/user/crt0.o \
                    $(OBJ_DIR)/user/lib/gui.o \
@@ -23,6 +25,10 @@ USER_COMMON_OBJS = $(OBJ_DIR)/user/crt0.o \
                    $(OBJ_DIR)/user/syscall.o
 
 all: $(USER_ELFS)
+
+$(BUILD_DIR)/user/desktop.elf: $(USER_COMMON_OBJS) $(OBJ_DIR)/user/programs/desktop.o $(DESKTOP_OBJS)
+	@mkdir -p $(dir $@)
+	$(LD) $(USER_LDFLAGS) -o $@ $^
 
 $(BUILD_DIR)/user/%.elf: $(USER_COMMON_OBJS) $(OBJ_DIR)/user/programs/%.o
 	@mkdir -p $(dir $@)
@@ -39,7 +45,7 @@ $(OBJ_DIR)/user/crt0.o: ../src/userland/arch/x86_64/crt0.S
 clean:
 	rm -rf $(BUILD_DIR)/user $(OBJ_DIR)/user
 
-.SECONDARY: $(PROGRAM_OBJS)
+.SECONDARY: $(PROGRAM_OBJS) $(DESKTOP_OBJS)
 .PHONY: all clean
 
--include $(USER_COMMON_OBJS:.o=.d) $(PROGRAM_OBJS:.o=.d)
+-include $(USER_COMMON_OBJS:.o=.d) $(PROGRAM_OBJS:.o=.d) $(DESKTOP_OBJS:.o=.d)

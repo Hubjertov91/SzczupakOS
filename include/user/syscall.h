@@ -43,6 +43,8 @@
 #define SYS_USB_GET_COUNT 37
 #define SYS_USB_GET_CONTROLLER 38
 #define SYS_PTY_IN_AVAIL 39
+#define SYS_WAITPID 40
+#define SYS_FS_DELETE 41
 
 #define NET_HTTP_HOST_MAX 128
 #define NET_HTTP_PATH_MAX 192
@@ -58,6 +60,8 @@ struct fb_info {
     uint32_t width;
     uint32_t height;
     uint32_t bpp;
+    uint32_t font_width;
+    uint32_t font_height;
 };
 
 struct mouse_event {
@@ -204,6 +208,7 @@ void sys_clear(void);
 long sys_sysinfo(struct sysinfo* info);
 long sys_fork(void);
 long sys_exec(const char* cmdline);
+long sys_waitpid(int32_t pid, int32_t* out_exit_code);
 long sys_fb_putpixel(uint32_t x, uint32_t y, uint32_t color);
 long sys_fb_getpixel(uint32_t x, uint32_t y);
 long sys_fb_clear(uint32_t color);
@@ -225,6 +230,7 @@ long sys_usb_get_count(void);
 long sys_usb_get_controller(uint16_t index, struct usb_controller_info* out_info);
 long sys_fs_touch(const char* path);
 long sys_fs_mkdir(const char* path);
+long sys_fs_delete(const char* path);
 long sys_kb_poll(void);
 long sys_mouse_poll(struct mouse_event* event);
 long sys_pty_open(void);

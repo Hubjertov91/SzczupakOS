@@ -43,6 +43,8 @@
 #define SYSCALL_USB_GET_COUNT 37
 #define SYSCALL_USB_GET_CONTROLLER 38
 #define SYSCALL_PTY_IN_AVAIL 39
+#define SYSCALL_WAITPID 40
+#define SYSCALL_FS_DELETE 41
 
 #define NET_HTTP_HOST_MAX 128
 #define NET_HTTP_PATH_MAX 192
@@ -59,6 +61,8 @@ struct fb_info {
     uint32_t width;
     uint32_t height;
     uint32_t bpp;
+    uint32_t font_width;
+    uint32_t font_height;
 };
 
 struct mouse_event {

@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
         } else if (ret == -3) {
             printf("mkdir: file exists: %s\n", argv[i]);
         } else if (ret == -4) {
-            printf("mkdir: only root directory is currently supported: %s\n", argv[i]);
+            printf("mkdir: operation unsupported on target filesystem: %s\n", argv[i]);
         } else {
             printf("mkdir: failed to create directory: %s\n", argv[i]);
         }

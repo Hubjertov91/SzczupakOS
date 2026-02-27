@@ -2,6 +2,17 @@
 #include <stddef.h>
 #include <syscall.h>
 
+static uint32_t g_font_width = GUI_FONT_WIDTH;
+static uint32_t g_font_height = GUI_FONT_HEIGHT;
+
+uint32_t gui_font_width(void) {
+    return g_font_width ? g_font_width : GUI_FONT_WIDTH;
+}
+
+uint32_t gui_font_height(void) {
+    return g_font_height ? g_font_height : GUI_FONT_HEIGHT;
+}
+
 long gui_get_fb_info(gui_fb_info_t* out) {
     if (!out) return -1;
 
@@ -12,6 +23,11 @@ long gui_get_fb_info(gui_fb_info_t* out) {
     out->width = info.width;
     out->height = info.height;
     out->bpp = info.bpp;
+    out->font_width = info.font_width ? info.font_width : GUI_FONT_WIDTH;
+    out->font_height = info.font_height ? info.font_height : GUI_FONT_HEIGHT;
+
+    g_font_width = out->font_width;
+    g_font_height = out->font_height;
     return 0;
 }
 
@@ -43,6 +59,8 @@ long gui_draw_char(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg) {
 long gui_draw_text(uint32_t x, uint32_t y, const char* text, uint32_t fg, uint32_t bg) {
     if (!text) return -1;
 
+    uint32_t font_w = gui_font_width();
+    uint32_t font_h = gui_font_height();
     uint32_t start_x = x;
     uint32_t cx = x;
     uint32_t cy = y;
@@ -50,12 +68,12 @@ long gui_draw_text(uint32_t x, uint32_t y, const char* text, uint32_t fg, uint32
     for (const char* p = text; *p; p++) {
         if (*p == '\n') {
             cx = start_x;
-            cy += GUI_FONT_HEIGHT;
+            cy += font_h;
             continue;
         }
         long rc = gui_draw_char(cx, cy, *p, fg, bg);
         if (rc < 0) return rc;
-        cx += GUI_FONT_WIDTH;
+        cx += font_w;
     }
     return 0;
 }
@@ -88,7 +106,7 @@ void gui_draw_window(const gui_window_t* win) {
 
     gui_fill_rect(x, y, w, h, win->border_color);
 
-    uint32_t title_h = GUI_FONT_HEIGHT + 6;
+    uint32_t title_h = gui_font_height() + 6;
     if (title_h + 2 > h) {
         title_h = h - 2;
     }

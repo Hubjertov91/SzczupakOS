@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
         } else if (ret == -3) {
             printf("touch: cannot touch directory: %s\n", argv[i]);
         } else if (ret == -4) {
-            printf("touch: only root directory is currently supported: %s\n", argv[i]);
+            printf("touch: operation unsupported on target filesystem: %s\n", argv[i]);
         } else {
             printf("touch: failed to create file: %s\n", argv[i]);
         }

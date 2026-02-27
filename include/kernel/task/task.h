@@ -27,6 +27,7 @@ typedef struct {
 
 typedef struct task {
     uint32_t pid;
+    uint32_t parent_pid;
     char name[64];
     task_state_t state;
     cpu_context_t context;
@@ -43,6 +44,7 @@ typedef struct task {
     uint64_t cpu_time;
     uint64_t creation_time;
     uint64_t syscall_kernel_rsp;
+    int32_t exit_code;
     bool kernel_preempt_ok;
     int32_t pty_id;
     bool reap_blocked;
@@ -52,7 +54,8 @@ bool task_init(void);
 task_t* task_create(const char* name, void (*entry_point)(void));
 task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_data, size_t size);
 task_t* task_fork(void);
-void task_exit(void);
+void task_exit(int32_t code);
+int32_t task_wait_pid(int32_t child_pid, int32_t* out_exit_code);
 task_t* get_current_task(void);
 void task_yield(void);
 uint32_t task_get_pid(void);

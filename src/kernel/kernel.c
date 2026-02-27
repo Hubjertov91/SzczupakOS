@@ -22,6 +22,7 @@
 #include <kernel/task/tss.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/fat16.h>
+#include <kernel/fs/tmpfs.h>
 #include <kernel/elf.h>
 #include <kernel/terminal.h>
 #include <kernel/string.h>
@@ -338,6 +339,14 @@ void kernel_main(uint64_t multiboot_addr) {
     bool fs_ready = false;
     if (!boot_opts.no_ata) {
         fs_ready = mount_boot_filesystem();
+        if (fs_ready) {
+            vfs_filesystem_t* tmpfs = tmpfs_create();
+            if (!tmpfs) {
+                serial_write("[KERNEL] WARNING: Failed to create tmpfs for /TMP\n");
+            } else if (!vfs_mount_at(tmpfs, "/TMP")) {
+                serial_write("[KERNEL] WARNING: Failed to mount tmpfs at /TMP\n");
+            }
+        }
     }
 
     if (font_from_module) {

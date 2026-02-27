@@ -13,6 +13,8 @@ typedef struct {
     uint32_t width;
     uint32_t height;
     uint32_t bpp;
+    uint32_t font_width;
+    uint32_t font_height;
 } gui_fb_info_t;
 
 typedef struct {
@@ -36,5 +38,7 @@ long gui_draw_char(uint32_t x, uint32_t y, char c, uint32_t fg, uint32_t bg);
 long gui_draw_text(uint32_t x, uint32_t y, const char* text, uint32_t fg, uint32_t bg);
 void gui_draw_frame(uint32_t x, uint32_t y, uint32_t w, uint32_t h, uint32_t color);
 void gui_draw_window(const gui_window_t* win);
+uint32_t gui_font_width(void);
+uint32_t gui_font_height(void);
 
 #endif

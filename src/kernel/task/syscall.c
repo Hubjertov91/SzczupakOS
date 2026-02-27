@@ -53,6 +53,8 @@ extern uint64_t pmm_get_used_memory(void);
 #define FS_RET_EXISTS    ((uint64_t)-3)
 #define FS_RET_UNSUP     ((uint64_t)-4)
 #define FS_RET_CREATE    ((uint64_t)-5)
+#define FS_RET_NOTFOUND  ((uint64_t)-6)
+#define FS_RET_DELETE    ((uint64_t)-7)
 
 static bool is_space(char c) {
     return c == ' ' || c == '\t' || c == '\n' || c == '\r';
@@ -234,6 +236,27 @@ static uint64_t sys_fork(void) {
     return (uint64_t)child->pid;
 }
 
+static uint64_t sys_waitpid(uint64_t pid, uint64_t status_addr) {
+    int64_t pid_signed = (int64_t)pid;
+    if (pid_signed < -1 || pid_signed > 0x7FFFFFFFLL) {
+        return (uint64_t)-1;
+    }
+
+    int32_t exit_code = 0;
+    int32_t waited_pid = task_wait_pid((int32_t)pid_signed, &exit_code);
+    if (waited_pid < 0) {
+        return (uint64_t)-1;
+    }
+
+    if (status_addr != 0u) {
+        if (copy_to_user((void*)status_addr, &exit_code, sizeof(exit_code)) != 0) {
+            return (uint64_t)-1;
+        }
+    }
+
+    return (uint64_t)(uint32_t)waited_pid;
+}
+
 static bool copy_cmdline_from_user(uint64_t cmdline_addr, char* out, size_t out_size) {
     if (!cmdline_addr || !out || out_size < 2) return false;
     char cmdline[EXEC_CMDLINE_MAX];
@@ -292,6 +315,8 @@ static task_t* spawn_task_from_cmdline(char* cmdline, int32_t pty_id) {
     if (pty_id >= 0) {
         if (!pty_is_open(pty_id) || pty_attach_slave(pty_id, task->pid) != 0) {
             task->state = TASK_TERMINATED;
+            task->reap_blocked = false;
+            task->parent_pid = 0;
             scheduler_remove_task(task);
             task_reap_terminated();
             return NULL;
@@ -313,29 +338,15 @@ static uint64_t sys_exec(uint64_t cmdline_addr) {
     task_t* current = get_current_task();
     int32_t inherited_pty = (current) ? current->pty_id : -1;
     task_t* task = spawn_task_from_cmdline(cmdline, inherited_pty);
-    if (!task) return (uint64_t)-1;
-    task->reap_blocked = true;
-
-    bool preempt_enabled = false;
-    if (current && !current->is_kernel) {
-        current->kernel_preempt_ok = true;
-        preempt_enabled = true;
+    if (!task) {
+        return (uint64_t)-1;
     }
 
-    while (task->state != TASK_TERMINATED) {
-        __asm__ volatile("sti; hlt; cli");
-        net_poll();
+    int32_t waited_pid = task_wait_pid((int32_t)task->pid, NULL);
+    if (waited_pid < 0) {
+        return (uint64_t)-1;
     }
-
-    uint64_t pid = task->pid;
-    task->reap_blocked = false;
-
-    if (preempt_enabled && current) {
-        current->kernel_preempt_ok = false;
-    }
-
-    task_reap_terminated();
-    return pid;
+    return (uint64_t)(uint32_t)waited_pid;
 }
 
 static uint64_t sys_pty_open(void) {
@@ -480,11 +491,6 @@ static uint64_t sys_fs_touch(uint64_t path_addr) {
         return FS_RET_PARENT;
     }
 
-    if (parent->parent != NULL) {
-        vfs_close(parent);
-        return FS_RET_UNSUP;
-    }
-
     vfs_node_t* existing = vfs_find_child_nocase(parent, name);
     if (existing) {
         uint64_t rc = (existing->type == VFS_FILE) ? 0 : FS_RET_EXISTS;
@@ -518,11 +524,6 @@ static uint64_t sys_fs_mkdir(uint64_t path_addr) {
         return FS_RET_PARENT;
     }
 
-    if (parent->parent != NULL) {
-        vfs_close(parent);
-        return FS_RET_UNSUP;
-    }
-
     if (vfs_find_child_nocase(parent, name)) {
         vfs_close(parent);
         return FS_RET_EXISTS;
@@ -531,6 +532,36 @@ static uint64_t sys_fs_mkdir(uint64_t path_addr) {
     vfs_node_t* dir = vfs_create_directory(parent, name);
     vfs_close(parent);
     if (!dir) return FS_RET_CREATE;
+    return 0;
+}
+
+static uint64_t sys_fs_delete(uint64_t path_addr) {
+    char path[EXEC_PATH_MAX];
+    if (copy_user_string(path_addr, path, sizeof(path)) != 0) {
+        return FS_RET_INVALID;
+    }
+
+    char parent_path[EXEC_PATH_MAX];
+    char name[MAX_FILENAME];
+    if (split_parent_name(path, parent_path, sizeof(parent_path), name, sizeof(name)) != 0) {
+        return FS_RET_INVALID;
+    }
+
+    vfs_node_t* parent = vfs_open(parent_path, 0);
+    if (!parent || parent->type != VFS_DIRECTORY) {
+        if (parent) vfs_close(parent);
+        return FS_RET_PARENT;
+    }
+
+    vfs_node_t* node = vfs_find_child_nocase(parent, name);
+    if (!node) {
+        vfs_close(parent);
+        return FS_RET_NOTFOUND;
+    }
+
+    bool ok = vfs_delete(node);
+    vfs_close(parent);
+    if (!ok) return FS_RET_DELETE;
     return 0;
 }
 
@@ -585,7 +616,9 @@ static uint64_t sys_fb_info(uint64_t info_addr) {
     struct fb_info info = {
         .width = fb->width,
         .height = fb->height,
-        .bpp = fb->bpp
+        .bpp = fb->bpp,
+        .font_width = psf_get_width(),
+        .font_height = psf_get_height()
     };
     if (copy_to_user((void*)info_addr, &info, sizeof(info)) != 0) return -1;
     return 0;
@@ -968,7 +1001,7 @@ void syscall_handler(syscall_regs_t* regs) {
     }
     
     switch (regs->rax) {
-        case SYSCALL_EXIT:   task_exit(); break;
+        case SYSCALL_EXIT:   task_exit((int32_t)regs->rdi); break;
         case SYSCALL_WRITE:  regs->rax = sys_write(regs->rdi, regs->rsi); break;
         case SYSCALL_READ:   regs->rax = sys_read(regs->rdi, regs->rsi); break;
         case SYSCALL_GETPID: regs->rax = sys_getpid(); break;
@@ -977,6 +1010,7 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_CLEAR:  terminal_clear(); regs->rax = 0; break;
         case SYSCALL_SYSINFO:regs->rax = sys_sysinfo(regs->rdi); break;
         case SYSCALL_FORK:   regs->rax = sys_fork(); break;
+        case SYSCALL_WAITPID:regs->rax = sys_waitpid(regs->rdi, regs->rsi); break;
         case SYSCALL_EXEC:   regs->rax = sys_exec(regs->rdi); break;
         case SYSCALL_FB_PUTPIXEL: regs->rax = sys_fb_putpixel(regs->rdi, regs->rsi, regs->rdx); break;
         case SYSCALL_FB_GETPIXEL: regs->rax = sys_fb_getpixel(regs->rdi, regs->rsi); break;
@@ -988,6 +1022,7 @@ void syscall_handler(syscall_regs_t* regs) {
         case SYSCALL_LISTDIR: regs->rax = sys_listdir(regs->rdi, regs->rsi, regs->rdx); break;
         case SYSCALL_FS_TOUCH: regs->rax = sys_fs_touch(regs->rdi); break;
         case SYSCALL_FS_MKDIR: regs->rax = sys_fs_mkdir(regs->rdi); break;
+        case SYSCALL_FS_DELETE: regs->rax = sys_fs_delete(regs->rdi); break;
         case SYSCALL_NET_INFO: regs->rax = sys_net_info(regs->rdi); break;
         case SYSCALL_NET_PING: regs->rax = sys_net_ping(regs->rdi, regs->rsi, regs->rdx); break;
         case SYSCALL_NET_RESOLVE: regs->rax = sys_net_resolve(regs->rdi, regs->rsi, regs->rdx); break;

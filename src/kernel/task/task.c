@@ -72,6 +72,16 @@ static bool task_list_remove(task_t* task) {
     return false;
 }
 
+static void task_detach_children_locked(uint32_t parent_pid) {
+    for (task_t* it = task_list_head; it; it = it->all_next) {
+        if (it->parent_pid != parent_pid) {
+            continue;
+        }
+        it->parent_pid = 0;
+        it->reap_blocked = false;
+    }
+}
+
 static void task_destroy(task_t* task) {
     if (!task) return;
 
@@ -237,6 +247,7 @@ bool task_init(void) {
     }
 
     current_task->pid = 0;
+    current_task->parent_pid = 0;
     strcpy_safe(current_task->name, "idle", sizeof(current_task->name));
     current_task->state = TASK_RUNNING;
     
@@ -257,6 +268,7 @@ bool task_init(void) {
     current_task->cr3_phys = 0;
     current_task->cpu_time = 0;
     current_task->creation_time = 0;
+    current_task->exit_code = 0;
     current_task->kernel_preempt_ok = false;
     current_task->pty_id = -1;
     current_task->reap_blocked = false;
@@ -302,6 +314,7 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     if (!task) return NULL;
 
     task->pid = next_pid++;
+    task->parent_pid = current_task ? current_task->pid : 0;
     strcpy_safe(task->name, name, sizeof(task->name));
     task->state = TASK_READY;
     task->time_slice = 10;
@@ -311,6 +324,7 @@ task_t* task_create(const char* name, void (*entry_point)(void)) {
     task->cr3_phys = 0;
     task->cpu_time = 0;
     task->creation_time = pit_get_ticks();
+    task->exit_code = 0;
     task->kernel_preempt_ok = false;
     task->pty_id = -1;
     task->reap_blocked = false;
@@ -361,6 +375,7 @@ task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_dat
     if (!task) return NULL;
 
     task->pid = next_pid++;
+    task->parent_pid = current_task ? current_task->pid : 0;
     strcpy_safe(task->name, name, sizeof(task->name));
     task->state = TASK_READY;
     task->is_kernel = false;
@@ -370,9 +385,10 @@ task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_dat
     task->priority = 10;
     task->cpu_time = 0;
     task->creation_time = pit_get_ticks();
+    task->exit_code = 0;
     task->kernel_preempt_ok = false;
     task->pty_id = -1;
-    task->reap_blocked = false;
+    task->reap_blocked = (task->parent_pid != 0u);
 
     task->kernel_stack = vmm_alloc_pages(KERNEL_STACK_SIZE / PAGE_SIZE);
     if (!task->kernel_stack) {
@@ -462,12 +478,17 @@ task_t* task_create_user(const char* name, const char* cmdline, uint8_t* elf_dat
     return task;
 }
 
-void task_exit(void) {
+void task_exit(int32_t code) {
     if (!current_task) return;
+
+    irq_state_t state = spinlock_acquire_irqsave(&task_list_lock);
+    task_detach_children_locked(current_task->pid);
+    spinlock_release_irqrestore(&task_list_lock, state);
 
     pty_detach_slave(current_task->pid);
     current_task->pty_id = -1;
-    current_task->reap_blocked = false;
+    current_task->exit_code = code;
+    current_task->reap_blocked = (current_task->parent_pid != 0u);
     current_task->state = TASK_TERMINATED;
     scheduler_remove_task(current_task);
 
@@ -479,6 +500,76 @@ void task_exit(void) {
 
     __asm__ volatile("sti");
     while (1) __asm__ volatile("hlt");
+}
+
+int32_t task_wait_pid(int32_t child_pid, int32_t* out_exit_code) {
+    task_t* parent = get_current_task();
+    if (!parent || parent->pid == 0) {
+        return -1;
+    }
+    if (child_pid == 0 || child_pid < -1) {
+        return -1;
+    }
+
+    bool restore_preempt = false;
+    if (!parent->is_kernel && !parent->kernel_preempt_ok) {
+        parent->kernel_preempt_ok = true;
+        restore_preempt = true;
+    }
+
+    for (;;) {
+        bool has_child = false;
+        bool target_exists = false;
+        task_t* exited_child = NULL;
+
+        irq_state_t state = spinlock_acquire_irqsave(&task_list_lock);
+        for (task_t* it = task_list_head; it; it = it->all_next) {
+            if (it->parent_pid != parent->pid) {
+                continue;
+            }
+
+            has_child = true;
+
+            if (child_pid != -1 && it->pid != (uint32_t)child_pid) {
+                continue;
+            }
+
+            target_exists = true;
+            if (it->state == TASK_TERMINATED) {
+                exited_child = it;
+                break;
+            }
+        }
+
+        if (exited_child) {
+            int32_t exit_code = exited_child->exit_code;
+            int32_t exited_pid = (int32_t)exited_child->pid;
+            exited_child->reap_blocked = false;
+            spinlock_release_irqrestore(&task_list_lock, state);
+
+            task_reap_terminated();
+            if (out_exit_code) {
+                *out_exit_code = exit_code;
+            }
+
+            if (restore_preempt) {
+                parent->kernel_preempt_ok = false;
+            }
+            return exited_pid;
+        }
+
+        spinlock_release_irqrestore(&task_list_lock, state);
+
+        if (!has_child || (child_pid != -1 && !target_exists)) {
+            if (restore_preempt) {
+                parent->kernel_preempt_ok = false;
+            }
+            return -1;
+        }
+
+        __asm__ volatile("sti; hlt; cli");
+        net_poll();
+    }
 }
 
 void task_yield(void) {

@@ -6,6 +6,34 @@
 
 static vfs_node_t* vfs_root = NULL;
 
+static char upper_ascii(char c) {
+    if (c >= 'a' && c <= 'z') {
+        return (char)(c - ('a' - 'A'));
+    }
+    return c;
+}
+
+static bool streq_nocase(const char* a, const char* b) {
+    if (!a || !b) return false;
+    while (*a && *b) {
+        if (upper_ascii(*a) != upper_ascii(*b)) return false;
+        a++;
+        b++;
+    }
+    return *a == *b;
+}
+
+static vfs_node_t* vfs_find_child_nocase(vfs_node_t* parent, const char* name) {
+    if (!parent || parent->type != VFS_DIRECTORY || !name) return NULL;
+
+    vfs_node_t* child = parent->first_child;
+    while (child) {
+        if (streq_nocase(child->name, name)) return child;
+        child = child->next_sibling;
+    }
+    return NULL;
+}
+
 void vfs_init(void) {
     vfs_root = NULL;
     serial_write("[VFS] Initialized\n");
@@ -30,7 +58,7 @@ bool vfs_mount(vfs_filesystem_t* fs, const char* mountpoint) {
 }
 
 bool vfs_mount_at(vfs_filesystem_t* fs, const char* path) {
-    if (!fs || !fs->root || !path) {
+    if (!fs || !fs->root || !path || !vfs_root) {
         serial_write("[VFS] ERROR: Invalid mount_at parameters\n");
         return false;
     }
@@ -38,44 +66,87 @@ bool vfs_mount_at(vfs_filesystem_t* fs, const char* path) {
     if (strcmp(path, "/") == 0) {
         return vfs_mount(fs, "/");
     }
-    
-    const char* name = path;
-    for (int i = 0; path[i]; i++) {
-        if (path[i] == '/') name = &path[i + 1];
+
+    if (path[0] != '/') {
+        serial_write("[VFS] ERROR: mount path must be absolute\n");
+        return false;
     }
-    
-    if (!name || strlen(name) == 0) {
+
+    char parent_path[MAX_PATH];
+    char name[MAX_FILENAME];
+    size_t len = strlen(path);
+    while (len > 1 && path[len - 1] == '/') {
+        len--;
+    }
+    if (len <= 1) {
+        serial_write("[VFS] ERROR: Invalid mount path\n");
+        return false;
+    }
+
+    size_t slash = len - 1;
+    while (slash > 0 && path[slash] != '/') {
+        slash--;
+    }
+    if (path[slash] != '/') {
+        serial_write("[VFS] ERROR: Invalid mount path format\n");
+        return false;
+    }
+
+    size_t name_len = len - slash - 1;
+    if (name_len == 0 || name_len >= sizeof(name)) {
         serial_write("[VFS] ERROR: Invalid mount name\n");
         return false;
     }
-    
-    vfs_node_t* mount_point = vfs_find_child(vfs_root, name);
-    
+
+    memcpy(name, path + slash + 1, name_len);
+    name[name_len] = '\0';
+    if ((name_len == 1 && name[0] == '.') ||
+        (name_len == 2 && name[0] == '.' && name[1] == '.')) {
+        serial_write("[VFS] ERROR: Invalid mount name\n");
+        return false;
+    }
+
+    if (slash == 0) {
+        parent_path[0] = '/';
+        parent_path[1] = '\0';
+    } else {
+        if (slash >= sizeof(parent_path)) {
+            serial_write("[VFS] ERROR: mount path too long\n");
+            return false;
+        }
+        memcpy(parent_path, path, slash);
+        parent_path[slash] = '\0';
+    }
+
+    vfs_node_t* parent = vfs_resolve_path(parent_path);
+    if (!parent || parent->type != VFS_DIRECTORY) {
+        serial_write("[VFS] ERROR: Mount parent not found\n");
+        return false;
+    }
+
+    vfs_node_t* mount_point = vfs_find_child(parent, name);
+    if (!mount_point) {
+        mount_point = vfs_find_child_nocase(parent, name);
+    }
+
     if (!mount_point) {
         mount_point = (vfs_node_t*)kmalloc(sizeof(vfs_node_t));
         if (!mount_point) return false;
-        
-        int i = 0;
-        while (name[i] && i < MAX_FILENAME - 1) {
-            mount_point->name[i] = name[i];
-            i++;
-        }
-        mount_point->name[i] = '\0';
-        
+
+        memcpy(mount_point->name, name, name_len + 1u);
         mount_point->type = VFS_DIRECTORY;
         mount_point->size = 0;
         mount_point->fs_data = NULL;
-        mount_point->parent = vfs_root;
-        mount_point->next_sibling = vfs_root->first_child;
-        vfs_root->first_child = mount_point;
-        
-        serial_write("[VFS] Created mount point ");
-        serial_write(name);
-        serial_write("\n");
+        mount_point->parent = parent;
+        mount_point->fs = parent->fs;
+        mount_point->first_child = NULL;
+        mount_point->next_sibling = parent->first_child;
+        parent->first_child = mount_point;
     } else {
-        serial_write("[VFS] Found existing mount point ");
-        serial_write(name);
-        serial_write("\n");
+        if (mount_point->type != VFS_DIRECTORY) {
+            serial_write("[VFS] ERROR: Mount point is not a directory\n");
+            return false;
+        }
     }
     
     mount_point->fs = fs;
@@ -101,7 +172,7 @@ vfs_node_t* vfs_get_root(void) {
 }
 
 vfs_node_t* vfs_find_child(vfs_node_t* parent, const char* name) {
-    if (!parent || parent->type != VFS_DIRECTORY) return NULL;
+    if (!parent || parent->type != VFS_DIRECTORY || !name) return NULL;
     
     vfs_node_t* child = parent->first_child;
     while (child) {
@@ -112,36 +183,47 @@ vfs_node_t* vfs_find_child(vfs_node_t* parent, const char* name) {
 }
 
 vfs_node_t* vfs_resolve_path(const char* path) {
-    if (!vfs_root || path[0] != '/') return NULL;
+    if (!vfs_root || !path || path[0] != '/') return NULL;
     if (strcmp(path, "/") == 0) return vfs_root;
-    
+
     vfs_node_t* current = vfs_root;
     char token[MAX_FILENAME];
-    int token_idx = 0;
-    int i = 1;
-    
-    while (path[i]) {
-        if (path[i] == '/') {
-            if (token_idx > 0) {
-                token[token_idx] = '\0';
-                current = vfs_find_child(current, token);
-                if (!current) return NULL;
-                token_idx = 0;
+    size_t i = 1;
+
+    while (path[i] != '\0') {
+        while (path[i] == '/') i++;
+        if (path[i] == '\0') break;
+
+        size_t token_idx = 0;
+        while (path[i] != '\0' && path[i] != '/') {
+            if (token_idx + 1 >= MAX_FILENAME) {
+                return NULL;
             }
-            i++;
-        } else {
-            if (token_idx < MAX_FILENAME - 1) {
-                token[token_idx++] = path[i];
-            }
-            i++;
+            token[token_idx++] = path[i++];
         }
-    }
-    
-    if (token_idx > 0) {
         token[token_idx] = '\0';
-        current = vfs_find_child(current, token);
+
+        if (token_idx == 1 && token[0] == '.') {
+            continue;
+        }
+
+        if (token_idx == 2 && token[0] == '.' && token[1] == '.') {
+            if (current->parent) {
+                current = current->parent;
+            }
+            continue;
+        }
+
+        vfs_node_t* next = vfs_find_child(current, token);
+        if (!next) {
+            next = vfs_find_child_nocase(current, token);
+        }
+        if (!next) {
+            return NULL;
+        }
+        current = next;
     }
-    
+
     return current;
 }
 

@@ -110,6 +110,10 @@ long sys_exec(const char* cmdline) {
     return syscall1(SYS_EXEC, (long)cmdline);
 }
 
+long sys_waitpid(int32_t pid, int32_t* out_exit_code) {
+    return syscall2(SYS_WAITPID, (long)pid, (long)out_exit_code);
+}
+
 long sys_fb_putpixel(uint32_t x, uint32_t y, uint32_t color) {
     return syscall3(SYS_FB_PUTPIXEL, x, y, color);
 }
@@ -192,6 +196,10 @@ long sys_fs_touch(const char* path) {
 
 long sys_fs_mkdir(const char* path) {
     return syscall1(SYS_FS_MKDIR, (long)path);
+}
+
+long sys_fs_delete(const char* path) {
+    return syscall1(SYS_FS_DELETE, (long)path);
 }
 
 long sys_kb_poll(void) {

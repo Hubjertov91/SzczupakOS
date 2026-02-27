@@ -44,6 +44,7 @@ int cmd_help(int argc, char** argv) {
     printf("  http        - HTTP GET client (http://... or host/path)\n");
     printf("  lspci       - List detected PCI/PCIe devices\n");
     printf("  ptysh       - Run command inside PTY bridge (default: /SHELL.ELF)\n");
+    printf("  rm          - Remove file or empty directory (root-level FAT16)\n");
     printf("  usb         - List detected USB host controllers\n");
     printf("  Type ELF name or path, e.g. /LS.ELF\n");
     return 0;

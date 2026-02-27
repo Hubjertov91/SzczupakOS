@@ -115,6 +115,66 @@ static uint16_t fat16_allocate_cluster(void) {
     return 0;
 }
 
+static bool fat16_release_cluster_chain(uint16_t start_cluster) {
+    if (start_cluster < 2) return true;
+
+    uint16_t cluster = start_cluster;
+    for (uint32_t guard = 0; guard < 0x10000u; guard++) {
+        if (cluster < 2 || cluster >= 0xFFF8) {
+            return true;
+        }
+
+        uint16_t next = fat16_read_fat_entry(cluster);
+        if (!fat16_write_fat_entry(cluster, 0)) {
+            return false;
+        }
+        if (next == cluster) {
+            return true;
+        }
+        cluster = next;
+    }
+
+    return false;
+}
+
+static bool fat16_directory_cluster_empty(uint16_t start_cluster) {
+    if (start_cluster < 2) return true;
+
+    uint16_t cluster = start_cluster;
+    for (uint32_t guard = 0; guard < 0x10000u; guard++) {
+        if (cluster < 2 || cluster >= 0xFFF8) {
+            return true;
+        }
+
+        uint32_t first_sector = fs_data->data_start + (cluster - 2) * fs_data->sectors_per_cluster;
+        for (uint8_t s = 0; s < fs_data->sectors_per_cluster; s++) {
+            uint8_t sector[FAT16_SECTOR_SIZE];
+            if (!ata_read_sector(first_sector + s, sector)) {
+                return false;
+            }
+
+            fat16_dir_entry_t* entries = (fat16_dir_entry_t*)sector;
+            int entries_per_sector = FAT16_SECTOR_SIZE / (int)sizeof(fat16_dir_entry_t);
+            for (int i = 0; i < entries_per_sector; i++) {
+                fat16_dir_entry_t* e = &entries[i];
+                if (e->name[0] == 0x00) {
+                    return true;
+                }
+                if ((uint8_t)e->name[0] == 0xE5) continue;
+                if (e->attr == 0x0F) continue;
+                if (e->name[0] == '.') continue;
+                return false;
+            }
+        }
+
+        uint16_t next = fat16_read_fat_entry(cluster);
+        if (next == cluster) return false;
+        cluster = next;
+    }
+
+    return false;
+}
+
 static bool fat16_read(vfs_node_t* node, void* buffer, size_t offset, size_t size) {
     if (!node || !buffer || !fs_data || node->type != VFS_FILE) {
         return false;
@@ -390,9 +450,90 @@ found_slot:
     return node;
 }
 
-static bool fat16_delete(vfs_node_t* unused) {
-    (void)unused;
-    return false;
+static bool fat16_delete(vfs_node_t* node) {
+    if (!node || !node->parent || !fs_data) return false;
+    if (node->parent->parent != NULL) return false;
+    if (node->type == VFS_DIRECTORY && node->first_child) return false;
+
+    char name83[11];
+    fat16_name_to_83(node->name, name83);
+
+    uint8_t root_sector[FAT16_SECTOR_SIZE];
+    fat16_dir_entry_t* entries = NULL;
+    int found_slot = -1;
+    uint32_t found_sector = 0;
+    bool found_entry = false;
+    bool end_of_dir = false;
+
+    const uint32_t root_sector_count = fat16_root_dir_sector_count();
+    const int entries_per_sector = FAT16_SECTOR_SIZE / (int)sizeof(fat16_dir_entry_t);
+
+    for (uint32_t sector_idx = 0; sector_idx < root_sector_count && !end_of_dir; sector_idx++) {
+        if (!ata_read_sector(fs_data->root_start + sector_idx, root_sector)) return false;
+        entries = (fat16_dir_entry_t*)root_sector;
+        for (int i = 0; i < entries_per_sector; i++) {
+            if (entries[i].name[0] == 0x00) {
+                end_of_dir = true;
+                break;
+            }
+            if ((uint8_t)entries[i].name[0] == 0xE5 || entries[i].attr == 0x0F) {
+                continue;
+            }
+            if (memcmp(entries[i].name, name83, 11) == 0) {
+                found_slot = i;
+                found_sector = sector_idx;
+                found_entry = true;
+                break;
+            }
+        }
+        if (found_entry) {
+            break;
+        }
+    }
+
+    if (!found_entry || found_slot < 0 || !entries) return false;
+
+    fat16_dir_entry_t* entry = &entries[found_slot];
+    bool is_dir = (entry->attr & 0x10u) != 0u;
+    uint16_t start_cluster = entry->cluster_low;
+
+    if (is_dir && !fat16_directory_cluster_empty(start_cluster)) {
+        return false;
+    }
+
+    if (start_cluster >= 2 && !fat16_release_cluster_chain(start_cluster)) {
+        return false;
+    }
+
+    entry->name[0] = 0xE5;
+    entry->attr = 0;
+    entry->cluster_low = 0;
+    entry->cluster_high = 0;
+    entry->file_size = 0;
+
+    if (!ata_write_sector(fs_data->root_start + found_sector, root_sector)) {
+        return false;
+    }
+
+    vfs_node_t* parent = node->parent;
+    if (parent->first_child == node) {
+        parent->first_child = node->next_sibling;
+    } else {
+        vfs_node_t* prev = parent->first_child;
+        while (prev && prev->next_sibling != node) {
+            prev = prev->next_sibling;
+        }
+        if (!prev) {
+            return false;
+        }
+        prev->next_sibling = node->next_sibling;
+    }
+
+    node->parent = NULL;
+    node->next_sibling = NULL;
+    node->first_child = NULL;
+    kfree(node);
+    return true;
 }
 
 static vfs_operations_t fat16_ops = { .create_file = fat16_create_file, .create_dir = fat16_create_dir, .delete = fat16_delete, .read = fat16_read, .write = fat16_write };
