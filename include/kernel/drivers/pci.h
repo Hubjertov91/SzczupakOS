@@ -37,5 +37,12 @@ void pci_write32(uint8_t bus, uint8_t slot, uint8_t function, uint8_t offset, ui
 
 bool pci_set_command_bits(uint8_t bus, uint8_t slot, uint8_t function, uint16_t bits);
 uint32_t pci_read_bar(uint8_t bus, uint8_t slot, uint8_t function, uint8_t bar_index);
+bool pci_has_extended_config(void);
+uint8_t pci_read8_ext(uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset);
+uint16_t pci_read16_ext(uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset);
+uint32_t pci_read32_ext(uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset);
+void pci_write8_ext(uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset, uint8_t value);
+void pci_write16_ext(uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset, uint16_t value);
+void pci_write32_ext(uint8_t bus, uint8_t slot, uint8_t function, uint16_t offset, uint32_t value);
 
 #endif

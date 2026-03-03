@@ -1,10 +1,10 @@
 #include <task/scheduler.h>
 #include <kernel/task/task.h>
-#include <kernel/task/tss.h>
 #include <kernel/spinlock.h>
 #include <kernel/string.h>
 #include <kernel/drivers/serial.h>
-#include <arch/gdt.h>
+#include <debug/panic.h>
+#include <arch/api.h>
 #include <mm/vmm.h>
 
 #define KERNEL_STACK_SIZE 16384
@@ -110,7 +110,7 @@ void schedule(void) {
         return;
     }
 
-    tss_set_kernel_stack((uint64_t)next->kernel_stack + KERNEL_STACK_SIZE);
+    arch_set_kernel_stack((uint64_t)next->kernel_stack + KERNEL_STACK_SIZE);
     task_set_current(next);
     
     extern uint64_t syscall_kernel_rsp;
@@ -130,7 +130,7 @@ void schedule(void) {
         serial_write(", end: 0x");
         serial_write_hex((uint64_t)next->kernel_stack + KERNEL_STACK_SIZE);
         serial_write("\n");
-        while(1) __asm__ volatile("hlt");
+        panic_halt_message("Scheduler invariant: bad kernel_rsp");
     }
 
     if (!next->is_kernel && next->context.cr3) {
@@ -140,7 +140,7 @@ void schedule(void) {
         __asm__ volatile("lea (%%rip), %0" : "=r"(rip));
         if (!(new_pml4[(rip >> 39) & 0x1FF] & 1)) {
             serial_write("[SCHED] PANIC: kernel not in user pml4\n");
-            while(1) __asm__ volatile("hlt");
+            panic_halt_message("Scheduler invariant: kernel mapping missing in user PML4");
         }
         __asm__ volatile("mov %0, %%cr3" : : "r"(next->context.cr3) : "memory");
     }
@@ -190,7 +190,7 @@ uint64_t schedule_from_irq(uint64_t* irq_rsp) {
 
     prev->context.kernel_rsp = (uint64_t)irq_rsp;
 
-    tss_set_kernel_stack((uint64_t)next->kernel_stack + KERNEL_STACK_SIZE);
+    arch_set_kernel_stack((uint64_t)next->kernel_stack + KERNEL_STACK_SIZE);
     task_set_current(next);
 
     extern uint64_t syscall_kernel_rsp;

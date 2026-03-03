@@ -17,6 +17,7 @@
 #include <kernel/string.h>
 #include <task/scheduler.h>
 #include <kernel/pty.h>
+#include <arch/api.h>
 
 extern void syscall_handler_asm(void);
 
@@ -214,7 +215,7 @@ static uint64_t sys_sleep(uint64_t ms) {
     uint64_t start = pit_get_ticks();
     uint64_t target = start + ms / 10;
     while (pit_get_ticks() < target) {
-        __asm__ volatile("sti; hlt; cli");
+        arch_idle_once();
         net_poll();
     }
     return 0;

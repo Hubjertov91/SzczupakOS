@@ -20,6 +20,15 @@ framebuffer_tag_start:
     dd 0
     dd 0
 framebuffer_tag_end:
+
+    align 8
+info_request_tag_start:
+    dw 1
+    dw 1
+    dd info_request_tag_end - info_request_tag_start
+    dd 14
+    dd 15
+info_request_tag_end:
     
     align 8
     dw 0

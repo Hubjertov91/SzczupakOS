@@ -11,6 +11,7 @@
 #include <net/net.h>
 #include <kernel/pty.h>
 #include <kernel/spinlock.h>
+#include <arch/api.h>
 
 #define KERNEL_STACK_SIZE 16384
 #define USER_STACK_SIZE (32 * 4096)
@@ -107,7 +108,7 @@ static void task_destroy(task_t* task) {
 static void idle_task_entry(void) {
     for (;;) {
         task_reap_terminated();
-        __asm__ volatile("sti; hlt; cli");
+        arch_idle_once();
         net_poll();
     }
 }
@@ -498,8 +499,10 @@ void task_exit(int32_t code) {
         __asm__ volatile("mov %0, %%cr3" : : "r"(kernel_dir->pml4_phys) : "memory");
     }
 
-    __asm__ volatile("sti");
-    while (1) __asm__ volatile("hlt");
+    arch_irq_enable();
+    for (;;) {
+        arch_wait_for_interrupt();
+    }
 }
 
 int32_t task_wait_pid(int32_t child_pid, int32_t* out_exit_code) {
@@ -567,7 +570,7 @@ int32_t task_wait_pid(int32_t child_pid, int32_t* out_exit_code) {
             return -1;
         }
 
-        __asm__ volatile("sti; hlt; cli");
+        arch_idle_once();
         net_poll();
     }
 }

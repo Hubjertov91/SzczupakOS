@@ -227,6 +227,59 @@ vfs_node_t* vfs_resolve_path(const char* path) {
     return current;
 }
 
+bool vfs_ensure_directory(const char* path) {
+    if (!vfs_root || !path || path[0] != '/') {
+        return false;
+    }
+    if (strcmp(path, "/") == 0) {
+        return true;
+    }
+
+    vfs_node_t* current = vfs_root;
+    char token[MAX_FILENAME];
+    size_t i = 1;
+
+    while (path[i] != '\0') {
+        while (path[i] == '/') i++;
+        if (path[i] == '\0') break;
+
+        size_t token_idx = 0;
+        while (path[i] != '\0' && path[i] != '/') {
+            if (token_idx + 1 >= MAX_FILENAME) {
+                return false;
+            }
+            token[token_idx++] = path[i++];
+        }
+        token[token_idx] = '\0';
+
+        if (token_idx == 1 && token[0] == '.') {
+            continue;
+        }
+        if (token_idx == 2 && token[0] == '.' && token[1] == '.') {
+            return false;
+        }
+
+        vfs_node_t* next = vfs_find_child(current, token);
+        if (!next) {
+            next = vfs_find_child_nocase(current, token);
+        }
+
+        if (!next) {
+            next = vfs_create_directory(current, token);
+            if (!next) {
+                return false;
+            }
+        }
+
+        if (next->type != VFS_DIRECTORY) {
+            return false;
+        }
+        current = next;
+    }
+
+    return true;
+}
+
 vfs_node_t* vfs_create_file(vfs_node_t* parent, const char* name) {
     if (!parent || !parent->fs || !parent->fs->ops->create_file) return NULL;
     return parent->fs->ops->create_file(parent, name);

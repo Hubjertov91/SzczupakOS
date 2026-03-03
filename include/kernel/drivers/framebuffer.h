@@ -12,6 +12,12 @@ typedef struct {
     uint32_t pitch;
     uint8_t  bpp;
     uint8_t  type;
+    uint8_t  red_position;
+    uint8_t  red_size;
+    uint8_t  green_position;
+    uint8_t  green_size;
+    uint8_t  blue_position;
+    uint8_t  blue_size;
     uint32_t bytes_per_pixel;
     size_t   buffer_size;
 } framebuffer_info_t;

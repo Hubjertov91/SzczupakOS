@@ -5,21 +5,18 @@
 #include <kernel/mm/vmm.h>
 #include <kernel/mm/uaccess.h>
 #include <kernel/mm/pagefault.h>
-#include <kernel/arch/idt.h>
-#include <kernel/arch/gdt.h>
+#include <kernel/arch/api.h>
 #include <kernel/task/syscall.h>
-#include <kernel/drivers/pic.h>
-#include <kernel/drivers/pit.h>
 #include <kernel/drivers/keyboard.h>
 #include <kernel/drivers/mouse.h>
 #include <kernel/drivers/rtc.h>
 #include <kernel/drivers/pci.h>
+#include <kernel/drivers/driver.h>
 #include <kernel/drivers/usb.h>
 #include <kernel/drivers/ata.h>
 #include <kernel/drivers/rtl8168.h>
 #include <kernel/task/scheduler.h>
 #include <kernel/task/task.h>
-#include <kernel/task/tss.h>
 #include <kernel/fs/vfs.h>
 #include <kernel/fs/fat16.h>
 #include <kernel/fs/tmpfs.h>
@@ -27,8 +24,12 @@
 #include <kernel/terminal.h>
 #include <kernel/string.h>
 #include <kernel/drivers/framebuffer.h>
+#include <kernel/drivers/gpu.h>
 #include <kernel/drivers/psf.h>
+#include <kernel/drivers/apic.h>
+#include <kernel/debug/panic.h>
 #include <kernel/pty.h>
+#include <kernel/firmware/acpi.h>
 #include <net/net.h>
 
 #define KERNEL_STACK_SIZE 16384
@@ -152,9 +153,7 @@ static __attribute__((noreturn)) void kernel_halt_error(const char* message) {
         terminal_write("\n", 1);
     }
 
-    while (1) {
-        __asm__ volatile("hlt");
-    }
+    panic_halt_message(message ? message : "Kernel halt");
 }
 
 static bool multiboot_module_to_blob(const struct multiboot_tag_module* module, boot_blob_t* out) {
@@ -210,6 +209,42 @@ static bool mount_boot_filesystem(void) {
     return true;
 }
 
+static void bootstrap_filesystem_layout(void) {
+    static const char* persistent_dirs[] = {
+        "/etc",
+        "/home",
+        "/var",
+        "/boot"
+    };
+
+    for (size_t i = 0; i < (sizeof(persistent_dirs) / sizeof(persistent_dirs[0])); i++) {
+        if (!vfs_ensure_directory(persistent_dirs[i])) {
+            serial_write("[KERNEL] WARNING: Failed to ensure directory ");
+            serial_write(persistent_dirs[i]);
+            serial_write("\n");
+        }
+    }
+
+    vfs_filesystem_t* tmpfs = tmpfs_create();
+    if (!tmpfs) {
+        serial_write("[KERNEL] WARNING: Failed to create tmpfs for /tmp\n");
+        return;
+    }
+
+    if (!vfs_mount_at(tmpfs, "/tmp")) {
+        serial_write("[KERNEL] WARNING: Failed to mount tmpfs at /tmp\n");
+    }
+
+    vfs_filesystem_t* logfs = tmpfs_create();
+    if (!logfs) {
+        serial_write("[KERNEL] WARNING: Failed to create tmpfs for /var/log\n");
+        return;
+    }
+    if (!vfs_mount_at(logfs, "/var/log")) {
+        serial_write("[KERNEL] WARNING: Failed to mount tmpfs at /var/log\n");
+    }
+}
+
 void kernel_main(uint64_t multiboot_addr) {
     serial_init();
     serial_write("[KERNEL] Starting SzczupakOS...\n");
@@ -242,6 +277,8 @@ void kernel_main(uint64_t multiboot_addr) {
             if (!framebuffer_init(fb_tag)) {
                 serial_write("[KERNEL] WARNING: Framebuffer initialization failed\n");
             }
+        } else {
+            serial_write("[KERNEL] WARNING: No framebuffer tag from bootloader (falling back to VGA text)\n");
         }
     } else {
         serial_write("[BOOT] Framebuffer disabled by boot option\n");
@@ -251,21 +288,38 @@ void kernel_main(uint64_t multiboot_addr) {
         kernel_halt_error("Page fault handler initialization failed");
     }
     
-    idt_init();
-    gdt_init();
+    arch_init_early();
     
     if (!syscall_init()) {
         kernel_halt_error("Syscall initialization failed");
     }
 
     uaccess_init();
+    (void)acpi_init();
+    driver_model_init();
+    driver_register_builtin_descriptors();
     
-    pic_init();
-    pit_init(100);
+    arch_init_timer(100);
     keyboard_init();
     mouse_init();
     rtc_init();
+    (void)apic_init();
     pci_init();
+    (void)gpu_init();
+    if (gpu_available() && framebuffer_available()) {
+        gpu_info_t gpu;
+        framebuffer_info_t* fb = framebuffer_get_info();
+        if (fb && gpu_get_info(&gpu)) {
+            uint64_t fb_phys_page = fb->address & ~0xFFFULL;
+            uint64_t gpu_mmio_page = gpu.mmio_base & ~0xFFFULL;
+            if (gpu_mmio_page != 0u && fb_phys_page == gpu_mmio_page) {
+                serial_write("[GPU] Boot framebuffer is mapped from primary GPU BAR\n");
+            } else {
+                serial_write("[GPU] Boot framebuffer base differs from primary GPU MMIO BAR\n");
+            }
+        }
+    }
+    driver_probe_all();
     bool net_ready = false;
     serial_write("[HW] Adaptive hardware mode: probing host devices and selecting drivers\n");
 
@@ -283,7 +337,7 @@ void kernel_main(uint64_t multiboot_addr) {
         }
 
         if (net_init()) {
-            __asm__ volatile("sti");
+            arch_irq_enable();
             if (!net_configure_dhcp(8000)) {
                 serial_write("[KERNEL] WARNING: DHCP configuration failed, switching to static 192.168.76.2\n");
                 if (!net_configure_static(FALLBACK_STATIC_IP, FALLBACK_STATIC_MASK,
@@ -291,7 +345,7 @@ void kernel_main(uint64_t multiboot_addr) {
                     serial_write("[KERNEL] WARNING: Static network fallback failed\n");
                 }
             }
-            __asm__ volatile("cli");
+            arch_irq_disable();
             net_ready = net_is_ready();
             if (net_ready) {
                 serial_write("[HW] Network backend selected: ");
@@ -340,12 +394,7 @@ void kernel_main(uint64_t multiboot_addr) {
     if (!boot_opts.no_ata) {
         fs_ready = mount_boot_filesystem();
         if (fs_ready) {
-            vfs_filesystem_t* tmpfs = tmpfs_create();
-            if (!tmpfs) {
-                serial_write("[KERNEL] WARNING: Failed to create tmpfs for /TMP\n");
-            } else if (!vfs_mount_at(tmpfs, "/TMP")) {
-                serial_write("[KERNEL] WARNING: Failed to mount tmpfs at /TMP\n");
-            }
+            bootstrap_filesystem_layout();
         }
     }
 
@@ -417,10 +466,10 @@ void kernel_main(uint64_t multiboot_addr) {
         kernel_halt_error("Shell task has no kernel stack");
     }
 
-    tss_set_kernel_stack((uint64_t)task->kernel_stack + KERNEL_STACK_SIZE);
+    arch_set_kernel_stack((uint64_t)task->kernel_stack + KERNEL_STACK_SIZE);
 
     scheduler_enable();
-    __asm__ volatile("sti");
+    arch_irq_enable();
 
     serial_write("[KERNEL] System ready, entering idle loop\n");
     
@@ -428,6 +477,6 @@ void kernel_main(uint64_t multiboot_addr) {
         if (net_ready) {
             net_poll();
         }
-        __asm__ volatile("hlt");
+        arch_wait_for_interrupt();
     }
 }

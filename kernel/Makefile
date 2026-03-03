@@ -1,60 +1,58 @@
-AS = nasm
-CC = gcc
-LD = ld
+ARCH ?= x86_64
+PLATFORM ?= pc
 
-ASFLAGS = -f elf64
-CFLAGS = -m64 -ffreestanding -O0 -Wall -Wextra -nostdlib -nostdinc -fno-pie -mcmodel=large -I../include -I../include/kernel
-LDFLAGS = -n -T ../kernel.ld
+include arch/$(ARCH).mk
+include platform/$(PLATFORM).mk
+
+AS = $(ARCH_AS)
+CC = $(ARCH_CC)
+LD = $(ARCH_LD)
+
 DEPFLAGS = -MMD -MP
 
-BUILD_DIR = ../build
+BUILD_DIR ?= ../build
 OBJ_DIR = $(BUILD_DIR)/obj
 
-KERNEL_OBJS = $(OBJ_DIR)/kernel/arch/x86_64/boot.o \
-              $(OBJ_DIR)/kernel/arch/x86_64/interrupt.o \
-              $(OBJ_DIR)/kernel/arch/x86_64/entry.o \
-              $(OBJ_DIR)/kernel/arch/x86_64/gdt.o \
-              $(OBJ_DIR)/kernel/arch/x86_64/switch.o \
-              $(OBJ_DIR)/kernel/arch/x86_64/syscall.o \
-              $(OBJ_DIR)/kernel/kernel.o \
-              $(OBJ_DIR)/kernel/drivers/vga.o \
-              $(OBJ_DIR)/kernel/drivers/serial.o \
-              $(OBJ_DIR)/kernel/drivers/rtc.o \
-              $(OBJ_DIR)/kernel/drivers/pci.o \
-              $(OBJ_DIR)/kernel/drivers/usb/common.o \
-              $(OBJ_DIR)/kernel/drivers/usb/core.o \
-              $(OBJ_DIR)/kernel/drivers/usb/uhci.o \
-              $(OBJ_DIR)/kernel/drivers/usb/ohci.o \
-              $(OBJ_DIR)/kernel/drivers/usb/ehci.o \
-              $(OBJ_DIR)/kernel/drivers/usb/xhci.o \
-              $(OBJ_DIR)/kernel/drivers/pic.o \
-              $(OBJ_DIR)/kernel/drivers/pit.o \
-              $(OBJ_DIR)/kernel/drivers/keyboard.o \
-              $(OBJ_DIR)/kernel/drivers/mouse.o \
-              $(OBJ_DIR)/kernel/drivers/ata.o \
-              $(OBJ_DIR)/kernel/drivers/rtl8168.o \
-              $(OBJ_DIR)/kernel/drivers/framebuffer.o \
-              $(OBJ_DIR)/kernel/drivers/psf.o \
-              $(OBJ_DIR)/kernel/multiboot/multiboot2.o \
-              $(OBJ_DIR)/kernel/mm/pmm.o \
-              $(OBJ_DIR)/kernel/mm/heap.o \
-              $(OBJ_DIR)/kernel/mm/vmm.o \
-              $(OBJ_DIR)/kernel/mm/pagefault.o \
-              $(OBJ_DIR)/kernel/mm/uaccess.o \
-              $(OBJ_DIR)/kernel/fs/vfs.o \
-              $(OBJ_DIR)/kernel/fs/tmpfs.o \
-              $(OBJ_DIR)/kernel/fs/fat16.o \
-              $(OBJ_DIR)/kernel/interrupt.o \
-              $(OBJ_DIR)/kernel/task/task.o \
-              $(OBJ_DIR)/kernel/task/scheduler.o \
-              $(OBJ_DIR)/kernel/task/gdt.o \
-              $(OBJ_DIR)/kernel/task/tss.o \
-              $(OBJ_DIR)/kernel/task/syscall.o \
-              $(OBJ_DIR)/kernel/net/net.o \
-              $(OBJ_DIR)/kernel/loader/elf.o \
-              $(OBJ_DIR)/kernel/pty.o \
-              $(OBJ_DIR)/kernel/terminal.o \
-              $(OBJ_DIR)/kernel/string.o
+COMMON_CFLAGS = -ffreestanding -O0 -Wall -Wextra -nostdlib -nostdinc -I../include -I../include/kernel -mno-mmx -mno-sse -mno-sse2 -mno-red-zone
+CFLAGS = $(COMMON_CFLAGS) $(ARCH_CFLAGS) $(PLATFORM_CFLAGS)
+ASFLAGS = $(ARCH_ASFLAGS) $(PLATFORM_ASFLAGS)
+LDFLAGS = -n -T ../kernel.ld $(ARCH_LDFLAGS) $(PLATFORM_LDFLAGS)
+
+KERNEL_CORE_SRCS = ../src/kernel/kernel.c \
+                   ../src/kernel/debug/panic.c \
+                   ../src/kernel/pty.c \
+                   ../src/kernel/terminal.c \
+                   ../src/kernel/string.c
+
+KERNEL_MM_SRCS = ../src/kernel/mm/pmm.c \
+                 ../src/kernel/mm/heap.c \
+                 ../src/kernel/mm/vmm.c \
+                 ../src/kernel/mm/pagefault.c \
+                 ../src/kernel/mm/uaccess.c
+
+KERNEL_FS_SRCS = ../src/kernel/fs/vfs.c \
+                 ../src/kernel/fs/tmpfs.c \
+                 ../src/kernel/fs/fat16.c
+
+KERNEL_TASK_SRCS = ../src/kernel/task/task.c \
+                   ../src/kernel/task/scheduler.c \
+                   ../src/kernel/task/syscall.c
+
+KERNEL_NET_SRCS = ../src/kernel/net/net.c
+
+KERNEL_MISC_SRCS = ../src/kernel/multiboot/multiboot2.c \
+                   ../src/kernel/loader/elf.c
+
+KERNEL_C_SRCS = $(KERNEL_CORE_SRCS) \
+                $(KERNEL_MM_SRCS) \
+                $(KERNEL_FS_SRCS) \
+                $(KERNEL_TASK_SRCS) \
+                $(KERNEL_NET_SRCS) \
+                $(KERNEL_MISC_SRCS) \
+                $(PLATFORM_DRIVER_SRCS) \
+                $(ARCH_KERNEL_C_SRCS)
+
+KERNEL_ASM_SRCS = $(ARCH_KERNEL_ASM_SRCS)
 
 NET_SPLIT_SRCS = ../src/kernel/net/net_utils.c \
                  ../src/kernel/net/net_driver.c \
@@ -66,53 +64,29 @@ NET_SPLIT_SRCS = ../src/kernel/net/net_utils.c \
                  ../src/kernel/net/net_rx.c \
                  ../src/kernel/net/net_api.c
 
+KERNEL_C_OBJS = $(patsubst ../src/%.c,$(OBJ_DIR)/%.o,$(KERNEL_C_SRCS))
+KERNEL_ASM_OBJS = $(patsubst ../src/%.S,$(OBJ_DIR)/%.o,$(KERNEL_ASM_SRCS))
+KERNEL_OBJS = $(KERNEL_C_OBJS) $(KERNEL_ASM_OBJS)
+
 all: $(BUILD_DIR)/kernel.bin
 
 $(BUILD_DIR)/kernel.bin: $(KERNEL_OBJS)
 	@mkdir -p $(dir $@)
 	$(LD) $(LDFLAGS) -o $@ $^
 
-$(OBJ_DIR)/kernel/arch/x86_64/%.o: ../src/kernel/arch/x86_64/%.S
+$(OBJ_DIR)/%.o: ../src/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/%.o: ../src/%.S
 	@mkdir -p $(dir $@)
 	$(AS) $(ASFLAGS) $< -o $@
 
-$(OBJ_DIR)/kernel/%.o: ../src/kernel/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/kernel/drivers/%.o: ../src/kernel/drivers/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/kernel/drivers/usb/%.o: ../src/kernel/drivers/usb/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/kernel/fs/%.o: ../src/kernel/fs/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/kernel/mm/%.o: ../src/kernel/mm/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/kernel/task/%.o: ../src/kernel/task/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
-
-$(OBJ_DIR)/kernel/net/%.o: ../src/kernel/net/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
-
 $(OBJ_DIR)/kernel/net/net.o: $(NET_SPLIT_SRCS)
-
-$(OBJ_DIR)/kernel/loader/%.o: ../src/kernel/loader/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)/kernel.bin $(OBJ_DIR)/kernel
 
 .PHONY: all clean
 
--include $(KERNEL_OBJS:.o=.d)
+-include $(KERNEL_C_OBJS:.o=.d)

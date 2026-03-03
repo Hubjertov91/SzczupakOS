@@ -10,6 +10,10 @@ static struct multiboot_tag_framebuffer* saved_fb_tag = NULL;
 static const struct multiboot_tag_module* saved_modules[32];
 static size_t saved_module_count = 0;
 static char saved_cmdline[256];
+static uint8_t saved_acpi_old_rsdp[20];
+static size_t saved_acpi_old_size = 0;
+static uint8_t saved_acpi_new_rsdp[64];
+static size_t saved_acpi_new_size = 0;
 
 static char upper_ascii(char c) {
     if (c >= 'a' && c <= 'z') {
@@ -60,6 +64,8 @@ bool multiboot_parse(uint64_t multiboot_addr) {
     saved_fb_tag = NULL;
     saved_module_count = 0;
     saved_cmdline[0] = '\0';
+    saved_acpi_old_size = 0;
+    saved_acpi_new_size = 0;
     
     for (tag = (struct multiboot_tag*)(multiboot_addr + 8);
          tag->type != MULTIBOOT_TAG_TYPE_END;
@@ -112,6 +118,26 @@ bool multiboot_parse(uint64_t multiboot_addr) {
             if (module->mod_end > module->mod_start) {
                 saved_modules[saved_module_count++] = module;
             }
+        }
+
+        if (tag->type == MULTIBOOT_TAG_TYPE_ACPI_OLD && tag->size > sizeof(struct multiboot_tag)) {
+            const uint8_t* rsdp = (const uint8_t*)tag + sizeof(struct multiboot_tag);
+            size_t payload = (size_t)tag->size - sizeof(struct multiboot_tag);
+            if (payload > sizeof(saved_acpi_old_rsdp)) {
+                payload = sizeof(saved_acpi_old_rsdp);
+            }
+            memcpy(saved_acpi_old_rsdp, rsdp, payload);
+            saved_acpi_old_size = payload;
+        }
+
+        if (tag->type == MULTIBOOT_TAG_TYPE_ACPI_NEW && tag->size > sizeof(struct multiboot_tag)) {
+            const uint8_t* rsdp = (const uint8_t*)tag + sizeof(struct multiboot_tag);
+            size_t payload = (size_t)tag->size - sizeof(struct multiboot_tag);
+            if (payload > sizeof(saved_acpi_new_rsdp)) {
+                payload = sizeof(saved_acpi_new_rsdp);
+            }
+            memcpy(saved_acpi_new_rsdp, rsdp, payload);
+            saved_acpi_new_size = payload;
         }
     }
     
@@ -178,4 +204,18 @@ const struct multiboot_tag_module* multiboot_find_module(const char* token) {
     }
 
     return NULL;
+}
+
+const void* multiboot_get_acpi_rsdp_old(size_t* out_size) {
+    if (out_size) {
+        *out_size = saved_acpi_old_size;
+    }
+    return (saved_acpi_old_size > 0) ? (const void*)saved_acpi_old_rsdp : NULL;
+}
+
+const void* multiboot_get_acpi_rsdp_new(size_t* out_size) {
+    if (out_size) {
+        *out_size = saved_acpi_new_size;
+    }
+    return (saved_acpi_new_size > 0) ? (const void*)saved_acpi_new_rsdp : NULL;
 }

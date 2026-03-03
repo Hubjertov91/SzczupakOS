@@ -1,8 +1,13 @@
-CC = gcc
-LD = ld
+ARCH ?= x86_64
 
-USER_CFLAGS = -m64 -ffreestanding -nostdlib -nostdinc -fno-pie -fno-stack-protector -fcf-protection=none -mcmodel=large -O0 -I../include/user
-USER_LDFLAGS = -nostdlib -T ../src/userland/ld/user.ld
+include arch/$(ARCH).mk
+
+CC = $(USER_ARCH_CC)
+LD = $(USER_ARCH_LD)
+AS = $(USER_ARCH_AS)
+
+USER_CFLAGS = -ffreestanding -nostdlib -nostdinc -O0 -I../include/user $(USER_ARCH_CFLAGS)
+USER_LDFLAGS = -nostdlib -T ../src/userland/ld/user.ld $(USER_ARCH_LDFLAGS)
 DEPFLAGS = -MMD -MP
 
 BUILD_DIR = ../build
@@ -38,9 +43,9 @@ $(OBJ_DIR)/user/%.o: ../src/userland/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(USER_CFLAGS) $(DEPFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/user/crt0.o: ../src/userland/arch/x86_64/crt0.S
+$(OBJ_DIR)/user/crt0.o: $(USER_CRT0_SRC)
 	@mkdir -p $(dir $@)
-	nasm -f elf64 $< -o $@
+	$(AS) $(USER_ARCH_ASFLAGS) $< -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)/user $(OBJ_DIR)/user

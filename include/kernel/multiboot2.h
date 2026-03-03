@@ -31,7 +31,13 @@ struct multiboot_tag_framebuffer {
     uint32_t framebuffer_height;
     uint8_t  framebuffer_bpp;
     uint8_t  framebuffer_type;
-    uint8_t  reserved;
+    uint16_t reserved;
+    uint8_t  framebuffer_red_field_position;
+    uint8_t  framebuffer_red_mask_size;
+    uint8_t  framebuffer_green_field_position;
+    uint8_t  framebuffer_green_mask_size;
+    uint8_t  framebuffer_blue_field_position;
+    uint8_t  framebuffer_blue_mask_size;
 } __attribute__((packed));
 
 struct multiboot_tag_module {
@@ -40,6 +46,18 @@ struct multiboot_tag_module {
     uint32_t mod_start;
     uint32_t mod_end;
     char cmdline[0];
+} __attribute__((packed));
+
+struct multiboot_tag_old_acpi {
+    uint32_t type;
+    uint32_t size;
+    uint8_t rsdp[0];
+} __attribute__((packed));
+
+struct multiboot_tag_new_acpi {
+    uint32_t type;
+    uint32_t size;
+    uint8_t rsdp[0];
 } __attribute__((packed));
 
 struct multiboot_color {
@@ -52,6 +70,8 @@ struct multiboot_color {
 #define MULTIBOOT_TAG_TYPE_CMDLINE 1
 #define MULTIBOOT_TAG_TYPE_MMAP 6
 #define MULTIBOOT_TAG_TYPE_FRAMEBUFFER 8
+#define MULTIBOOT_TAG_TYPE_ACPI_OLD 14
+#define MULTIBOOT_TAG_TYPE_ACPI_NEW 15
 #define MULTIBOOT_TAG_TYPE_MODULE 3
 
 #define MULTIBOOT_MEMORY_AVAILABLE 1
@@ -65,5 +85,7 @@ const char* multiboot_get_cmdline(void);
 size_t multiboot_get_module_count(void);
 const struct multiboot_tag_module* multiboot_get_module(size_t index);
 const struct multiboot_tag_module* multiboot_find_module(const char* token);
+const void* multiboot_get_acpi_rsdp_old(size_t* out_size);
+const void* multiboot_get_acpi_rsdp_new(size_t* out_size);
 
 #endif

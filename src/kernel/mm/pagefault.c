@@ -1,20 +1,39 @@
 #include <mm/pagefault.h>
 #include <arch/idt.h>
 #include <drivers/serial.h>
+#include <debug/panic.h>
 #include <task/task.h>
 
 static uint64_t pagefault_count = 0;
 
-void pagefault_handler(uint64_t error_code, uint64_t faulting_addr, uint64_t rip) {
+static uint64_t frame_rbp(uint64_t frame_ptr) {
+    if (!frame_ptr) return 0u;
+    return ((uint64_t*)frame_ptr)[8];
+}
+
+static uint64_t frame_rsp(uint64_t cs, uint64_t frame_ptr) {
+    if (!frame_ptr) return 0u;
+    if ((cs & 0x3u) == 0x3u) {
+        return ((uint64_t*)frame_ptr)[20];
+    }
+    return frame_ptr + 160u;
+}
+
+void pagefault_handler(uint64_t error_code,
+                       uint64_t faulting_addr,
+                       uint64_t rip,
+                       uint64_t cs,
+                       uint64_t rflags,
+                       uint64_t frame_ptr) {
     pagefault_count++;
     
     serial_write("\n[PAGE FAULT #");
     serial_write_dec(pagefault_count);
-    serial_write("]\n  Address: 0x");
+    serial_write("]\n  Address: ");
     serial_write_hex(faulting_addr);
-    serial_write("\n  RIP: 0x");
+    serial_write("\n  RIP: ");
     serial_write_hex(rip);
-    serial_write("\n  Error code: 0x");
+    serial_write("\n  Error code: ");
     serial_write_hex(error_code);
     serial_write("\n");
     
@@ -37,7 +56,7 @@ void pagefault_handler(uint64_t error_code, uint64_t faulting_addr, uint64_t rip
         
         serial_write("  PML4[");
         serial_write_dec(pml4_idx);
-        serial_write("] = 0x");
+        serial_write("] = ");
         serial_write_hex(pml4_entry);
         serial_write("\n");
         
@@ -48,7 +67,7 @@ void pagefault_handler(uint64_t error_code, uint64_t faulting_addr, uint64_t rip
             
             serial_write("  PDP[");
             serial_write_dec(pdp_idx);
-            serial_write("] = 0x");
+            serial_write("] = ");
             serial_write_hex(pdp_entry);
             serial_write("\n");
             
@@ -59,7 +78,7 @@ void pagefault_handler(uint64_t error_code, uint64_t faulting_addr, uint64_t rip
                 
                 serial_write("  PD[");
                 serial_write_dec(pd_idx);
-                serial_write("] = 0x");
+                serial_write("] = ");
                 serial_write_hex(pd_entry);
                 serial_write("\n");
                 
@@ -73,7 +92,7 @@ void pagefault_handler(uint64_t error_code, uint64_t faulting_addr, uint64_t rip
                     
                     serial_write("  PT[");
                     serial_write_dec(pt_idx);
-                    serial_write("] = 0x");
+                    serial_write("] = ");
                     serial_write_hex(pt_entry);
                     
                     if (pt_entry & (1ULL << 63)) {
@@ -85,9 +104,18 @@ void pagefault_handler(uint64_t error_code, uint64_t faulting_addr, uint64_t rip
             }
         }
     }
-    
-    serial_write("[SYSTEM HALTED]\n");
-    __asm__ volatile("cli; hlt");
+
+    panic_context_t ctx;
+    ctx.vector = 14u;
+    ctx.error_code = error_code;
+    ctx.rip = rip;
+    ctx.cs = cs;
+    ctx.rflags = rflags;
+    ctx.rsp = frame_rsp(cs, frame_ptr);
+    ctx.rbp = frame_rbp(frame_ptr);
+    ctx.cr2 = faulting_addr;
+
+    panic_dump_and_halt("Page Fault", &ctx);
 }
 
 bool pagefault_init(void) {

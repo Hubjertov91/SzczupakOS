@@ -85,6 +85,9 @@ isr_common:
     mov rdi, [rsp + 120]
     mov rsi, [rsp + 128]
     mov rdx, [rsp + 136]
+    mov rcx, [rsp + 144]
+    mov r8,  [rsp + 152]
+    mov r9, rsp
     
     call exception_handler
     

@@ -46,6 +46,7 @@ bool vfs_mount_at(vfs_filesystem_t* fs, const char* path);
 vfs_node_t* vfs_get_root(void);
 vfs_node_t* vfs_resolve_path(const char* path);
 vfs_node_t* vfs_find_child(vfs_node_t* parent, const char* name);
+bool vfs_ensure_directory(const char* path);
 void vfs_list_directory(vfs_node_t* dir);
 
 vfs_node_t* vfs_create_file(vfs_node_t* parent, const char* name);
